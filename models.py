@@ -1,4 +1,11 @@
-"""Builds the specified models"""
+"""Builds the specified model:
+1. inference() - Builds the model as far as is required for running the network
+forward to make predictions.
+2. cost() - Adds to the inference model the layers required to generate the cost function.
+3. training() - Adds to the loss model the Ops required to generate and apply gradients.
+
+This file is used by sr_nn.py and not meant to be run.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -18,8 +25,11 @@ def inference(method, x, n_in, n_out, n_h1, n_h2):
         n_h1: no of units in hidden layer 1
         n_h2: no of units in hidden layer 2
     Returns:
-        y_pred: the predicted output patch (tensor) 
+        y_pred: the predicted output patch (tensor)
+        L2_sqr: the L2 norm of weights (biases not included)
+        L1: the L1 norm of weights
     """
+    # build the selected model: followed http://cs231n.github.io/neural-networks-2/ for initialisation.
     if method == 'linear':
         # Standard linear regression:
         W1 = tf.Variable(
@@ -79,8 +89,38 @@ def inference(method, x, n_in, n_out, n_h1, n_h2):
     return y_pred, L2_sqr, L1
 
 
-def loss(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
+def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
+    """ Define the cost dunction
+        Args:
+            y(tensor placeholder): a minibatch of row-vectorised ground truth HR patches
+            y_pred (tensor function): the corresponding set of predicted patches
+            L2_sqr: the L2 norm of weights (biases not included)
+            L1: the L1 norm of weights
+            L2_reg: the L2-norm regularisation coefficient
+            L1_reg: the L1-norm regularisation coefficient
+        Returns:
+            cost: the loss function to be minimised
+    """
     # Predictive metric and regularisers:
     mse = tf.reduce_mean((y - y_pred) ** 2)  # mse in the normalised space
     cost = mse + L2_reg * L2_sqr + L1_reg * L1
     return cost
+
+
+def training(cost, learning_rate, option='default'):
+    """ Define the optimisation method
+        Args:
+            cost: loss function to be minimised
+            learning_rate: the learning rate
+            option: optimisation method
+        Returns:
+            train_op: training operation
+    """
+    if option =='default':
+        train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+    elif option =='adam':
+        train_op = tf.train.AdamOptimizer(1e-4).minimize(cost)
+    else:
+        raise ValueError('The chosen method not available ...')
+
+    return train_op

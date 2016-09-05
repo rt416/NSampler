@@ -1,4 +1,8 @@
-""" Train and test """
+""" Train and evaluates the super-resolution network:
+ 1. sr_train() - train a specified model with the chosen method.
+ 2. super_resolve() - function to perform super-resolution on a given low-res DT image
+ 3. sr_reconstruct() - the main code to run the super-resolution/compute errors/save files in required formats, etc.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -8,7 +12,7 @@ from __future__ import print_function
 import sys
 sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')   # dir name of the git repo
 import sr_utility  # utility functions for loading/processing data
-
+import models
 import os
 import cPickle
 
@@ -16,9 +20,6 @@ import numpy as np
 import timeit
 import tensorflow as tf
 
-#####################
-# Train your network:
-#####################
 
 def sr_train(method='linear', n_h1=500, n_h2=200,
              save_dir='/Users/ryutarotanno/DeepLearning/nsampler/models',
@@ -66,90 +67,10 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     x_scaled = tf.placeholder(tf.float32, shape=[None, n_in])  # normalised input low-res patch
     y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])  # normalised output high-res patch
 
-    # Build the selected model: followed http://cs231n.github.io/neural-networks-2/ for initialisation.
-    if method == 'linear':
-        # Standard linear regression:
-        W1 = tf.Variable(
-            tf.random_normal([n_in, n_out], stddev=np.sqrt(2.0/n_in)),
-            name='W1')
-        b1 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b1')
-
-        y_pred_scaled = tf.matmul(x_scaled, W1) + b1  # predicted high-res patch in the normalised space
-        # y_pred = train_set_y_std*y_pred_scaled + train_set_y_mean  # predicted high-res patch in the original space
-
-        # Predictive metric and regularisers:
-        mse_scaled = tf.reduce_mean((y_scaled - y_pred_scaled) ** 2)  # mse in the normalised space
-        mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))  # mse in the original space
-        L2_sqr = tf.reduce_sum(W1 ** 2)
-        L1 = tf.reduce_sum(tf.abs(W1))
-
-        # Objective function:
-        cost = mse_scaled + L2_reg * L2_sqr + L1_reg * L1
-
-    elif method == 'mlp_h=1':
-        # MLP with one hidden layer:
-        W1 = tf.Variable(
-            tf.random_normal([n_in, n_h1], stddev=np.sqrt(2.0/n_in)),
-            name='W1')
-        b1 = tf.Variable(tf.constant(1e-2, shape=[n_h1]), name='b1')
-
-        hidden1 = tf.nn.relu(tf.matmul(x_scaled, W1) + b1)
-
-        W2 = tf.Variable(
-            tf.random_normal([n_h1, n_out], stddev=np.sqrt(2.0/n_h1)),
-            name='W2')
-        b2 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b2')
-
-        y_pred_scaled = tf.matmul(hidden1, W2) + b2
-
-        # Predictive metric and regularisers:
-        mse_scaled = tf.reduce_mean((y_scaled - y_pred_scaled) ** 2)
-        mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
-        L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2)
-        L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2))
-
-        # Objective function:
-        cost = mse_scaled + L2_reg * L2_sqr + L1_reg * L1
-
-    elif method == 'mlp_h=2':
-        # MLP with two hidden layers:
-        W1 = tf.Variable(
-            tf.random_normal([n_in, n_h1], stddev=np.sqrt(2.0/n_in)),
-            name='W1')
-        b1 = tf.Variable(tf.constant(1e-2, shape=[n_h1]), name='b1')
-
-        hidden1 = tf.nn.relu(tf.matmul(x_scaled, W1) + b1)
-
-        W2 = tf.Variable(
-            tf.random_normal([n_h1, n_h2], stddev=np.sqrt(2.0/n_h1)),
-            name='W2')
-        b2 = tf.Variable(tf.constant(1e-2, shape=[n_h2]), name='b2')
-
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, W2) + b2)
-
-        W3 = tf.Variable(
-            tf.random_normal([n_h2, n_out], stddev=np.sqrt(2.0/n_h2)),
-            name='W3')
-        b3 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b3')
-
-        y_pred_scaled = tf.matmul(hidden2, W3) + b3
-
-        # Predictive metric and regularisers:
-        mse_scaled = tf.reduce_mean((y_scaled - y_pred_scaled) ** 2)
-        mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
-        L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) + tf.reduce_sum(W3 ** 2)
-        L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) + tf.reduce_sum(tf.abs(W3))
-
-        # Objective function:
-        cost = mse_scaled + L2_reg * L2_sqr + L1_reg * L1
-
-    else:
-        raise ValueError('The chosen method not available ...')
-
-    # Define the optimisation method:
-    # train_step = tf.train.AdamOptimizer(1e-4).minimize(cost)
-    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
-
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, n_in, n_out, n_h1, n_h2)
+    cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
+    train_step = models.training(cost, learning_rate, option='default')
+    mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
 
     #######################
     # Start training:
@@ -294,8 +215,9 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
 
     print('... defining the network model %s .' % method)
     n_in, n_out = 6 * (2 * n + 1) ** 3, 6 * m ** 3  # dimensions of input and output
-    x = tf.placeholder(tf.float32, shape=[None, n_in])
-    y = tf.placeholder(tf.float32, shape=[None, n_out])
+    x_scaled = tf.placeholder(tf.float32, shape=[None, n_in])
+    y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, n_in, n_out, n_h1, n_h2)
 
     # load the transforms used for normalisation of the training data:
     transform_file = os.path.join(network_dir, method, 'transforms.pkl')
@@ -306,76 +228,6 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
     train_set_y_std = transform['output_std'].reshape((1, n_out))
     del transform
 
-    if method == 'linear':
-        # Redefine the graph:
-        pretrained = False
-        W1 = tf.Variable(
-            tf.random_uniform([n_in, n_out], minval=-np.sqrt(6. / (n_in + n_out)), maxval=np.sqrt(6. / (n_in + n_out))),
-            name='W1')
-        b1 = tf.Variable(tf.constant(0.0, shape=[n_out]), name='b1')
-
-        y_pred = tf.matmul(x, W1) + b1
-
-    elif method == 'mlp_h=1':
-        # MLP with one hidden layer:
-        pretrained = False
-        W1 = tf.Variable(
-            tf.random_uniform([n_in, n_h1], minval=-np.sqrt(6. / (n_in + n_out)), maxval=np.sqrt(6. / (n_in + n_out))),
-            name='W1')
-        b1 = tf.Variable(tf.constant(0.0, shape=[n_h1]), name='b1')
-
-        hidden1 = tf.nn.relu(tf.matmul(x, W1) + b1)
-
-        W2 = tf.Variable(
-            tf.random_uniform([n_h1, n_out], minval=-np.sqrt(6. / (n_in + n_out)), maxval=np.sqrt(6. / (n_in + n_out))),
-            name='W2')
-        b2 = tf.Variable(tf.constant(0.0, shape=[n_out]), name='b2')
-
-        y_pred = tf.matmul(hidden1, W2) + b2
-
-    elif method == 'mlp_h=2':
-        # MLP with two hidden layers:
-        pretrained = False
-        W1 = tf.Variable(
-            tf.random_uniform([n_in, n_h1], minval=-np.sqrt(6. / (n_in + n_h1)), maxval=np.sqrt(6. / (n_in + n_h1))),
-            name='W1')
-        b1 = tf.Variable(tf.constant(0.0, shape=[n_h1]), name='b1')
-
-        hidden1 = tf.nn.relu(tf.matmul(x, W1) + b1)
-
-        W2 = tf.Variable(
-            tf.random_uniform([n_h1, n_h2], minval=-np.sqrt(6. / (n_h1 + n_h2)), maxval=np.sqrt(6. / (n_h1 + n_h2))),
-            name='W2')
-        b2 = tf.Variable(tf.constant(0.0, shape=[n_h2]), name='b2')
-
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, W2) + b2)
-
-        W3 = tf.Variable(
-            tf.random_uniform([n_h2, n_out], minval=-np.sqrt(6. / (n_h2 + n_out)), maxval=np.sqrt(6. / (n_h2 + n_out))),
-            name='W3')
-        b3 = tf.Variable(tf.constant(0.0, shape=[n_out]), name='b3')
-
-        y_pred = tf.matmul(hidden2, W3) + b3
-
-    elif method == 'linear_test':
-        pretrained = True
-        print('use the weights of the manually pre-trained linear regression !')
-        weights_file = '/Users/ryutarotanno/DeepLearning/Test_1/models/linear_test.npy'
-        W_temp = np.load(weights_file)
-
-        n_in, n_out = 6 * (2 * n + 1) ** 3, 6 * m ** 3  # dimensions of input and output
-        x = tf.placeholder(tf.float32, shape=[None, n_in])
-        y = tf.placeholder(tf.float32, shape=[None, n_out])
-
-        W1 = tf.Variable(W_temp.T[:-1, :].astype('float32'), name='W1')
-        b1 = tf.Variable(1E-3*W_temp.T[-1, :].astype('float32'), name='b1')
-
-        y_pred = tf.matmul(x, W1) + b1
-
-    else:
-        raise ValueError('No correct model specified')
-
-
     ##############
     # Reconstruct!
     ##############
@@ -385,12 +237,9 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
     init_op = tf.initialize_all_variables()
 
     with tf.Session() as sess:
-        if pretrained:
-            sess.run(init_op)
-        else:
-            # Restore variables from disk.
-            saver.restore(sess, os.path.join(network_dir, method, "model.ckpt"))
-            print("Model restored.")
+        # Restore variables from disk.
+        saver.restore(sess, os.path.join(network_dir, method, "model.ckpt"))
+        print("Model restored.")
 
         # reconstruct
         dt_lowres = dt_lowres[0::us, 0::us, 0::us, :]  # take every us th entry to reduce it to the original resolution.
@@ -412,7 +261,7 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
                         ipatch_row_scaled = (ipatch_row - train_set_x_mean)/train_set_x_std
 
                         # Predict the corresponding high-res output patch in the normalised space:
-                        opatch_row_scaled = y_pred.eval(feed_dict={x: ipatch_row_scaled})
+                        opatch_row_scaled = y_pred_scaled.eval(feed_dict={x_scaled: ipatch_row_scaled})
 
                         # Send back into the original space and reshape into a cubic patch:
                         opatch_row = train_set_y_std*opatch_row_scaled + train_set_y_mean
