@@ -41,9 +41,9 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     (train_set_x_scaled, train_set_x_mean, train_set_x_std, train_set_y_scaled, train_set_y_mean, train_set_y_std)\
         = sr_utility.standardise_data(train_set_x, train_set_y, option='default')  # normalise the data
 
+    # normalise the validation sets into the same space as training sets:
     valid_set_x_scaled = (valid_set_x - train_set_x_mean) / train_set_x_std
     valid_set_y_scaled = (valid_set_y - train_set_y_mean) / train_set_y_std
-
     del train_set_x, valid_set_x, train_set_y, valid_set_y  # clear original data as you don't need them.
 
     print('... saving the transforms used for data normalisation for the test time')
@@ -52,7 +52,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
         os.makedirs(save_subdir)
     transform = {'input_mean': train_set_x_mean, 'input_std': train_set_x_std,
                  'output_mean': train_set_y_mean, 'output_std': train_set_y_std}
-    f = file(os.path.join(save_subdir,'transforms.pkl'), 'wb')
+    f = file(os.path.join(save_subdir, 'transforms.pkl'), 'wb')
     cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
     ####################
