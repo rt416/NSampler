@@ -1,24 +1,20 @@
-
+""" Train and test """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 
-# Set temporarily the git dir on python path. In future, remove this and set the dir to path
+# Set temporarily the git dir on python path. In future, remove this and add the dir to search path.
 import sys
-sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')
+sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')   # dir name of the git repo
+import sr_utility  # utility functions for loading/processing data
 
 import os
 import cPickle
-import h5py
-import nibabel as nib
 
 import numpy as np
-from sklearn.cross_validation import train_test_split
 import timeit
-
 import tensorflow as tf
-from sr_utility import read_dt_volume, load_patchlib, standardise_data
 
 #####################
 # Train your network:
@@ -38,12 +34,12 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     data_dir, data_file = os.path.split(dataset)
 
     print('... loading the training dataset %s' % data_file)
-    patchlib = load_patchlib(patchlib=dataset)
+    patchlib = sr_utility.load_patchlib(patchlib=dataset)
     train_set_x, valid_set_x, train_set_y, valid_set_y = patchlib  # load the original patch libs
 
     # normalise the data and keep the transforms:
     (train_set_x_scaled, train_set_x_mean, train_set_x_std, train_set_y_scaled, train_set_y_mean, train_set_y_std)\
-        = standardise_data(train_set_x, train_set_y, option='default')  # normalise the data
+        = sr_utility.standardise_data(train_set_x, train_set_y, option='default')  # normalise the data
 
     valid_set_x_scaled = (valid_set_x - train_set_x_mean) / train_set_x_std
     valid_set_y_scaled = (valid_set_y - train_set_y_mean) / train_set_y_std
@@ -436,76 +432,35 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
 
 
 def sr_reconstruct(method='mlp_h=1', n=2, m=2, us=2, n_h1=500, n_h2=200,
-                           save_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
+                           recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
                            gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data'):
 
     start_time = timeit.default_timer()
 
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
-    dt_lowres = read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_lowres_2_'))
+    dt_lowres = sr_utility.read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_lowres_2_'))
 
     # Reconstruct and save:
     print('\nReconstruct high-res dti with method = %s ...' % method)
     dt_hr = super_resolve(dt_lowres, method=method, n_h1=n_h1, n_h2=n_h2, n=n, m=m, us=us)
     end_time = timeit.default_timer()
-    output_file = os.path.join(save_dir, method + '_highres_dti')
+
+    output_file = os.path.join(recon_dir, method + '_highres_dti.npy')
     print('... saving as %s' % output_file)
     np.save(output_file, dt_hr)
     print('\nIt took %f secs to reconsruct a whole brain volumne. \n' % (end_time - start_time))
 
     # Compute the reconstruction error:
-    dt_gt = read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_'))
-    dt_est_tmp = np.load(output_file + '.npy')
-    dt_est = dt_est_tmp[:-1, :, :-1, :]
-    mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
-    mse = np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0)
-    print('\nReconsturction error (RMSE) is %f.' % np.sqrt(mse))
+    recon_dir, recon_file = os.path.split(output_file)
+    rmse = sr_utility.compute_rmse(recon_file=recon_file, recon_dir=recon_dir, gt_dir=gt_dir)
+    print('\nReconsturction error (RMSE) is %f.' % rmse)
 
     # Save each estimated dti separately as a nifti file for visualisation:
     print('\nSave each estimated dti separately as a nifti file for visualisation ...')
-    data_dir, data_file = os.path.split(output_file + '.npy')
-    base, ext = os.path.splitext(data_file)
-
-    for k in np.arange(6):
-        # Save each DT component separately as nii:
-        dt_gt = nib.load(gt_dir + '/' + 'dt_b1000_' + str(k+3) + '.nii')
-        affine = dt_gt.get_affine()
-        header = dt_gt.get_header()
-        img = nib.Nifti1Image(dt_est_tmp[:-1, :, :-1, k+2], affine=affine, header=header)
-
-        print('... saving estimated ' + str(k+1) + ' th dt element')
-        nib.save(img, os.path.join(data_dir, base + '_' + str(k+3) + '.nii'))
-
-
-def save_as_nifti(data_file = 'mlp_h=1_highres_dti.npy', data_dir = '/Users/ryutarotanno/DeepLearning/Test_1/recon/', gt_dir = '/Users/ryutarotanno/DeepLearning/Test_1/data/'):
-    """Save each estimated dti separately as a nifti file for visualisation"""
-    base, ext = os.path.splitext(data_file)
-    dt_est = np.load(file)
-
-    for k in np.arange(6):
-        dt_gt = nib.load(gt_dir + '/' + 'dt_b1000_' + str(k+3) + '.nii')
-        affine = dt_gt.get_affine()
-        header = dt_gt.get_header()
-        img = nib.Nifti1Image(dt_est[:-1, :, :-1, k+2], affine=affine, header=header)
-        # img = nib.Nifti1Image(dt_est[:, :, :, k + 2], affine=affine, header=header)
-        print('saving estimated' + str(k+1) + 'th dt element')
-        nib.save(img, data_dir + base + '_' + str(k+3) + '.nii')
-
-
-def compute_rmse(sr_file = 'mlp_h=1_highres_dti.npy', gt_dir = '/Users/ryutarotanno/DeepLearning/Test_1/data/', est_path = '/Users/ryutarotanno/DeepLearning/Test_1/recon/'):
-    """Compute root mean square error wrt the ground truth DTI"""
-    dt_gt = read_dt_volume(nameroot=gt_dir + 'dt_b1000_')
-    dt_est_tmp = np.load(est_path + sr_file)
-    dt_est = dt_est_tmp[:-1, :, :-1, :]
-    mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
-    mse = np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis])/(mask.sum() * 6.0)
-    return np.sqrt(mse)
+    sr_utility.save_as_nifti(recon_file=recon_file, recon_dir=recon_dir, gt_dir=gt_dir)
 
 
 if __name__ == "__main__":
-    save_as_nifti()
-    compute_rmse()
-    sr_reconstruct()
     sr_train()
-    super_resolve()
+    sr_reconstruct()
