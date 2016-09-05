@@ -107,7 +107,7 @@ def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
     return cost
 
 
-def training(cost, learning_rate, option='default'):
+def training(cost, learning_rate, option='standard'):
     """ Define the optimisation method
         Args:
             cost: loss function to be minimised
@@ -116,7 +116,7 @@ def training(cost, learning_rate, option='default'):
         Returns:
             train_op: training operation
     """
-    if option =='default':
+    if option =='standard':
         train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
     elif option =='adam':
         train_op = tf.train.AdamOptimizer(1e-4).minimize(cost)

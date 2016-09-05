@@ -149,3 +149,20 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     mse = np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0)
     return np.sqrt(mse)
 
+def name_network(method='linear', n_h1=500, n_h2=200, cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
+             optimisation_method='standard', dropout_rate=0.0):
+    """given inputs, return the model name."""
+
+    if method == 'linear':
+        nn_file = '%s_%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
+                  (method, 6 * (2 * n + 1) ** 3, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
+                   us, 2 * n + 1, m, no_subjects, sample_rate)
+    elif method == 'mlp_h=1':
+        nn_file = '%s_%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
+                  (method, 6 * (2 * n + 1) ** 3, n_h1, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
+                   us, 2 * n + 1, m, no_subjects, sample_rate)
+    elif method == 'mlp_h=2':
+        nn_file = '%s_%i-%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
+                  (method, 6 * (2 * n + 1) ** 3, n_h1, n_h2, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
+                   us, 2 * n + 1, m, no_subjects, sample_rate)
+    return nn_file
