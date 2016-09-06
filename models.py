@@ -15,11 +15,12 @@ import numpy as np
 import tensorflow as tf
 
 
-def inference(method, x, n_in, n_out, n_h1, n_h2):
+def inference(method, x, keep_prob, n_in, n_out, n_h1, n_h2):
     """ Define the model up to where it may be used for inference.
     Args:
         method (str): model type
-        x: a minibatch of row-vectorised input patches
+        x: a minibatch of row-vectorised input patches (tensor)
+        keep_prob: keep probability for drop-out (tensor)
         n_in: no of input units
         n_out: no of output units
         n_h1: no of units in hidden layer 1
@@ -36,7 +37,9 @@ def inference(method, x, n_in, n_out, n_h1, n_h2):
             tf.random_normal([n_in, n_out], stddev=np.sqrt(2.0 / n_in)),
             name='W1')
         b1 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b1')
-        y_pred = tf.matmul(x, W1) + b1  # predicted high-res patch in the normalised space
+        hidden1 = tf.matmul(x, W1) + b1
+        y_pred = tf.nn.dropout(hidden1, keep_prob)  # predicted high-res patch in the normalised space
+
         L2_sqr = tf.reduce_sum(W1 ** 2)
         L1 = tf.reduce_sum(tf.abs(W1))
         
@@ -46,15 +49,16 @@ def inference(method, x, n_in, n_out, n_h1, n_h2):
             tf.random_normal([n_in, n_h1], stddev=np.sqrt(2.0 / n_in)),
             name='W1')
         b1 = tf.Variable(tf.constant(1e-2, shape=[n_h1]), name='b1')
-    
         hidden1 = tf.nn.relu(tf.matmul(x, W1) + b1)
-    
+        hidden1_drop = tf.nn.dropout(hidden1, keep_prob)
+
         W2 = tf.Variable(
             tf.random_normal([n_h1, n_out], stddev=np.sqrt(2.0 / n_h1)),
             name='W2')
         b2 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b2')
-    
-        y_pred = tf.matmul(hidden1, W2) + b2
+        hidden2 = tf.matmul(hidden1_drop, W2) + b2
+        y_pred = tf.nn.dropout(hidden2, keep_prob)
+
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) 
         L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) 
 
@@ -64,22 +68,23 @@ def inference(method, x, n_in, n_out, n_h1, n_h2):
             tf.random_normal([n_in, n_h1], stddev=np.sqrt(2.0 / n_in)),
             name='W1')
         b1 = tf.Variable(tf.constant(1e-2, shape=[n_h1]), name='b1')
-    
         hidden1 = tf.nn.relu(tf.matmul(x, W1) + b1)
+        hidden1_drop = tf.nn.dropout(hidden1, keep_prob)
     
         W2 = tf.Variable(
             tf.random_normal([n_h1, n_h2], stddev=np.sqrt(2.0 / n_h1)),
             name='W2')
         b2 = tf.Variable(tf.constant(1e-2, shape=[n_h2]), name='b2')
-    
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, W2) + b2)
-    
+        hidden2 = tf.nn.relu(tf.matmul(hidden1_drop, W2) + b2)
+        hidden2_drop = tf.nn.dropout(hidden2, keep_prob)
+
         W3 = tf.Variable(
             tf.random_normal([n_h2, n_out], stddev=np.sqrt(2.0 / n_h2)),
             name='W3')
         b3 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b3')
-    
-        y_pred = tf.matmul(hidden2, W3) + b3
+        hidden3 = tf.matmul(hidden2_drop, W3) + b3
+        y_pred = tf.nn.dropout(hidden3, keep_prob)
+
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) + tf.reduce_sum(W3 ** 2)
         L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) + tf.reduce_sum(tf.abs(W3))
 
@@ -116,10 +121,10 @@ def training(cost, learning_rate, option='standard'):
         Returns:
             train_op: training operation
     """
-    if option =='standard':
+    if option == 'standard':
         train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
-    elif option =='adam':
-        train_op = tf.train.AdamOptimizer(1e-4).minimize(cost)
+    elif option == 'adam':
+        train_op = tf.train.AdamOptimizer(learning_rate).minimize(cost)
     else:
         raise ValueError('The chosen method not available ...')
 

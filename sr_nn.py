@@ -7,8 +7,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sr_utility  # utility functions for loading/processing data
-import models
 import os
 import cPickle
 
@@ -19,26 +17,27 @@ import tensorflow as tf
 # Set temporarily the git dir on python path. In future, remove this and add the dir to search path.
 import sys
 sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')   # dir name of the git repo
+import sr_utility  # utility functions for loading/processing data
+import models
 
 
 def sr_train(method='linear', n_h1=500, n_h2=200,
              data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
              cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
-             optimisation_method='standard', dropout_rate=0.0, learning_rate=0.01, L1_reg=0.00, L2_reg=1e-4,
+             optimisation_method='standard', dropout_rate=0.0, learning_rate=1e-4, L1_reg=0.00, L2_reg=1e-5,
              n_epochs=1000, batch_size=25,
              save_dir='/Users/ryutarotanno/DeepLearning/nsampler/models'):
+
 
     ##########################
     # Load the training data:
     ##########################
+    # get the full path to the training set:
     dataset = data_dir + 'PatchLibs%sDS%02i_%ix%i_%ix%i_TS%i_SRi%03i_0001.mat' \
                          % (cohort, us, 2 * n + 1, 2 * n + 1, m, m, no_subjects, sample_rate)
-
-    # dataset = '/Users/ryutarotanno/DeepLearning/Test_1/data/' \
-    #           + 'PatchLibsDiverseDS02_5x5_2x2_TS8_SRi032_0001.mat'
-
     data_dir, data_file = os.path.split(dataset)
 
+    # load
     print('... loading the training dataset %s' % data_file)
     patchlib = sr_utility.load_patchlib(patchlib=dataset)
     train_set_x, valid_set_x, train_set_y, valid_set_y = patchlib  # load the original patch libs
@@ -52,26 +51,30 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     valid_set_y_scaled = (valid_set_y - train_set_y_mean) / train_set_y_std
     del train_set_x, valid_set_x, train_set_y, valid_set_y  # clear original data as you don't need them.
 
+
     ####################
     # Define the model:
     ####################
-
     print('... defining the model')
+
+    # clear the graph
+    tf.reset_default_graph()
 
     # define input and output:
     n_in, n_out = 6 * (2 * n + 1) ** 3, 6 * m ** 3  # dimensions of input and output
     x_scaled = tf.placeholder(tf.float32, shape=[None, n_in])  # normalised input low-res patch
     y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])  # normalised output high-res patch
+    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 
-    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, n_in, n_out, n_h1, n_h2)
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out, n_h1, n_h2)
     cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
     train_step = models.training(cost, learning_rate, option=optimisation_method)
     mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
 
+
     #######################
     # Start training:
     #######################
-
     # Add the variable initializer Op.
     init = tf.initialize_all_variables()
 
@@ -117,7 +120,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                 # perform gradient descent:
                 train_step.run(
                     feed_dict={x_scaled: train_set_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :],
-                               y_scaled: train_set_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]})
+                               y_scaled: train_set_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :],
+                               keep_prob: (1.0 - dropout_rate)})
 
                 # iteration number
                 iter = (epoch - 1) * n_train_batches + minibatch_index
@@ -127,7 +131,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
 
                     validation_losses = [mse.eval(
                         feed_dict={x_scaled: valid_set_x_scaled[index * batch_size:(index + 1) * batch_size, :],
-                                   y_scaled: valid_set_y_scaled[index * batch_size:(index + 1) * batch_size, :]}
+                                   y_scaled: valid_set_y_scaled[index * batch_size:(index + 1) * batch_size, :],
+                                   keep_prob: (1.0 - dropout_rate)}
                         )
                         for index in range(n_valid_batches)]
 
@@ -135,7 +140,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
 
                     training_losses = [mse.eval(
                         feed_dict={x_scaled: train_set_x_scaled[index * batch_size:(index + 1) * batch_size, :],
-                                   y_scaled: train_set_y_scaled[index * batch_size:(index + 1) * batch_size, :]}
+                                   y_scaled: train_set_y_scaled[index * batch_size:(index + 1) * batch_size, :],
+                                   keep_prob: (1.0 - dropout_rate)}
                         )
                         for index in range(n_valid_batches)]
 
@@ -209,9 +215,12 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
         f = file(os.path.join(save_subdir, 'transforms.pkl'), 'wb')
         cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
+    # clear the graph
+    tf.reset_default_graph()
+
 
 # Reconstruct using the specified NN:
-def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=2,
+def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=2, dropout_rate=0.0,
                   network_dir='/Users/ryutarotanno/DeepLearning/nsampler/models/linear'):
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
@@ -228,7 +237,8 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
     n_in, n_out = 6 * (2 * n + 1) ** 3, 6 * m ** 3  # dimensions of input and output
     x_scaled = tf.placeholder(tf.float32, shape=[None, n_in])
     y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])
-    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, n_in, n_out, n_h1, n_h2)
+    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out, n_h1, n_h2)
 
     # load the transforms used for normalisation of the training data:
     transform_file = os.path.join(network_dir, 'transforms.pkl')
@@ -241,7 +251,6 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
 
     # Restore all the variables and perform reconstruction:
     saver = tf.train.Saver()
-    init_op = tf.initialize_all_variables()
 
     with tf.Session() as sess:
         # Restore variables from disk.
@@ -252,7 +261,7 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
         dt_lowres = dt_lowres[0::us, 0::us, 0::us, :]  # take every us th entry to reduce it to the original resolution.
         (xsize, ysize, zsize, comp) = dt_lowres.shape
         dt_hires = np.zeros((xsize * us, ysize * us, zsize * us, comp)) # the base array for the output high-res volume.
-        dt_hires[:, :, :, 0] = -1 # initialise all the voxels as 'background'.
+        dt_hires[:, :, :, 0] = -1  # initialise all the voxels as 'background'.
 
         for k in np.arange(n + 1, zsize - n + 1):
             print('Slice %i of %i.' % (k, zsize))
@@ -268,7 +277,8 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
                         ipatch_row_scaled = (ipatch_row - train_set_x_mean)/train_set_x_std
 
                         # Predict the corresponding high-res output patch in the normalised space:
-                        opatch_row_scaled = y_pred_scaled.eval(feed_dict={x_scaled: ipatch_row_scaled})
+                        opatch_row_scaled = y_pred_scaled.eval(feed_dict={x_scaled: ipatch_row_scaled,
+                                                                          keep_prob: (1.0-dropout_rate)})
 
                         # Send back into the original space and reshape into a cubic patch:
                         opatch_row = train_set_y_std*opatch_row_scaled + train_set_y_mean
@@ -298,6 +308,9 @@ def sr_reconstruct(method='linear', n_h1=500, n_h2=200, us=2, n=2, m=2,
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_lowres_2_'))
+
+    # clear the graph (is it necessary?)
+    tf.reset_default_graph()
 
     # Reconstruct:
     nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, cohort=cohort, no_subjects=no_subjects,
