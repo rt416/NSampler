@@ -88,10 +88,54 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1, n_h2):
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) + tf.reduce_sum(W3 ** 2)
         L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) + tf.reduce_sum(tf.abs(W3))
 
+    elif method == 'mlp_h=1_kingma':
+        # MLP with one hidden layer:
+        rho1 = get_weights([n_in, ], name='rho1')
+        sigma1 = tf.nn.softplus(rho1)
+        x_drop = x * (1. + sigma1 * tf.random_normal(tf.shape(x)))
+        aff1, W1, b1 = affine_layer(x_drop, n_in, n_h1, name='aff1')
+        h1 = tf.nn.relu(aff1)
+
+        rho2 = get_weights([n_h1, ], name='rho2')
+        sigma2 = tf.nn.softplus(rho2)
+        h1_drop = h1 * (1. + sigma2 * tf.random_normal(tf.shape(h1)))
+        y_pred, W2, b2 = affine_layer(h1_drop, n_h1, n_out, name='aff2')
+
+        L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2)
+        L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2))
+        KL1 = kl_log_uniform_prior(tf.pow(sigma1, 2.))
+        KL2 = kl_log_uniform_prior(tf.pow(sigma2, 2.))
+        KL_list = [KL1, KL2]
+
     else:
         raise ValueError('The chosen method not available ...')
 
     return y_pred, L2_sqr, L1
+
+def get_weights(filter_shape, W_init=None, name=''):
+    if W_init == None:
+        mean = 0.
+        stddev = np.sqrt(2.0 / filter_shape[0])
+        if len(filter_shape) == 1:
+            mean = 0.01
+            stddev = 0.
+        W_init = tf.random_normal(filter_shape, mean=mean, stddev=stddev)
+    return tf.Variable(W_init, name=name)
+
+
+def affine_layer(x, n_in, n_out, name='aff'):
+    W = get_weights([n_in, n_out], name=name+'_W')
+    b = get_weights([n_out], name=name+'_b')
+    return tf.matmul(x, W) + b, W, b
+
+
+def kl_log_uniform_prior(varQ):
+    """Compute the gaussian-log uniform KL-div from VDLRT"""
+    c1 = 1.16145124
+    c2 = -1.50204118
+    c3 = 0.58629921
+    KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+    return tf.reduce_mean(KL)
 
 
 def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
