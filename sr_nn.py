@@ -178,11 +178,13 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                     break
 
         end_time = timeit.default_timer()
+        time_train = end_time - start_time
+
         print(('\nOptimization complete. Best validation score of %f  '
                'obtained at iteration %i') %
               (np.sqrt(best_validation_loss * 10**10), best_iter + 1))
 
-        print('Training done!!! It took %f secs.' % (end_time - start_time))
+        print('Training done!!! It took %f secs.' % time_train)
 
         # Save the model:
         nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, cohort=cohort, no_subjects=no_subjects,
@@ -204,7 +206,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                          'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
                          'learning rate': learning_rate,
                          'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
-                         'batch size': batch_size}
+                         'batch size': batch_size, 'training length':time_train}
         cPickle.dump(model_details, file(os.path.join(save_subdir, 'settings.pkl'), 'wb'),
                      protocol=cPickle.HIGHEST_PROTOCOL)
 

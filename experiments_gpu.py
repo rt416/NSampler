@@ -14,12 +14,12 @@ n_h2=200
 save_dir = os.path.join(base_dir, 'models')
 
 # Training data details:
-data_dir = os.path.join(base_data_dir, 'Training')
+data_dir = os.path.join(base_data_dir, 'Training/')
 sample_rate=32
 us,n,m= 2,2,2
 
 # Training method details:
-optimisation_method = 'standard'
+optimisation_method = 'adam'
 dropout_rate = 0.0
 learning_rate = 1e-4
 L1_reg = 0.00
@@ -28,18 +28,17 @@ n_epochs = 1000
 batch_size = 25
 
 sr_train(method=method, n_h1=n_h1, n_h2=n_h2,
-        data_dir=data_dir,
-        cohort='Diverse', sample_rate=sample_rate, us=us, n=n, m=m,
-        optimisation_method=optimisation_method, dropout_rate=dropout_rate, learning_rate=learning_rate,
-        L1_reg=L1_reg, L2_reg=L2_reg,
-        n_epochs=n_epochs, batch_size=batch_size,
-        save_dir=save_dir)
+         data_dir=data_dir,
+         cohort='Diverse', sample_rate=sample_rate, us=us, n=n, m=m,
+         optimisation_method=optimisation_method, dropout_rate=dropout_rate, learning_rate=learning_rate,
+         L1_reg=L1_reg, L2_reg=L2_reg,
+         n_epochs=n_epochs, batch_size=batch_size,
+         save_dir=save_dir)
 
 
 # ---------------- Perform reconstruction on 8 test subjects -----------------
 base_dir = '/home/rtanno/Codes/SuperRes'
 base_data_dir = '/home/rtanno/Shared/HDD/SuperRes'
-
 methods_list = ['linear', 'mlp_h=1', 'mlp_h=2']
 sr_list = [32, 16]
 subjects_list = ['904044', '165840', '889579', '713239', '899885', '117324', '214423', '857263']
@@ -47,6 +46,7 @@ subjects_list = ['904044', '165840', '889579', '713239', '899885', '117324', '21
 for subject in subjects_list:
     gt_dir = base_data_dir + '/HCP/' + subject + '/T1w/Diffusion'
     recon_dir = gt_dir + '/DL'
+    model_dir = base_dir + '/models'
 
     if not os.path.exists(recon_dir):  # create a subdirectory to save the model.
             os.makedirs(recon_dir)
@@ -56,7 +56,7 @@ for subject in subjects_list:
             print('Subject %s, sample rate =%i, method = %s' % (subject, sample_rate, method))
             tf.reset_default_graph()
             sr_reconstruct(method=method, optimisation_method='adam', sample_rate=sample_rate,
-                           gt_dir=gt_dir, recon_dir=recon_dir)
+                           model_dir=model_dir, gt_dir=gt_dir, recon_dir=recon_dir)
 
 # Compute the average errors:
 methods_list = ['linear', 'mlp_h=1', 'mlp_h=2']
