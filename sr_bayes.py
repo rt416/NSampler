@@ -12,6 +12,7 @@ import sr_utility
 import timeit
 import cPickle
 
+
 def sr_train(method='mlp_h=1_kingma', n_h1=500, n_h2=200,
              data_dir='./data/',
              cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
@@ -104,7 +105,7 @@ def sr_train(method='mlp_h=1_kingma', n_h1=500, n_h2=200,
         done_looping = False
 
         while (epoch < n_epochs) and (not done_looping):
-            epoch = epoch + 1
+            epoch += 1
             for minibatch_index in range(n_train_batches):
 
                 # perform gradient descent:
