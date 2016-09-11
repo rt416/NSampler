@@ -83,7 +83,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     # Create a session for running Ops on the Graph.
     print('... training')
 
-    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+    with tf.Session() as sess:
         # Run the Op to initialize the variables.
         sess.run(init)
 
