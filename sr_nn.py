@@ -83,7 +83,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     # Create a session for running Ops on the Graph.
     print('... training')
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         # Run the Op to initialize the variables.
         sess.run(init)
 
@@ -206,7 +206,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                          'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
                          'learning rate': learning_rate,
                          'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
-                         'batch size': batch_size, 'training length': time_train, 'best validation rmse': np.sqrt(best_validation_loss)}
+                         'batch size': batch_size, 'training length': time_train,
+                         'best validation rmse': np.sqrt(best_validation_loss)}
         cPickle.dump(model_details, file(os.path.join(save_subdir, 'settings.pkl'), 'wb'),
                      protocol=cPickle.HIGHEST_PROTOCOL)
 
