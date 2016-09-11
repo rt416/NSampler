@@ -9,14 +9,14 @@ base_data_dir = '/home/rtanno/Shared/HDD/SuperRes'
 
 # Model:
 methods_list = ['mlp_h=1', 'mlp_h=2']
-n_h1=500
-n_h2=200
+n_h1 = 500
+n_h2 = 200
 save_dir = os.path.join(base_dir, 'models')
 
 # Training data details:
 data_dir = os.path.join(base_data_dir, 'Training/')
-sr_list=[8, 4]
-us, n, m= 2,2,2
+sr_list =[32]
+us, n, m = 2, 2, 2
 
 # Training method details:
 optimisation_method = 'adam'
