@@ -3,7 +3,7 @@ from sr_nn import *
 import sr_bayes
 
 # --------------- Perform training ---------------------------------
-
+from sr_nn import *
 base_dir = '/home/rtanno/Codes/SuperRes'
 base_data_dir = '/home/rtanno/Shared/HDD/SuperRes'
 

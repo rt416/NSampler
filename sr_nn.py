@@ -48,7 +48,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     # normalise the validation sets into the same space as training sets:
     valid_set_x_scaled = (valid_set_x - train_set_x_mean) / train_set_x_std
     valid_set_y_scaled = (valid_set_y - train_set_y_mean) / train_set_y_std
-    del train_set_x, valid_set_x, train_set_y, valid_set_y  # clear original data as you don't need them.
+    del train_set_x, valid_set_x, train_set_y, valid_set_y, patchlib  # clear original data as you don't need them.
 
 
     ####################
