@@ -156,20 +156,22 @@ def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
     return cost
 
 
-def training(cost, learning_rate, option='standard'):
+def training(cost, learning_rate, global_step=None, option='standard'):
     """ Define the optimisation method
         Args:
             cost: loss function to be minimised
+            global_step (tensor): the number of optimization steps undergone.
             learning_rate: the learning rate
             option: optimisation method
         Returns:
             train_op: training operation
     """
     if option == 'standard':
-        train_op = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     elif option == 'adam':
-        train_op = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+        optimizer = tf.train.AdamOptimizer(learning_rate)
     else:
         raise ValueError('The chosen method not available ...')
 
+    train_op = optimizer.minimize(cost, global_step=global_step)
     return train_op
