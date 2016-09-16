@@ -82,6 +82,14 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     if not os.path.exists(checkpoint_dir):  # create a subdirectory to save the model.
         os.makedirs(checkpoint_dir)
 
+    # Save the transforms used for data normalisation:
+    print('... saving the transforms used for data normalisation for the test time')
+    transform = {'input_mean': train_set_x_mean, 'input_std': train_set_x_std,
+                 'output_mean': train_set_y_mean, 'output_std': train_set_y_std}
+    f = file(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb')
+    cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
+
+
     # Create a session for running Ops on the Graph.
     print('... training')
 
@@ -114,10 +122,12 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
         epoch = 0
         done_looping = False
 
+        iter_valid = 0
+        total_validation_loss_epoch = 0
+        total_training_loss_epoch = 0
+
         while (epoch < n_epochs) and (not done_looping):
             epoch += 1
-            total_validation_loss_epoch = 0
-            total_training_loss_epoch = 0
             start_time_epoch = timeit.default_timer()
 
             for minibatch_index in range(n_train_batches):
@@ -150,12 +160,13 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
 
                 # iteration number
                 iter = (epoch - 1) * n_train_batches + minibatch_index
+                iter_valid += 1
 
                 if (iter + 1) % validation_frequency == 0:
                     # Print out the errors for each epoch:
 
-                    this_validation_loss = total_validation_loss_epoch/validation_frequency
-                    this_training_loss = total_training_loss_epoch/validation_frequency
+                    this_validation_loss = total_validation_loss_epoch/iter_valid
+                    this_training_loss = total_training_loss_epoch/iter_valid
                     end_time_epoch = timeit.default_timer()
 
                     print(
@@ -172,8 +183,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                             end_time_epoch - start_time_epoch
                         )
                     )
-                    print('     number of minibatches = %i and patience = %i' % (iter, patience))
-
+                    print('     number of minibatches = %i and patience = %i' % (iter + 1, patience))
+                    print('     validation frequency = %i, iter_valid = %i' % (validation_frequency, iter_valid))
                     # if we got the best validation score until now
                     if this_validation_loss < best_validation_loss:
 
@@ -193,6 +204,20 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                     save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
                     print("Model saved in file: %s" % save_path)
 
+                    # Save the model details:
+                    print('... saving the model details')
+                    model_details = {'method': method, 'cohort': cohort,
+                                     'no of subjects': no_subjects, 'sample rate': sample_rate, 'upsampling factor': us,
+                                     'n': n,
+                                     'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
+                                     'learning rate': learning_rate,
+                                     'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
+                                     'batch size': batch_size, 'training length': end_time_epoch - start_time,
+                                     'best validation rmse': np.sqrt(best_validation_loss),
+                                     'best step': best_step}
+                    cPickle.dump(model_details, file(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb'),
+                                 protocol=cPickle.HIGHEST_PROTOCOL)
+
                     # Terminate training when the validation loss starts decreasing.
                     if this_validation_loss > best_validation_loss:
                         patience = 0
@@ -202,7 +227,9 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
                     # Start counting again:
                     total_validation_loss_epoch = 0
                     total_training_loss_epoch = 0
+                    iter_valid = 0
                     start_time_epoch = timeit.default_timer()
+
 
                 if patience <= iter:
                     done_looping = True
@@ -216,25 +243,6 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
         end_time = timeit.default_timer()
         time_train = end_time - start_time
         print('Training done!!! It took %f secs.' % time_train)
-
-        # Save the model details:
-        print('... saving the model details')
-        model_details = {'method': method, 'cohort': cohort,
-                         'no of subjects': no_subjects, 'sample rate': sample_rate, 'upsampling factor': us, 'n': n,
-                         'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
-                         'learning rate': learning_rate,
-                         'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
-                         'batch size': batch_size, 'training length': time_train,
-                         'best validation rmse': np.sqrt(best_validation_loss),
-                         'best step': best_step}
-        cPickle.dump(model_details, file(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb'),
-                     protocol=cPickle.HIGHEST_PROTOCOL)
-
-        print('... saving the transforms used for data normalisation for the test time')
-        transform = {'input_mean': train_set_x_mean, 'input_std': train_set_x_std,
-                     'output_mean': train_set_y_mean, 'output_std': train_set_y_std}
-        f = file(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb')
-        cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
     # clear the graph
     tf.reset_default_graph()
@@ -270,12 +278,17 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
     train_set_y_std = transform['output_std'].reshape((1, n_out))
     del transform
 
+    # load the weights with the best performance:
+    settings_file = os.path.join(network_dir, 'settings.pkl')
+    details = cPickle.load(open(settings_file, 'rb'))
+    best_step = details['best step']
+
     # Restore all the variables and perform reconstruction:
     saver = tf.train.Saver()
 
     with tf.Session() as sess:
         # Restore variables from disk.
-        saver.restore(sess, os.path.join(network_dir, "model.ckpt"))
+        saver.restore(sess, os.path.join(network_dir, "model-" + str(best_step)))
         print("Model restored.")
 
         # reconstruct
@@ -319,7 +332,7 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
 
 
 def sr_reconstruct(method='linear', n_h1=500, n_h2=200, us=2, n=2, m=2,
-                   optimisation_method='standard', dropout_rate=0.0, cohort='Diverse', no_subjects=8, sample_rate=32,
+                   optimisation_method='adam', dropout_rate=0.0, cohort='Diverse', no_subjects=8, sample_rate=32,
                    model_dir='/Users/ryutarotanno/DeepLearning/nsampler/models',
                    recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
                    gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data'):
