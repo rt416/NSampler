@@ -21,7 +21,7 @@ import sr_utility  # utility functions for loading/processing data
 import models
 
 
-def sr_train(method='linear', n_h1=500, n_h2=200,
+def sr_train(method='linear', n_h1=500, n_h2=200, n_h3=100,
              data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
              cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
              optimisation_method='adam', dropout_rate=0.0, learning_rate=1e-4, L1_reg=0.00, L2_reg=1e-5,
@@ -60,7 +60,8 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
-    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out, n_h1, n_h2)
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out,
+                                                 n_h1=n_h1, n_h2=n_h2, n_h3=n_h3)
     cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
     train_step = models.training(cost, learning_rate, global_step=global_step, option=optimisation_method)
     mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
@@ -73,7 +74,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
     saver = tf.train.Saver()
 
     # Set the directory for saving checkpoints:
-    nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, cohort=cohort, no_subjects=no_subjects,
+    nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, n_h3=n_h3, cohort=cohort, no_subjects=no_subjects,
                                       sample_rate=sample_rate, us=us, n=n, m=m,
                                       optimisation_method=optimisation_method, dropout_rate=dropout_rate)
 
@@ -249,7 +250,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200,
 
 
 # Reconstruct using the specified NN:
-def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=2, dropout_rate=0.0,
+def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n_h3=100, n=2, m=2, us=2, dropout_rate=0.0,
                   network_dir='/Users/ryutarotanno/DeepLearning/nsampler/models/linear'):
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
@@ -267,7 +268,8 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n=2, m=2, us=
     x_scaled = tf.placeholder(tf.float32, shape=[None, n_in])
     y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])
     keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
-    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out, n_h1, n_h2)
+    y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out,
+                                                 n_h1=n_h1, n_h2=n_h2, n_h3=n_h3)
 
     # load the transforms used for normalisation of the training data:
     transform_file = os.path.join(network_dir, 'transforms.pkl')

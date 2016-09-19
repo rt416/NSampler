@@ -15,7 +15,7 @@ save_dir = os.path.join(base_dir, 'models')
 
 # Training data details:
 data_dir = os.path.join(base_data_dir, 'Training/')
-sr_list =[32]
+sr_list =[32, 16, 8, 4]
 us, n, m = 2, 2, 2
 
 # Training method details:
@@ -84,8 +84,8 @@ for method in methods_list:
 # ---------------- Perform reconstruction on 8 test subjects -----------------
 base_dir = '/home/rtanno/Codes/SuperRes'
 base_data_dir = '/home/rtanno/Shared/HDD/SuperRes'
-methods_list = ['linear', 'mlp_h=1', 'mlp_h=2']
-sr_list = [32, 16]
+methods_list = ['mlp_h=1', 'mlp_h=2']
+sr_list = [2]
 subjects_list = ['904044', '165840', '889579', '713239', '899885', '117324', '214423', '857263']
 
 for subject in subjects_list:
@@ -115,3 +115,42 @@ for subject in subjects_list:
             error_array[idx1,idx2] += sr_utility.compute_rmse(recon_file=recon_file, recon_dir=recon_dir, gt_dir=gt_dir)
 
 error_array /= len(subjects_list)  # compute the average rmse across test subjects
+
+
+
+# Plot stuff:
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.arange(10)
+
+plt.plot(x, x)
+plt.plot(x, 2 * x)
+plt.plot(x, 3 * x)
+plt.plot(x, 4 * x)
+
+plt.legend(['y = x', 'y = 2x', 'y = 3x', 'y = 4x'], loc='upper left')
+
+plt.show()
+
+
+# Convert all the recon to mat files for further analysis:
+import scipy.io as sio
+
+methods_list = ['mlp_h=1', 'mlp_h=2']
+sr_list = [2]
+subjects_list = ['904044', '165840', '889579', '713239', '899885', '117324', '214423', '857263']
+# subjects_list = ['117324']
+for subject in subjects_list:
+    recon_dir='/home/rtanno/Shared/HDD/SuperRes/HCP/' + subject + '/T1w/Diffusion/DL'
+    for idx1, sr_rate in enumerate(sr_list):
+        for idx2, method in enumerate(methods_list):
+            print('Subject %s, sample rate =%i, method = %s' % (subject, sr_rate, method))
+            recon_file = 'dt_'+ sr_utility.name_network(method=method, optimisation_method='adam', sample_rate=sr_rate)
+            tail_npy = '.npy'
+            tail_mat = '.mat'
+            dt_est = np.load(os.path.join(recon_dir,recon_file + tail_npy))
+            sio.savemat(os.path.join(recon_dir,recon_file + tail_mat),{'dt_est':dt_est})
+
+
+
