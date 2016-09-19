@@ -197,6 +197,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200, n_h3=100,
                                   % ((1 - improvement_threshold) * 100.))
 
                         best_validation_loss = this_validation_loss
+                        best_training_loss = this_training_loss
                         best_iter = iter
                         best_step = current_step + 1
 
@@ -215,6 +216,7 @@ def sr_train(method='linear', n_h1=500, n_h2=200, n_h3=100,
                                      'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
                                      'batch size': batch_size, 'training length': end_time_epoch - start_time,
                                      'best validation rmse': np.sqrt(best_validation_loss),
+                                     'best training rmse': np.sqrt(best_training_loss),
                                      'best step': best_step}
                     cPickle.dump(model_details, file(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb'),
                                  protocol=cPickle.HIGHEST_PROTOCOL)
