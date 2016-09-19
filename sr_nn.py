@@ -335,7 +335,7 @@ def super_resolve(dt_lowres, method='mlp_h=1', n_h1=500, n_h2=200, n_h3=100, n=2
     return dt_hires
 
 
-def sr_reconstruct(method='linear', n_h1=500, n_h2=200, us=2, n=2, m=2,
+def sr_reconstruct(method='linear', n_h1=500, n_h2=200,  n_h3=100, us=2, n=2, m=2,
                    optimisation_method='adam', dropout_rate=0.0, cohort='Diverse', no_subjects=8, sample_rate=32,
                    model_dir='/Users/ryutarotanno/DeepLearning/nsampler/models',
                    recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
@@ -351,7 +351,7 @@ def sr_reconstruct(method='linear', n_h1=500, n_h2=200, us=2, n=2, m=2,
     tf.reset_default_graph()
 
     # Reconstruct:
-    nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, cohort=cohort, no_subjects=no_subjects,
+    nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, n_h3=n_h3, cohort=cohort, no_subjects=no_subjects,
                                       sample_rate=sample_rate, us=us, n=n, m=m,
                                       optimisation_method=optimisation_method, dropout_rate=dropout_rate)
     network_dir = os.path.join(model_dir, nn_file)  # full path to the model you want to restore in testing
