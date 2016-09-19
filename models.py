@@ -56,8 +56,7 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None
             tf.random_normal([n_h1, n_out], stddev=np.sqrt(2.0 / n_h1)),
             name='W2')
         b2 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b2')
-        hidden2 = tf.matmul(hidden1_drop, W2) + b2
-        y_pred = tf.nn.dropout(hidden2, keep_prob)
+        y_pred = tf.matmul(hidden1_drop, W2) + b2
 
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) 
         L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) 
@@ -82,8 +81,7 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None
             tf.random_normal([n_h2, n_out], stddev=np.sqrt(2.0 / n_h2)),
             name='W3')
         b3 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b3')
-        hidden3 = tf.matmul(hidden2_drop, W3) + b3
-        y_pred = tf.nn.dropout(hidden3, keep_prob)
+        y_pred = tf.matmul(hidden2_drop, W3) + b3
 
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) + tf.reduce_sum(W3 ** 2)
         L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) + tf.reduce_sum(tf.abs(W3))
@@ -114,8 +112,7 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None
             tf.random_normal([n_h3, n_out], stddev=np.sqrt(2.0 / n_h3)),
             name='W4')
         b4 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b4')
-        hidden4 = tf.matmul(hidden3_drop, W4) + b4
-        y_pred = tf.nn.dropout(hidden4, keep_prob)
+        y_pred = tf.matmul(hidden3_drop, W4) + b4
 
         L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) + \
                  tf.reduce_sum(W3 ** 2) + tf.reduce_sum(W4 ** 2)
