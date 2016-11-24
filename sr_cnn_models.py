@@ -15,6 +15,51 @@ import numpy as np
 import tensorflow as tf
 
 
+
+def weight_variable(shape, name):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial, name=name)
+
+def bias_variable(shape, name):
+    initial = tf.constant(0.1, shape=shape)
+    return tf.Variable(initial, name=name)
+
+def conv3d(x, W):
+    return tf.nn.conv3d(x, W, strides=[1, 1, 1, 1, 1])
+
+# todo: need to define the reshuffling:
+def cnn_vanilla(x):
+    """
+    The vanilla CNN with 2 convolutions + 1 deconvolution
+    The input image x needs to be reshaped to the shape [batch, in_height, in_width, in_depth, in_channels]
+    The kernel of shape [filter_height, filter_width, filter_depth, in_channels, out_channels]
+    """
+    us = 2  # upsampling rate
+    dt_no = 6  # number of dti components
+    f_1, f_2, f_3 = 3, 1, 3
+    n_1, n_2, n_3 = 64, 34, dt_no * (us**3)
+
+    W_conv1 = weight_variable([f_1, f_1, f_1, dt_no, n_1], name='W_conv1')
+    b_conv1 = bias_variable([n_1], name='b_conv1')
+    h_conv1 = tf.nn.relu(conv3d(x, W_conv1) + b_conv1)
+
+    W_conv2 = weight_variable([f_2, f_2, f_2, n_1, n_2], name='W_conv2')
+    b_conv2 = bias_variable([n_2], name='b_conv2')
+    h_conv2 = tf.nn.relu(conv3d(x, W_conv2) + b_conv2)
+
+    W_conv3 = weight_variable([f_2, f_2, f_3, n_2, n_3], name='W_conv3')
+    b_conv3 = bias_variable([n_2], name='b_conv3')
+    y_pred = conv3d(x, W_conv3) + b_conv3
+
+    return y_pred
+
+
+
+
+
+
+
+
 def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None):
     """ Define the model up to where it may be used for inference.
     Args:
@@ -43,7 +88,7 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None
 
         L2_sqr = tf.reduce_sum(W1 ** 2)
         L1 = tf.reduce_sum(tf.abs(W1))
-        
+
     elif method == 'mlp_h=1':
         # MLP with one hidden layer:
         W1 = tf.Variable(
@@ -59,8 +104,8 @@ def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None
         b2 = tf.Variable(tf.constant(1e-2, shape=[n_out]), name='b2')
         y_pred = tf.matmul(hidden1_drop, W2) + b2
 
-        L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2) 
-        L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2)) 
+        L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2)
+        L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2))
 
     elif method == 'mlp_h=2':
         # MLP with two hidden layers:
