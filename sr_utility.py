@@ -146,8 +146,10 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     dt_est_tmp = np.load(os.path.join(recon_dir, recon_file))
     dt_est = dt_est_tmp[:-1, :, :-1, :]
     mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
-    mse = np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0)
-    return np.sqrt(mse)
+    rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0))
+    rmse_volume = dt_est.copy()
+    rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis] / 6.0
+    return rmse, rmse_volume
 
 
 def name_network(method='linear', n_h1=None, n_h2=None, n_h3=None, cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
