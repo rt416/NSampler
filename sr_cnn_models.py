@@ -55,11 +55,6 @@ def cnn_vanilla(x):
 
 
 
-
-
-
-
-
 def inference(method, x, keep_prob, n_in, n_out, n_h1=None, n_h2=None, n_h3=None):
     """ Define the model up to where it may be used for inference.
     Args:
