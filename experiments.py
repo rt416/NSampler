@@ -3,6 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from train import train_cnn
+
 # ------------- Drop-out experiments:
 
 from sr_nn import *
@@ -18,27 +20,30 @@ n_h3 = 100
 sr_list =[32, 16, 8, 4]
 us, n, m = 2, 2, 2
 
-# Training method details:
-optimisation_method = 'adam'
-dropout_rate = 0.0
-learning_rate = 1e-4
-L1_reg = 0.00
-L2_reg = 1e-5
-n_epochs = 1000
-batch_size = 25
+# Options
+opt = {}
+opt['optimisation_method'] = 'adam'
+opt['dropout_rate'] = 0.0
+opt['learning_rate'] = 1e-4
+opt['L1_reg'] = 0.00
+opt['L2_reg'] = 1e-5
+opt['n_epochs'] = 1000
+opt['batch_size'] = 25
 
-for dropout_rate in drop_list:
-    for method in methods_list:
-        for sample_rate in sr_list:
-            # train model:
-            sr_train(method=method, n_h1=n_h1, n_h2=n_h2, n_h3=n_h3,
-                     cohort='Diverse', sample_rate=sample_rate, us=us, n=n, m=m,
-                     optimisation_method=optimisation_method,
-                     dropout_rate=dropout_rate, learning_rate=learning_rate,
-                     L1_reg=L1_reg, L2_reg=L2_reg, n_epochs=n_epochs,
-                     batch_size=batch_size)
+opt['method'] = 'linear'
+opt['n_h1'] = 500
+opt['n_h2'] = 200
+opt['n_h3'] = 100
+opt['cohort'] ='Diverse'
+opt['no_subjects'] = 8
+opt['sample_rate'] = 32
+opt['us'] = 2
+opt['n'] = 2
+opt['m'] = 2
 
-            # clear the graph:
-            tf.reset_default_graph()
+opt['data_dir'] ='../data/'
+opt['save_dir'] = '../models'
+
+train_cnn(opt)
 
 
