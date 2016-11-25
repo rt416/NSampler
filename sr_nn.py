@@ -19,17 +19,17 @@ import tensorflow as tf
 
 # Set temporarily the git dir on python path. In future, remove this and add the dir to search path.
 import sys
-sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')   # dir name of the git repo
+#sys.path.append('/Users/ryutarotanno/DeepLearning/nsampler/codes')   # dir name of the git repo
 import sr_utility  # utility functions for loading/processing data
 import models
 
 
 def sr_train(method='linear', n_h1=500, n_h2=200, n_h3=100,
-             data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
+             data_dir='../data/',
              cohort='Diverse', no_subjects=8, sample_rate=32, us=2, n=2, m=2,
              optimisation_method='adam', dropout_rate=0.0, learning_rate=1e-4, L1_reg=0.00, L2_reg=1e-5,
              n_epochs=1000, batch_size=25,
-             save_dir='/Users/ryutarotanno/DeepLearning/nsampler/models'):
+             save_dir='../models'):
 
     # -------------------------- Load the training data---------------------------:
     # get the full path to the training set:
