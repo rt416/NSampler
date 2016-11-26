@@ -14,6 +14,8 @@ Here the output patch of shape (upsampling_rate * m, upsampling_rate * m, upsamp
 The starndard 3D periodic shuffling (see eq.4 in MagicPony, CVPR 2016) is implemented in 'forward_periodic_shuffle()'.
 """
 
+# todo: check the training data generation pipeline.
+# todo: don't forget to apply the backward periodic shuffling.
 # todo: randomised the mini-batch generation.
 
 
@@ -27,40 +29,63 @@ import os
 import nibabel as nib
 import random
 import timeit
+import tensorflow as tf
+
+# Load in a DT volume .nii:
+def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_lowres_2_'):
+    for idx in np.arange(1, 9):
+        data_path_new = nameroot + str(idx) + '.nii'
+        print("... loading %s" % data_path_new)
+
+        img = nib.load(data_path_new)
+        data = img.get_data()
+        data_array = np.zeros(data.shape)
+        data_array[:] = data[:]
+
+        if idx == 1:
+            dti = np.zeros(data.shape + (8,))
+            dti[:, :, :, idx-1] = data_array
+        else:
+            dti[:, :, :, idx - 1] = data_array
+
+        del img, data, data_array
+    return dti
 
 
 # Extract randomly patches from given list of patients and save as HDF5.
-def create_training_data(opt):
-    """ Main function for creating training sets. """
-    # ------------------ Specify the config of your training data ----------------------:
-    data_parent_dir = opt['data_parent_dir ']
-    data_subpath = opt['data_subpath']
-    save_dir = opt['save_dir']
-    cohort = opt['cohort']
-    no_randomisation = ['no_randomisation']
-    sampling_rate = opt['sampling_rate']
+def create_training_data(data_parent_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/HCP',
+                         data_subpath='T1w/Diffusion',
+                         save_dir='/Users/ryutarotanno/tmp',
+                         cohort="Diverse",
+                         no_randomisation=1, sampling_rate=32,
+                         b_value=1000, upsampling_rate=2,
+                         receptive_field_radius=2, input_radius=5, no_channels=6,
+                         shuffle=True):
 
-    b_value = opt['b_value']
-    upsampling_rate = opt['upsampling_rate']
-    receptive_field_radius = opt['receptive_field_radius']
-    input_radius = opt['input_radius']
-    no_channels = opt['no_channels']
-
-    shuffle = opt['shuffle']
-
-    # ----------------- Start data generation -------------------------------------------:
     # Fetch subjects list.
     subjects_list = fetch_subjects_list(cohort_name=cohort)
 
     # Generate 'no_randomisation' many separate training sets.
-    for idx_randomisation in xrange(1, no_randomisation + 1):
-
-        # -----------------------  Extract patches from each subject -----------------------------------:
+    for idx_randomisation in xrange(1, no_randomisation):
+        # Extract patches from each subject:
         filenames_list = []  # store all the filenames for the subsequent merging.
-
         for subject in subjects_list:
+            print("Processing subject: %s" % subject)
+            data_path = os.path.join(data_parent_dir, subject, data_subpath)
+            highres_name = 'dt_b' + str(b_value) + '_'
+            lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
+            input_library, output_library = extract_patches(data_dir=data_path,
+                                                            highres_name=highres_name,
+                                                            lowres_name=lowres_name,
+                                                            upsampling_rate=upsampling_rate,
+                                                            receptive_field_radius=receptive_field_radius,
+                                                            input_radius=input_radius,
+                                                            no_channels=no_channels,
+                                                            sampling_rate=sampling_rate,
+                                                            shuffle=shuffle)
 
-            # Set the file name:
+            print("The sizes of the library are: %s and %s" % (input_library.shape, output_library.shape))
+
             if shuffle:
                 patchlib_name = 'Subjectwise_PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%04i_%03i.h5' \
                                 % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
@@ -70,36 +95,14 @@ def create_training_data(opt):
                                 % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                    len(subjects_list), sampling_rate, idx_randomisation)
 
+
             filename = os.path.join(data_path, patchlib_name)
+            filenames_list.append(filename)
 
+            create_hdf5(filename, input_library=input_library, output_library=output_library)
+            print("Done. \n")
 
-            if not os.path.exists(filename):
-
-                filenames_list.append(filename)
-
-                print("Processing subject: %s" % subject)
-                data_path = os.path.join(data_parent_dir, subject, data_subpath)
-                highres_name = 'dt_b' + str(b_value) + '_'
-                lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
-                input_library, output_library = extract_patches(data_dir=data_path,
-                                                                highres_name=highres_name,
-                                                                lowres_name=lowres_name,
-                                                                upsampling_rate=upsampling_rate,
-                                                                receptive_field_radius=receptive_field_radius,
-                                                                input_radius=input_radius,
-                                                                no_channels=no_channels,
-                                                                sampling_rate=sampling_rate,
-                                                                shuffle=shuffle)
-
-                print("The sizes of the library are: %s and %s" % (input_library.shape, output_library.shape))
-
-
-                create_hdf5(filename, input_library=input_library, output_library=output_library)
-                print("Done. \n")
-            else:
-                print('Patch library already exists for this subject. Move on ...')
-
-        # ------------------ Merge all patch libraries into a single h5 file: -----------------------------------:
+        # Merge all patch libraries into a single h5 file.
         if shuffle:
             patchlib_name_cohort = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_%03i.h5' \
                                 % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
@@ -109,11 +112,8 @@ def create_training_data(opt):
                                    % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                       len(subjects_list), sampling_rate, idx_randomisation)
 
-        if not os.path.exists(global_filename):
-            global_filename = os.path.join(save_dir, patchlib_name_cohort)
-            merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
-        else:
-            print('Patch library already exists. Done.')
+        global_filename = os.path.join(save_dir, patchlib_name_cohort)
+        merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
 
 
 def fetch_subjects_list(cohort_name):
@@ -220,7 +220,6 @@ def load_and_shuffle_hdf5(filename, batch_size):
     f = h5py.File(filename, 'r')
     input_lib = f["input_lib"]
     output_lib = f["output_lib"]
-    return input_lib, output_lib
 
 
 # Extract corresponding patches from DTI volumes. Here we sample all patches centred at a foreground voxel.
@@ -281,18 +280,12 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                                 2 * input_radius + 1,
                                 2 * input_radius + 1,
                                 no_channels), dtype='float64')
-    if shuffle:
-        output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * (output_radius / upsampling_rate) + 1,
-                                     2 * (output_radius / upsampling_rate) + 1,
-                                     2 * (output_radius / upsampling_rate) + 1,
-                                     no_channels * upsampling_rate**3), dtype='float64')
-    else:
-        output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * output_radius + upsampling_rate,
-                                     2 * output_radius + upsampling_rate,
-                                     2 * output_radius + upsampling_rate,
-                                     no_channels), dtype='float64')
+
+    output_library = np.ndarray((len(brain_indices_subsampled),
+                                 2 * output_radius + upsampling_rate,
+                                 2 * output_radius + upsampling_rate,
+                                 2 * output_radius + upsampling_rate,
+                                 no_channels), dtype='float64')
 
     for patch_idx, (i, j, k) in enumerate(brain_indices_subsampled):
         input_library[patch_idx, :, :, :, :] = \
@@ -424,27 +417,6 @@ def backward_periodic_shuffle(patch, upsampling_rate=2):
                                           upsampling_rate * k + np.mod(c // upsampling_rate**2, upsampling_rate),
                                           c // (upsampling_rate ** 3)]
     return patch_bps
-
-
-# Load in a DT volume .nii:
-def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_lowres_2_'):
-    for idx in np.arange(1, 9):
-        data_path_new = nameroot + str(idx) + '.nii'
-        print("... loading %s" % data_path_new)
-
-        img = nib.load(data_path_new)
-        data = img.get_data()
-        data_array = np.zeros(data.shape)
-        data_array[:] = data[:]
-
-        if idx == 1:
-            dti = np.zeros(data.shape + (8,))
-            dti[:, :, :, idx-1] = data_array
-        else:
-            dti[:, :, :, idx - 1] = data_array
-
-        del img, data, data_array
-    return dti
 
 
 if __name__ == "__main__":
