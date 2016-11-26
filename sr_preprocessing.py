@@ -37,7 +37,7 @@ def create_training_data(opt):
     data_subpath = opt['data_subpath']
     save_dir = opt['save_dir']
     cohort = opt['cohort']
-    no_randomisation = ['no_randomisation']
+    no_randomisation = opt['no_randomisation']
     sampling_rate = opt['sampling_rate']
 
     b_value = opt['b_value']
@@ -59,6 +59,10 @@ def create_training_data(opt):
         filenames_list = []  # store all the filenames for the subsequent merging.
 
         for subject in subjects_list:
+            print("Processing subject: %s" % subject)
+            data_path = os.path.join(data_parent_dir, subject, data_subpath)
+            highres_name = 'dt_b' + str(b_value) + '_'
+            lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
 
             # Set the file name:
             if shuffle:
@@ -71,16 +75,10 @@ def create_training_data(opt):
                                    len(subjects_list), sampling_rate, idx_randomisation)
 
             filename = os.path.join(data_path, patchlib_name)
-
+            print(filename)
 
             if not os.path.exists(filename):
-
                 filenames_list.append(filename)
-
-                print("Processing subject: %s" % subject)
-                data_path = os.path.join(data_parent_dir, subject, data_subpath)
-                highres_name = 'dt_b' + str(b_value) + '_'
-                lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
                 input_library, output_library = extract_patches(data_dir=data_path,
                                                                 highres_name=highres_name,
                                                                 lowres_name=lowres_name,
@@ -109,8 +107,9 @@ def create_training_data(opt):
                                    % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                       len(subjects_list), sampling_rate, idx_randomisation)
 
+        global_filename = os.path.join(save_dir, patchlib_name_cohort)
+
         if not os.path.exists(global_filename):
-            global_filename = os.path.join(save_dir, patchlib_name_cohort)
             merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
         else:
             print('Patch library already exists. Done.')
@@ -196,27 +195,17 @@ def merge_hdf5(global_filename, filenames_list):
         g["input_lib"][start_idx:end_idx, :, :, :, :] = input_lib[:]
         g["output_lib"][start_idx:end_idx, :, :, :, :] = output_lib[:]
 
-        print("start/end index: %i and %i" % (start_idx, end_idx))
-        print("size of input_lib:")
-        input_lib[:].shape
-        print("size of output_lib:")
-        output_lib[:].shape
-        print("size of global_lib: " )
-        g["input_lib"][:].shape
-        g["output_lib"][:].shape
-
-
         start_idx += input_lib.shape[0]
         f.close()
 
         end_time = timeit.default_timer()
-        print("%i/%i subjects done. It took %f secs." % (idx, len(filenames_list), end_time - start_time))
+        print("%i/%i subjects done. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
 
     g.close()
 
 
 # Load training data:
-def load_and_shuffle_hdf5(filename, batch_size):
+def load_and_shuffle_hdf5(filename):
     f = h5py.File(filename, 'r')
     input_lib = f["input_lib"]
     output_lib = f["output_lib"]
@@ -283,9 +272,9 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                                 no_channels), dtype='float64')
     if shuffle:
         output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * (output_radius / upsampling_rate) + 1,
-                                     2 * (output_radius / upsampling_rate) + 1,
-                                     2 * (output_radius / upsampling_rate) + 1,
+                                     2 * (output_radius // upsampling_rate) + 1,
+                                     2 * (output_radius // upsampling_rate) + 1,
+                                     2 * (output_radius // upsampling_rate) + 1,
                                      no_channels * upsampling_rate**3), dtype='float64')
     else:
         output_library = np.ndarray((len(brain_indices_subsampled),

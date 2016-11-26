@@ -8,10 +8,10 @@ opt = {}
 opt['data_parent_dir '] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
 opt['data_subpath'] = 'T1w/Diffusion'
 opt['save_dir'] = '/Users/ryutarotanno/tmp'
-opt['cohort'] = "Diverse"
+opt['cohort'] = "Small"
 
 opt['no_randomisation'] = 1  # number of distinct training sets you want to create.
-opt['sampling_rate'] = 32
+opt['sampling_rate'] = 64
 opt['b_value'] = 1000
 
 opt['upsampling_rate'] = 2
