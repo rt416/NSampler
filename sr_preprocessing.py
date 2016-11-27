@@ -197,6 +197,8 @@ def merge_hdf5(global_filename, filenames_list):
 
         start_idx += input_lib.shape[0]
         f.close()
+        print("removing the subject-specific file ...")
+        os.remove(file)
 
         end_time = timeit.default_timer()
         print("%i/%i subjects done. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
@@ -239,7 +241,7 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
 
     # Load the original and down-sampled DTI volumes, and pad with zeros so all brain-voxel-centred pathces
     # are extractable.
-    pad = max(input_radius, output_radius)  # padding width
+    pad = max(input_radius + 1, output_radius + upsampling_rate)  # padding width
     dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, highres_name))
     dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
     dti_highres = np.pad(dti_highres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
@@ -300,6 +302,7 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
             dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
             (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
             (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
+
 
     end_time = timeit.default_timer()
 
@@ -363,6 +366,25 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                          np.mod(j, upsampling_rate) * upsampling_rate +
                                          np.mod(k, upsampling_rate) * (upsampling_rate**2) +
                                          c * (upsampling_rate**3 - 1)]
+    elif patch.ndim == 5:  # apply periodic shuffling to a batch of examples.
+        batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
+
+        # apply periodic shuffling:
+        patch_ps = np.ndarray((batch_size,
+                               dim_i * upsampling_rate,
+                               dim_j * upsampling_rate,
+                               dim_j * upsampling_rate,
+                               dim_filters / (upsampling_rate ** 3)), dtype='float64')
+
+        for (b, i, j, k, c) in [(b, i, j, k, c) for b, i, j, k, c in np.ndindex(patch_ps.shape)]:
+            patch_ps[b, i, j, k, c] = patch[b,
+                                            i // upsampling_rate,
+                                            j // upsampling_rate,
+                                            k // upsampling_rate,
+                                            np.mod(i, upsampling_rate) +
+                                            np.mod(j, upsampling_rate) * upsampling_rate +
+                                            np.mod(k, upsampling_rate) * (upsampling_rate ** 2) +
+                                            c * (upsampling_rate ** 3 - 1)]
     return patch_ps
 
 
@@ -412,6 +434,22 @@ def backward_periodic_shuffle(patch, upsampling_rate=2):
                                           upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
                                           upsampling_rate * k + np.mod(c // upsampling_rate**2, upsampling_rate),
                                           c // (upsampling_rate ** 3)]
+    elif patch.ndim == 5:
+        batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
+
+        # apply periodic shuffling:
+        patch_bps = np.ndarray((batch_size,
+                                dim_i / upsampling_rate,
+                                dim_j / upsampling_rate,
+                                dim_k / upsampling_rate,
+                                dim_filters * (upsampling_rate ** 3)), dtype='float64')
+
+        for (b, i, j, k, c) in [(b, i, j, k, c) for b, i, j, k, c in np.ndindex(patch_bps.shape)]:
+            patch_bps[b, i, j, k, c] = patch[b, upsampling_rate * i + np.mod(c, upsampling_rate),
+                                             upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
+                                             upsampling_rate * k + np.mod(c // upsampling_rate ** 2, upsampling_rate),
+                                             c // (upsampling_rate ** 3)]
+
     return patch_bps
 
 
