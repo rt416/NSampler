@@ -1,6 +1,6 @@
 """ Main script for creating training data """
 
-import sr_preprocessing
+import sr_preprocessing_new
 
 # define the configurations of the training data:
 opt = {}
@@ -18,7 +18,9 @@ opt['upsampling_rate'] = 2
 opt['receptive_field_radius'] = 2
 opt['input_radius'] = 5
 opt['no_channels'] = 6
+
+opt['no_chunks'] = 100
 opt['shuffle'] = True
 
-sr_preprocessing.create_training_data(opt)
+sr_preprocessing_new.create_training_data(opt)
 
