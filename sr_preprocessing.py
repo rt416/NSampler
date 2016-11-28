@@ -33,7 +33,7 @@ import timeit
 def create_training_data(opt):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
-    data_parent_dir = opt['data_parent_dir ']
+    data_parent_dir = opt['data_parent_dir']
     data_subpath = opt['data_subpath']
     save_dir = opt['save_dir']
     cohort = opt['cohort']

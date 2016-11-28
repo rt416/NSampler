@@ -5,7 +5,7 @@ import sr_preprocessing_new
 # define the configurations of the training data:
 opt = {}
 
-opt['data_parent_dir '] = '/home/rtanno/Shared/HDD/SuperRes/HCP'
+opt['data_parent_dir'] = '/home/rtanno/Shared/HDD/SuperRes/HCP'
 opt['data_subpath'] = 'T1w/Diffusion'
 opt['save_dir'] = '/home/rtanno/Shared/HDD/SuperRes/Training/IPMI'
 opt['cohort'] = "Diverse"

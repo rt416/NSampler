@@ -5,7 +5,7 @@ import sr_preprocessing_new
 # define the configurations of the training data:
 opt = {}
 
-opt['data_parent_dir '] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc'
+opt['data_parent_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc'
 opt['data_subpath'] = 'T1w/Diffusion'
 opt['chunks_parent_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
 opt['save_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet'

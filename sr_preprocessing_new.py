@@ -33,7 +33,7 @@ import timeit
 def create_training_data(opt):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
-    data_parent_dir = opt['data_parent_dir ']
+    data_parent_dir = opt['data_parent_dir']
     data_subpath = opt['data_subpath']
     chunks_parent_dir = opt['chunks_parent_dir']
     save_dir = opt['save_dir']
@@ -114,6 +114,7 @@ def create_training_data(opt):
                                     % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                     len(subjects_list), sampling_rate, idx_randomisation)
 
+        filter(None, filenames_list)  # remove NoneType elements:
         global_filename = os.path.join(save_dir, patchlib_name_cohort)
         merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
 
@@ -376,20 +377,25 @@ def subsample_patchlib(patchlib_dir,
         idx_sub = np.random.random((shape_in[0],)) < (1.0 / sampling_rate)
         indices_sub = indices[idx_sub]
 
-        s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
-        s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
-                         maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
+        if not(indices_sub.size == 0):
+            s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
+            s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
+                             maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
 
-        s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
-                         maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
-        s.close()
-        c.close()
-        end_time = timeit.default_timer()
-        print("It took %f secs." % (end_time - start_time))
+            s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
+                             maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+            s.close()
+            c.close()
+            end_time = timeit.default_timer()
+            print("It took %f secs." % (end_time - start_time))
+            return os.path.join(save_dir, patchlib_name_sub)
+        else:
+            print("Empty subsampled chunk. Return none ...")
+
     else:
         print("Already exists.")
+        return os.path.join(save_dir, patchlib_name_sub)
 
-    return os.path.join(save_dir, patchlib_name_sub)
 
 
 # Periodic shuffling:

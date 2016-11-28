@@ -5,7 +5,7 @@ import sr_preprocessing_new
 # define the configurations of the training data:
 opt = {}
 
-opt['data_parent_dir '] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
+opt['data_parent_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
 opt['data_subpath'] = 'T1w/Diffusion'
 opt['chunks_parent_dir'] = '/Users/ryutarotanno/tmp/IPMI'
 opt['save_dir'] = '/Users/ryutarotanno/tmp'
