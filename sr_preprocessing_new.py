@@ -35,6 +35,7 @@ def create_training_data(opt):
     # ------------------ Specify the config of your training data ----------------------:
     data_parent_dir = opt['data_parent_dir ']
     data_subpath = opt['data_subpath']
+    chunks_parent_dir = opt['chunks_parent_dir']
     save_dir = opt['save_dir']
     cohort = opt['cohort']
     no_randomisation = opt['no_randomisation']
@@ -61,7 +62,7 @@ def create_training_data(opt):
 
         for subject in subjects_list:
             print("Processing subject: %s" % subject)
-            data_path = os.path.join(data_parent_dir, subject, data_subpath)
+
             highres_name = 'dt_b' + str(b_value) + '_'
             lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
 
@@ -75,9 +76,10 @@ def create_training_data(opt):
                                 % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                 no_chunks)
 
-            save_dir_subject = os.path.join(data_path, patchlib_dir)
+            data_path_subject = os.path.join(data_parent_dir, subject, data_subpath)
+            save_dir_subject = os.path.join(chunks_parent_dir, subject, patchlib_dir)
 
-            filenames_list_subject = extract_patches(data_dir=data_path,
+            filenames_list_subject = extract_patches(data_dir=data_path_subject,
                                                      save_dir=save_dir_subject,
                                                      highres_name=highres_name,
                                                      lowres_name=lowres_name,
