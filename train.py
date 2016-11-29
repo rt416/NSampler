@@ -4,7 +4,7 @@ import os
 import sys
 import timeit
 
-import cPickle
+import cPickle as pkl
 import numpy as np
 import tensorflow as tf
 
@@ -39,8 +39,6 @@ def load_data(opt):
 	train_y_scaled = data[3]
 	train_y_mean = data[4]
 	train_y_std = data[5]
-	
-	# normalise the validation sets into the same space as training sets:
 	valid_x_scaled = (valid_x - train_x_mean) / train_x_std
 	valid_y_scaled = (valid_y - train_y_mean) / train_y_std
 	data.append(valid_x_scaled)
@@ -54,6 +52,33 @@ def define_checkpoint(opt):
 		os.makedirs(checkpoint_dir)
 	return checkpoint_dir
 
+def update_best_loss(this_val_loss, bests, iter_, patience_params, current_step):
+	improvement_threshold = patience_params['improvement_threshold']
+	patience = patience_params['patience']
+	patience_increase = patience_params['patience_increase']
+	
+	bests['counter'] += 1
+	if this_val_loss < bests['val_loss']:
+		# improve patience if loss improvement is good enough
+		if this_val_loss < bests['val_loss']*improvement_threshold:
+			patience_params['patience'] = max(patience, iter_*patience_increase)
+			print('\treduces the previous error by more than %f %%'
+				  % ((1 - improvement_threshold) * 100.))
+		bests['counter'] = 0
+		bests['val_loss'] = this_val_loss
+		bests['iter_'] = iter_
+		bests['step'] = current_step + 1
+	return bests, patience_params
+
+def save_model(opt, sess, saver, global_step, model_details):
+	checkpoint_dir = opt['checkpoint_dir']
+	checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+	save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
+	print("Model saved in file: %s" % save_path)
+	with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
+		pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+	print('Model details saved')
+
 def train_cnn(opt):
 	# Load opt
 	optimisation_method = opt['optimizer'].__name__
@@ -62,7 +87,7 @@ def train_cnn(opt):
 	L1_reg =opt['L1_reg']
 	L2_reg = opt['L2_reg'] 
 	n_epochs = opt['n_epochs'] 
-	bs = opt['bs'] 
+	bs = opt['batch_size'] 
 	method = opt['method']
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
@@ -89,36 +114,32 @@ def train_cnn(opt):
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
-	x_scaled = tf.placeholder(tf.float32, shape=[None,n,n,n,6]) # low res
-	y_scaled = tf.placeholder(tf.float32, shape=[None,m,m,m,6])  # high res
+	x = tf.placeholder(tf.float32, shape=[None,n,n,n,6]) # low res
+	y = tf.placeholder(tf.float32, shape=[None,m,m,m,6])  # high res
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
-	# Create a dict of placeholders
-	pl = {}
-	pl['x_scaled'] = x_scaled
-	pl['y_scaled'] = y_scaled
-	pl['keep_prob'] = keep_prob
 	
 	# Build model and loss function
-	y_pred_scaled = models.inference(method, pl, opt)
-	cost = tf.reduce_mean(tf.square(y_scaled - y_pred_scaled))
+	y_pred = models.inference(method, x, opt)
+	cost = tf.reduce_mean(tf.square(y - y_pred))
 	
 	# Define gradient descent op
 	optim = opt['optimizer'](learning_rate=learning_rate)
 	train_step = optim.minimize(cost, global_step=global_step)
-	mse = tf.reduce_mean(tf.square(train_y_std * (y_scaled - y_pred_scaled)))
+	mse = tf.reduce_mean(tf.square(train_y_std * (y - y_pred)))
 	
 	# -------------------------- Start training -----------------------------:
 	saver = tf.train.Saver()
 	# Set the directory for saving checkpoints:
 	checkpoint_dir = define_checkpoint(opt)
+	opt['checkpoint_dir'] = checkpoint_dir
 	
 	# Save the transforms used for data normalisation:
-	print('... saving the transforms used for data normalisation for the test time')
+	print('... saving transformsfor data normalisation for test time')
 	transform = {'input_mean': train_x_mean, 'input_std': train_x_std,
 				 'output_mean': train_y_mean, 'output_std': train_y_std}
-	f = file(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb')
-	cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
+	with open(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb') as fp:
+		pkl.dump(transform, fp, protocol=pkl.HIGHEST_PROTOCOL)
 	
 	print('... training')
 	with tf.Session() as sess:
@@ -131,22 +152,35 @@ def train_cnn(opt):
 		n_valid_batches = valid_x_scaled.shape[0] // bs
 	
 		# early-stopping parameters
-		patience = 10000  # look as this many examples regardless
-		patience_increase = 2  # wait this much longer when a new best is found
-		improvement_threshold = 0.995  # a relative improvement of this much is considered significant
+		patience = 10000 
+		patience_increase = 2  
+		improvement_threshold = 0.995  
 		validation_frequency = min(n_train_batches, patience // 2)
+		patience_params = {}
+		patience_params['patience'] = patience
+		patience_params['patience_increase'] = patience_increase
+		patience_params['improvement_threshold'] = improvement_threshold
+		patience_params['validation_frequency'] = validation_frequency
 		
 		# Define some counters
-		best_validation_loss = np.inf
-		best_iter = 0
 		test_score = 0
 		start_time = timeit.default_timer()
 		epoch = 0
 		done_looping = False
 		iter_valid = 0
-		total_validation_loss_epoch = 0
-		total_training_loss_epoch = 0
-	
+		total_val_loss_epoch = 0
+		total_tr_loss_epoch = 0
+		
+		bests = {}
+		bests['val_loss'] = np.inf
+		bests['iter_'] = 0
+		bests['step'] = 0
+		bests['counter'] = 0
+		bests['counter_thresh'] = 10
+		
+		model_details = opt.copy()
+		model_details.update(bests)
+		
 		while (epoch < n_epochs) and (not done_looping):
 			epoch += 1
 			start_time_epoch = timeit.default_timer()
@@ -160,98 +194,65 @@ def train_cnn(opt):
 				current_step = tf.train.global_step(sess, global_step)
 				
 				# train op and loss
-				fd={x_scaled: x_batch_train, y_scaled: y_batch_train,
+				fd={x: x_batch_train, y: y_batch_train,
 					keep_prob: (1.0 - dropout_rate)}
 				__, tr_loss = sess.run([train_step, mse], feed_dict=fd)
+				total_tr_loss_epoch += tr_loss
 				# valid loss
-				total_validation_loss_epoch += mse.eval(
-					feed_dict={x_scaled: x_batch_valid,
-							   y_scaled: y_batch_valid,
-							   keep_prob: (1.0 - dropout_rate)})
+				fd = {x: x_batch_valid, y: y_batch_valid,
+					  keep_prob: (1.0 - dropout_rate)}
+				va_loss = sess.run(mse, feed_dict=fd)
+				total_val_loss_epoch += va_loss
 	
 				# iteration number
-				iter = (epoch - 1) * n_train_batches + mi
+				iter_ = (epoch - 1) * n_train_batches + mi
 				iter_valid += 1
 	
-				if (iter + 1) % validation_frequency == 0:
+				if (iter_ + 1) % validation_frequency == 0:
 					# Print out the errors for each epoch:
-	
-					this_validation_loss = total_validation_loss_epoch/iter_valid
-					this_training_loss = total_training_loss_epoch/iter_valid
+					this_val_loss = total_val_loss_epoch/iter_valid
+					this_tr_loss = total_tr_loss_epoch/iter_valid
 					end_time_epoch = timeit.default_timer()
+					
+					print('\nEpoch %i, minibatch %i/%i:\n' \
+						  '\ttraining error (rmse) %f times 1E-5\n' \
+						  '\tvalidation error (rmse) %f times 1E-5\n' \
+						  '\ttook %f secs' % (epoch, mi + 1, n_train_batches,
+							np.sqrt(this_tr_loss*10**10), 
+							np.sqrt(this_val_loss*10**10), 
+							end_time_epoch - start_time_epoch))
+					print('\tn mb = %i, patience = %i' % (iter_+1, patience))
+					bests, patience_params = update_best_loss(this_val_loss,
+									bests, iter_, patience_params, current_step)
 	
-					print(
-						'\nEpoch %i, minibatch %i/%i:\n'
-						'     training error (rmse) %f times 1E-5\n'
-						'     validation error (rmse) %f times 1E-5\n'
-						'     took %f secs' %
-						(
-							epoch,
-							mi + 1,
-							n_train_batches,
-							np.sqrt(this_training_loss * 10 ** 10),
-							np.sqrt(this_validation_loss * 10 ** 10),
-							end_time_epoch - start_time_epoch
-						)
-					)
-					print('     number of minibatches = %i and patience = %i' % (iter + 1, patience))
-					print('     validation frequency = %i, iter_valid = %i' % (validation_frequency, iter_valid))
-					# if we got the best validation score until now
-					if this_validation_loss < best_validation_loss:
-	
-						# improve patience if loss improvement is good enough
-						if this_validation_loss < best_validation_loss *improvement_threshold :
-	
-							patience = max(patience, iter * patience_increase)
-							print('     reduces the previous error by more than %f %%'
-								  % ((1 - improvement_threshold) * 100.))
-	
-						best_validation_loss = this_validation_loss
-						best_training_loss = this_training_loss
-						best_iter = iter
-						best_step = current_step + 1
-	
-					# Save the model:
-					checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-					save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
-					print("Model saved in file: %s" % save_path)
-	
-					# Save the model details:
-					print('... saving the model details')
-					model_details = {'method': method, 'cohort': cohort,
-									 'no of subjects': no_subjects, 'sample rate': sample_rate, 'upsampling factor': us,
-									 'n': n,
-									 'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
-									 'learning rate': learning_rate,
-									 'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
-									 'batch size': bs, 'training length': end_time_epoch - start_time,
-									 'best validation rmse': np.sqrt(best_validation_loss),
-									 'best training rmse': np.sqrt(best_training_loss),
-									 'best step': best_step}
-					cPickle.dump(model_details, file(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb'),
-								 protocol=cPickle.HIGHEST_PROTOCOL)
-	
-					# Terminate training when the validation loss starts decreasing.
-					if this_validation_loss > best_validation_loss:
-						patience = 0
-						print('Validation error increases - terminate training ...')
-						break
+					# Save
+					model_details.update(bests)
+					save_model(opt, sess, saver, global_step, model_details)
+					
+					'''
+					# Terminate training if validation loss increases.
+					if this_val_loss > bests['val_loss']:
+						if bests['counter'] > bests['counter_thresh']:
+							done_looping = True
+							break
+					'''
 	
 					# Start counting again:
-					total_validation_loss_epoch = 0
-					total_training_loss_epoch = 0
+					total_val_loss_epoch = 0
+					total_tr_loss_epoch = 0
 					iter_valid = 0
 					start_time_epoch = timeit.default_timer()
-	
-	
-				if patience <= iter:
+				'''
+				if patience_params['patience'] <= iter_:
+					print('Patient < iter')
 					done_looping = True
 					break
+				'''
 	
 		# Display the best results:
 		print(('\nOptimization complete. Best validation score of %f  '
 			   'obtained at iteration %i') %
-			  (np.sqrt(best_validation_loss * 10**10), best_step))
+			  (np.sqrt(bests['val_loss']*10**10), bests['step']))
 	
 		end_time = timeit.default_timer()
 		time_train = end_time - start_time

@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def inference(method, pl, opt):
+def inference(method, x, opt):
 	""" Define the model up to where it may be used for inference.
 	Args:
 		method (str): model type
@@ -26,7 +26,6 @@ def inference(method, pl, opt):
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
 	n_h3 = opt['n_h3']
-	x = pl['x_scaled']
 
 	if method == 'cnn_simple':
 		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')

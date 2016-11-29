@@ -13,7 +13,7 @@ opt['dropout_rate'] = 0.0
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
-opt['n_epochs'] = 1000
+opt['n_epochs'] = 100
 opt['batch_size'] = 25
 
 opt['method'] = 'cnn_simple'
