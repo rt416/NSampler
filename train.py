@@ -17,7 +17,7 @@ def load_data(opt):
 	no_subjects =opt['no_subjects'] 
 	sample_rate = opt['sample_rate'] 
 	us = opt['us'] 
-	n = opt['n']
+	n = opt['n'] // 2
 	m = opt['m']
 	data_dir = opt['data_dir']
 
@@ -45,8 +45,14 @@ def load_data(opt):
 	valid_y_scaled = (valid_y - train_y_mean) / train_y_std
 	data.append(valid_x_scaled)
 	data.append(valid_y_scaled)
-	
 	return data
+
+def define_checkpoint(opt):
+	nn_file = sr_utility.name_network(opt)
+	checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
+	if not os.path.exists(checkpoint_dir):  
+		os.makedirs(checkpoint_dir)
+	return checkpoint_dir
 
 def train_cnn(opt):
 	# Load opt
@@ -56,7 +62,7 @@ def train_cnn(opt):
 	L1_reg =opt['L1_reg']
 	L2_reg = opt['L2_reg'] 
 	n_epochs = opt['n_epochs'] 
-	batch_size = opt['batch_size'] 
+	bs = opt['bs'] 
 	method = opt['method']
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
@@ -83,16 +89,19 @@ def train_cnn(opt):
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
-	n_in = 6 * (2 * n + 1) ** 3
-	n_out = 6 * m ** 3  
-	opt['n_in'] = n_in
-	x_scaled = tf.placeholder(tf.float32, shape=[None,5,5,5,6]) # low res
+	x_scaled = tf.placeholder(tf.float32, shape=[None,n,n,n,6]) # low res
 	y_scaled = tf.placeholder(tf.float32, shape=[None,m,m,m,6])  # high res
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
+	# Create a dict of placeholders
+	pl = {}
+	pl['x_scaled'] = x_scaled
+	pl['y_scaled'] = y_scaled
+	pl['keep_prob'] = keep_prob
 	
-	y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, opt)
-	cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
+	# Build model and loss function
+	y_pred_scaled = models.inference(method, pl, opt)
+	cost = tf.reduce_mean(tf.square(y_scaled - y_pred_scaled))
 	
 	# Define gradient descent op
 	optim = opt['optimizer'](learning_rate=learning_rate)
@@ -102,17 +111,7 @@ def train_cnn(opt):
 	# -------------------------- Start training -----------------------------:
 	saver = tf.train.Saver()
 	# Set the directory for saving checkpoints:
-	nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2,
-									  n_h3=n_h3, cohort=cohort,
-									  no_subjects=no_subjects,
-									  sample_rate=sample_rate, us=us, n=n, m=m,
-									  optimisation_method=optimisation_method,
-									  dropout_rate=dropout_rate)
-	
-	checkpoint_dir = os.path.join(save_dir, nn_file)
-	
-	if not os.path.exists(checkpoint_dir):  # create a subdirectory to save the model.
-		os.makedirs(checkpoint_dir)
+	checkpoint_dir = define_checkpoint(opt)
 	
 	# Save the transforms used for data normalisation:
 	print('... saving the transforms used for data normalisation for the test time')
@@ -121,36 +120,29 @@ def train_cnn(opt):
 	f = file(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb')
 	cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
 	
-	
-	# Create a session for running Ops on the Graph.
 	print('... training')
-	
 	with tf.Session() as sess:
 		# Run the Op to initialize the variables.
 		init = tf.initialize_all_variables()
 		sess.run(init)
 	
 		# Compute number of minibatches for training, validation and testing
-		n_train_batches = train_x_scaled.shape[0] // batch_size
-		n_valid_batches = valid_x_scaled.shape[0] // batch_size
+		n_train_batches = train_x_scaled.shape[0] // bs
+		n_valid_batches = valid_x_scaled.shape[0] // bs
 	
 		# early-stopping parameters
 		patience = 10000  # look as this many examples regardless
 		patience_increase = 2  # wait this much longer when a new best is found
 		improvement_threshold = 0.995  # a relative improvement of this much is considered significant
 		validation_frequency = min(n_train_batches, patience // 2)
-		# go through this many minibatches before checking the network on the validation set;
-		# in this case we check every epoch
-	
+		
+		# Define some counters
 		best_validation_loss = np.inf
 		best_iter = 0
 		test_score = 0
-	
 		start_time = timeit.default_timer()
-	
 		epoch = 0
 		done_looping = False
-	
 		iter_valid = 0
 		total_validation_loss_epoch = 0
 		total_training_loss_epoch = 0
@@ -159,36 +151,26 @@ def train_cnn(opt):
 			epoch += 1
 			start_time_epoch = timeit.default_timer()
 	
-			for minibatch_index in range(n_train_batches):
-	
-				# Select batches:
-				x_batch_train = train_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				y_batch_train = train_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				x_batch_valid = valid_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				y_batch_valid = valid_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-	
-				# track the number of steps
+			for mi in xrange(n_train_batches):
+				# Select minibatches:
+				x_batch_train = train_x_scaled[mi*bs:(mi+1)*bs, :]
+				y_batch_train = train_y_scaled[mi*bs:(mi+1)*bs, :]
+				x_batch_valid = valid_x_scaled[mi*bs:(mi+1)*bs, :]
+				y_batch_valid = valid_y_scaled[mi*bs:(mi+1)*bs, :]
 				current_step = tf.train.global_step(sess, global_step)
-	
-				# perform gradient descent:
-				train_step.run(
-					feed_dict={x_scaled: x_batch_train,
-							   y_scaled: y_batch_train,
-							   keep_prob: (1.0 - dropout_rate)})
-	
-				# Accumulate validation/training errors for each epoch:
+				
+				# train op and loss
+				fd={x_scaled: x_batch_train, y_scaled: y_batch_train,
+					keep_prob: (1.0 - dropout_rate)}
+				__, tr_loss = sess.run([train_step, mse], feed_dict=fd)
+				# valid loss
 				total_validation_loss_epoch += mse.eval(
 					feed_dict={x_scaled: x_batch_valid,
 							   y_scaled: y_batch_valid,
 							   keep_prob: (1.0 - dropout_rate)})
 	
-				total_training_loss_epoch += mse.eval(
-					feed_dict={x_scaled: x_batch_train,
-							   y_scaled: y_batch_train,
-							   keep_prob: (1.0 - dropout_rate)})
-	
 				# iteration number
-				iter = (epoch - 1) * n_train_batches + minibatch_index
+				iter = (epoch - 1) * n_train_batches + mi
 				iter_valid += 1
 	
 				if (iter + 1) % validation_frequency == 0:
@@ -205,7 +187,7 @@ def train_cnn(opt):
 						'     took %f secs' %
 						(
 							epoch,
-							minibatch_index + 1,
+							mi + 1,
 							n_train_batches,
 							np.sqrt(this_training_loss * 10 ** 10),
 							np.sqrt(this_validation_loss * 10 ** 10),
@@ -242,7 +224,7 @@ def train_cnn(opt):
 									 'm': m, 'optimisation': optimisation_method, 'dropout rate': dropout_rate,
 									 'learning rate': learning_rate,
 									 'L1 coefficient': L1_reg, 'L2 coefficient': L2_reg, 'max no of epochs': n_epochs,
-									 'batch size': batch_size, 'training length': end_time_epoch - start_time,
+									 'batch size': bs, 'training length': end_time_epoch - start_time,
 									 'best validation rmse': np.sqrt(best_validation_loss),
 									 'best training rmse': np.sqrt(best_training_loss),
 									 'best step': best_step}

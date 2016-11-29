@@ -22,9 +22,9 @@ opt['n_h2'] = 20
 opt['n_h3'] = 10
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['sample_rate'] = 8
+opt['sample_rate'] = 4
 opt['us'] = 2
-opt['n'] = 2
+opt['n'] = 5
 opt['m'] = 2
 
 opt['data_dir'] ='../data/'

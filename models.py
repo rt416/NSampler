@@ -15,38 +15,27 @@ import numpy as np
 import tensorflow as tf
 
 
-def inference(method, x, keep_prob, opt):
+def inference(method, pl, opt):
 	""" Define the model up to where it may be used for inference.
 	Args:
 		method (str): model type
-		x: a minibatch of row-vectorised input patches (tensor)
-		keep_prob: keep probability for drop-out (tensor)
-		n_in: no of input units
-		n_out: no of output units
-		n_h1: no of units in hidden layer 1
-		n_h2: no of units in hidden layer 2
 	Returns:
 		y_pred: the predicted output patch (tensor)
-		L2_sqr: the L2 norm of weights (biases not included)
-		L1: the L1 norm of weights
 	"""
 	method = opt['method']
-	n_in = opt['n_in']
-	n_out = opt['n_out']
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
 	n_h3 = opt['n_h3']
+	x = pl['x_scaled']
 
 	if method == 'cnn_simple':
 		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')
 		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2')
 		y_pred = conv3d(tf.nn.relu(h1_2), [2,2,2,n_h2,6], [6], '2_1')
-		L2_sqr = 1.
-		L1 = 1.
 	else:
 		raise ValueError('The chosen method not available ...')
 	
-	return y_pred, L2_sqr, L1
+	return y_pred
 
 def get_weights(filter_shape, W_init=None, name=''):
 	if W_init == None:
@@ -65,22 +54,4 @@ def conv3d(x, w_shape, b_shape, name):
 						initializer=tf.constant_initializer(1e-2))
 	z = tf.nn.conv3d(x, w, strides=(1,1,1,1,1), padding='VALID')
 	return tf.nn.bias_add(z, b)
-
-def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
-    """ Define the cost dunction
-        Args:
-            y(tensor placeholder): a minibatch of row-vectorised ground truth HR patches
-            y_pred (tensor function): the corresponding set of predicted patches
-            L2_sqr: the L2 norm of weights (biases not included)
-            L1: the L1 norm of weights
-            L2_reg: the L2-norm regularisation coefficient
-            L1_reg: the L1-norm regularisation coefficient
-        Returns:
-            cost: the loss function to be minimised
-    """
-    # Predictive metric and regularisers:
-    mse = tf.reduce_mean((y - y_pred) ** 2)  # mse in the normalised space
-    cost = mse + L2_reg * L2_sqr + L1_reg * L1
-    return cost
-
 
