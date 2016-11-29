@@ -70,7 +70,6 @@ def load_patchlib(
 
 # Normalise training data:
 def standardise_data(X_train, Y_train, option='default'):
-
     # Add ZCA whitening
     if option == 'default':
         # zero mean and unit variance for respective components:
@@ -171,6 +170,10 @@ def name_network(method='linear', n_h1=None, n_h2=None, n_h3=None, cohort='Diver
     elif method == 'mlp_h=3':
         nn_file = '%s_%i-%i-%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
                   (method, 6 * (2 * n + 1) ** 3, n_h1, n_h2, n_h3, 6 * m ** 3, optimisation_method, str(dropout_rate),
+                   cohort, us, 2 * n + 1, m, no_subjects, sample_rate)
+    elif method == 'cnn_simple':
+        nn_file = '%s_%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
+                  (method, 6 * (2 * n + 1) ** 3, 6 * m ** 3, optimisation_method, str(dropout_rate),
                    cohort, us, 2 * n + 1, m, no_subjects, sample_rate)
     else:
         raise

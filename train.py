@@ -72,26 +72,27 @@ def train_cnn(opt):
 	
 	# ---------------------------load data--------------------------:
 	data = load_data(opt)
-	train_set_x_scaled = data[0]
-	train_set_x_mean = data[1]
-	train_set_x_std = data[2]
-	train_set_y_scaled = data[3]
-	train_set_y_mean = data[4]
-	train_set_y_std = data[5]
-	valid_set_x_scaled = data[6]
-	valid_set_y_scaled = data[7]
+	train_set_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
+	train_set_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
+	train_set_x_std = np.reshape(data[2], (-1,5,5,5,6), order='F')
+	train_set_y_scaled = np.reshape(data[3], (-1,2,2,2,6), order='F')
+	train_set_y_mean = np.reshape(data[4], (-1,2,2,2,6), order='F')
+	train_set_y_std = np.reshape(data[5], (-1,2,2,2,6), order='F')
+	valid_set_x_scaled = np.reshape(data[6], (-1,5,5,5,6), order='F')
+	valid_set_y_scaled = np.reshape(data[7], (-1,2,2,2,6), order='F')
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
 	n_in = 6 * (2 * n + 1) ** 3
 	n_out = 6 * m ** 3  
-	x_scaled = tf.placeholder(tf.float32, shape=[None, n_in]) # low res
-	y_scaled = tf.placeholder(tf.float32, shape=[None, n_out])  # high res
+	opt['n_in'] = n_in
+	opt['n_out'] = n_out
+	x_scaled = tf.placeholder(tf.float32, shape=[None,5,5,5,6]) # low res
+	y_scaled = tf.placeholder(tf.float32, shape=[None,2,2,2,6])  # high res
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
 	
-	y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, n_in, n_out,
-												 n_h1=n_h1, n_h2=n_h2, n_h3=n_h3)
+	y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, opt)
 	cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
 	train_step = models.training(cost, learning_rate, global_step=global_step, option=optimisation_method)
 	mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
@@ -99,9 +100,12 @@ def train_cnn(opt):
 	# -------------------------- Start training -----------------------------:
 	saver = tf.train.Saver()
 	# Set the directory for saving checkpoints:
-	nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2, n_h3=n_h3, cohort=cohort, no_subjects=no_subjects,
+	nn_file = sr_utility.name_network(method=method, n_h1=n_h1, n_h2=n_h2,
+									  n_h3=n_h3, cohort=cohort,
+									  no_subjects=no_subjects,
 									  sample_rate=sample_rate, us=us, n=n, m=m,
-									  optimisation_method=optimisation_method, dropout_rate=dropout_rate)
+									  optimisation_method=optimisation_method,
+									  dropout_rate=dropout_rate)
 	
 	checkpoint_dir = os.path.join(save_dir, nn_file)
 	
