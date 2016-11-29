@@ -41,7 +41,7 @@ opt['no_channels'] = 6
 opt['no_chunks'] = 100
 opt['shuffle'] = True
 
-idx = input("Enter a number: ")
+idx = input("Enter subject chunk: ")
 
 if idx == 1:
     subjects_list = ['992774', '125525']
