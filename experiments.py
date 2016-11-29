@@ -18,7 +18,7 @@ opt['batch_size'] = 25
 
 opt['method'] = 'cnn_simple'
 opt['n_h1'] = 50
-opt['n_h2'] = 20
+opt['n_h2'] = 50
 opt['n_h3'] = 10
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8

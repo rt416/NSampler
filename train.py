@@ -82,7 +82,7 @@ def save_model(opt, sess, saver, global_step, model_details):
 def train_cnn(opt):
 	# Load opt
 	optimisation_method = opt['optimizer'].__name__
-	dropout_rate = opt['dropout_rate'] 
+	dr = opt['dropout_rate'] 
 	learning_rate = opt['learning_rate']
 	L1_reg =opt['L1_reg']
 	L2_reg = opt['L2_reg'] 
@@ -106,16 +106,17 @@ def train_cnn(opt):
 	train_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
 	train_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
 	train_x_std = np.reshape(data[2], (-1,5,5,5,6), order='F')
-	train_y_scaled = np.reshape(data[3], (-1,2,2,2,6), order='F')
-	train_y_mean = np.reshape(data[4], (-1,2,2,2,6), order='F')
-	train_y_std = np.reshape(data[5], (-1,2,2,2,6), order='F')
+	train_y_scaled = np.reshape(data[3], (-1,1,1,1,2*2*2*6), order='F')
+	train_y_mean = np.reshape(data[4], (-1,1,1,1,2*2*2*6), order='F')
+	train_y_std = np.reshape(data[5], (-1,1,1,1,2*2*2*6), order='F')
 	valid_x_scaled = np.reshape(data[6], (-1,5,5,5,6), order='F')
-	valid_y_scaled = np.reshape(data[7], (-1,2,2,2,6), order='F')
+	valid_y_scaled = np.reshape(data[7], (-1,1,1,1,2*2*2*6), order='F')
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
-	x = tf.placeholder(tf.float32, shape=[None,n,n,n,6]) # low res
-	y = tf.placeholder(tf.float32, shape=[None,m,m,m,6])  # high res
+	x = tf.placeholder(tf.float32, [None,n,n,n,6], name='lo_res') 
+	y = tf.placeholder(tf.float32, [None,1,1,1,6*(m**3)], name='hi_res') 
+	lr = tf.placeholder(tf.float32, [], name='learning_rate')
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
 	
@@ -124,7 +125,7 @@ def train_cnn(opt):
 	cost = tf.reduce_mean(tf.square(y - y_pred))
 	
 	# Define gradient descent op
-	optim = opt['optimizer'](learning_rate=learning_rate)
+	optim = opt['optimizer'](learning_rate=lr)
 	train_step = optim.minimize(cost, global_step=global_step)
 	mse = tf.reduce_mean(tf.square(train_y_std * (y - y_pred)))
 	
@@ -170,6 +171,7 @@ def train_cnn(opt):
 		iter_valid = 0
 		total_val_loss_epoch = 0
 		total_tr_loss_epoch = 0
+		lr_ = opt['learning_rate']
 		
 		bests = {}
 		bests['val_loss'] = np.inf
@@ -184,6 +186,8 @@ def train_cnn(opt):
 		while (epoch < n_epochs) and (not done_looping):
 			epoch += 1
 			start_time_epoch = timeit.default_timer()
+			if epoch % 25 == 0:
+				lr_ = lr_ / 10.
 	
 			for mi in xrange(n_train_batches):
 				# Select minibatches:
@@ -194,13 +198,11 @@ def train_cnn(opt):
 				current_step = tf.train.global_step(sess, global_step)
 				
 				# train op and loss
-				fd={x: x_batch_train, y: y_batch_train,
-					keep_prob: (1.0 - dropout_rate)}
+				fd={x: x_batch_train, y: y_batch_train, lr: lr_,keep_prob:1.-dr}
 				__, tr_loss = sess.run([train_step, mse], feed_dict=fd)
 				total_tr_loss_epoch += tr_loss
 				# valid loss
-				fd = {x: x_batch_valid, y: y_batch_valid,
-					  keep_prob: (1.0 - dropout_rate)}
+				fd = {x: x_batch_valid, y: y_batch_valid, keep_prob: 1.-dr}
 				va_loss = sess.run(mse, feed_dict=fd)
 				total_val_loss_epoch += va_loss
 	
