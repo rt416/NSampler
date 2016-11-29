@@ -14,8 +14,9 @@ Here the output patch of shape (upsampling_rate * m, upsampling_rate * m, upsamp
 The starndard 3D periodic shuffling (see eq.4 in MagicPony, CVPR 2016) is implemented in 'forward_periodic_shuffle()'.
 """
 
-# todo: randomised the mini-batch generation.
-
+# todo: parallel implementation.
+# todo: make a coupled indices, so there is no need to compute the the indices for every patch.
+# todo: modify so with a keyboard interupt save the last chunk.
 
 from __future__ import absolute_import
 from __future__ import division
@@ -79,16 +80,16 @@ def create_training_data(opt):
             data_path_subject = os.path.join(data_parent_dir, subject, data_subpath)
             save_dir_subject = os.path.join(chunks_parent_dir, subject, patchlib_dir)
 
-            filenames_list_subject = extract_patches(data_dir=data_path_subject,
-                                                     save_dir=save_dir_subject,
-                                                     highres_name=highres_name,
-                                                     lowres_name=lowres_name,
-                                                     upsampling_rate=upsampling_rate,
-                                                     receptive_field_radius=receptive_field_radius,
-                                                     input_radius=input_radius,
-                                                     no_channels=no_channels,
-                                                     no_chunks=no_chunks,
-                                                     shuffle=shuffle)
+            filenames_list_subject = extract_patches_new(data_dir=data_path_subject,
+                                                         save_dir=save_dir_subject,
+                                                         highres_name=highres_name,
+                                                         lowres_name=lowres_name,
+                                                         upsampling_rate=upsampling_rate,
+                                                         receptive_field_radius=receptive_field_radius,
+                                                         input_radius=input_radius,
+                                                         no_channels=no_channels,
+                                                         no_chunks=no_chunks,
+                                                         shuffle=shuffle)
 
             # Subsample on the chunks:
             for chunk_idx, chunk_name in enumerate(filenames_list_subject):
@@ -190,27 +191,34 @@ def merge_hdf5(global_filename, filenames_list):
     # Sequentially fill the global h5 file with small h5 files in 'filenames_list'.
     start_idx = 0
 
-    for idx, file_small in enumerate(filenames_list):
-        start_time = timeit.default_timer()
+    try:
+        # Save the chunk patchlib as h5:
+        for idx, file_small in enumerate(filenames_list):
+            start_time = timeit.default_timer()
 
-        f = h5py.File(file_small, 'r')
-        input_lib = f["input_lib"]
-        output_lib = f["output_lib"]
+            f = h5py.File(file_small, 'r')
+            input_lib = f["input_lib"]
+            output_lib = f["output_lib"]
 
-        end_idx = start_idx + input_lib.shape[0]
+            end_idx = start_idx + input_lib.shape[0]
 
-        g["input_lib"][start_idx:end_idx, :, :, :, :] = input_lib[:]
-        g["output_lib"][start_idx:end_idx, :, :, :, :] = output_lib[:]
+            g["input_lib"][start_idx:end_idx, :, :, :, :] = input_lib[:]
+            g["output_lib"][start_idx:end_idx, :, :, :, :] = output_lib[:]
 
-        start_idx += input_lib.shape[0]
-        f.close()
-        print("removing the subject-specific file ...")
-        os.remove(file_small)
+            start_idx += input_lib.shape[0]
+            f.close()
+            print("removing the subject-specific file ...")
+            os.remove(file_small)
 
-        end_time = timeit.default_timer()
-        print("%i/%i subjects done. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
+            end_time = timeit.default_timer()
+            print("%i/%i subjects done. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
 
-    g.close()
+        g.close()
+
+    except KeyboardInterrupt:
+        os.remove(global_filename)
+        pass
+        print("Interrpted during merging. Remove the file ...")
 
 
 # Load training data:
@@ -303,6 +311,7 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                                         2 * input_radius + 1,
                                         2 * input_radius + 1,
                                         no_channels), dtype='float64')
+
             if shuffle:
                 output_library = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
                                              2 * (output_radius // upsampling_rate) + 1,
@@ -334,13 +343,174 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                     (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
                     (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
 
+            try:
+                # Save the chunk patchlib as h5:
+                create_hdf5(filename=os.path.join(save_dir, filename),
+                            input_library=input_library, output_library=output_library)
 
-            # Save the chunk patchlib as h5:
-            create_hdf5(filename=os.path.join(save_dir, filename),
-                        input_library=input_library, output_library=output_library)
+                end_time = timeit.default_timer()
+                print("It took %f secs." % (end_time - start_time))
 
-            end_time = timeit.default_timer()
-            print("It took %f secs." % (end_time - start_time))
+            except KeyboardInterrupt:
+                os.remove(os.path.join(save_dir, filename))
+                print("removing %s" % filename)
+                pass
+
+
+        else:
+            print('Chunk %i/%i already exists' % (itr + 1, len(chunk_list)))
+
+    del dti_highres, dti_lowres, brain_indices
+    return filenames_list
+
+
+# Extract corresponding patches from DTI volumes. Here we sample all patches centred at a foreground voxel.
+def extract_patches_new(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
+                        save_dir='/Users/ryutarotanno/tmp/IPMI/',
+                        highres_name='dt_b1000_',
+                        lowres_name='dt_b1000_lowres_2_',
+                        upsampling_rate=2,
+                        receptive_field_radius=2,
+                        input_radius=5,
+                        no_channels=6,
+                        no_chunks=100,
+                        shuffle=True):
+    """
+    Args:
+        data_dir (str): the directory of the diffusion tensor images (DTIs) of a single patient
+        save_dir: directory for saving the outputs
+        highres_name:  the file name of the original DTIs
+        lowres_name:  the file name of the downsampled DTIs
+        upsampling_rate: the upsampling rate
+        receptive_field_radius: the width of the receptive field is (2*receptive_field_radius + 1)
+        input_radius: the width of the input patch is (2*input_radius + 1)
+        no_channels (int) : the number of channels in each voxel
+        no_chunks (int): subsample on the usable patch pairs at rate 1/sampling_rate.
+
+    Returns:
+    """
+    # ---------------------- preprocess the high-res/low-res image volumes --------------------------:
+    # Define width of all patches for brevity:
+    input_width, receptive_field_width = 2 * input_radius + 1, 2 * receptive_field_radius + 1
+    output_radius = upsampling_rate * ((input_width - receptive_field_width + 1) // 2)
+
+    # Load the original and down-sampled DTI volumes, and pad with zeros so all brain-voxel-centred pathces
+    # are extractable.
+    pad = max(input_radius + 1, output_radius + upsampling_rate)  # padding width
+    dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, highres_name))
+    dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
+    dti_highres = np.pad(dti_highres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
+                         mode='constant', constant_values=0)
+
+    dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, lowres_name))
+    dti_lowres[:, :, :, 0] += 1
+    dti_lowres = np.pad(dti_lowres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
+                        mode='constant', constant_values=0)
+
+    print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+
+    dim_x_highres, dim_y_highres, dim_z_highres, dim_dt = dti_highres.shape
+    brain_mask = dti_highres[:, :, :, 0] == 1
+
+    # ------------------------ Fetch the reshuffling indices ------------------------------------------:
+    if shuffle:
+        output_patch_shape, indices_after, indices_before \
+            = backward_periodic_shuffle_get_indices(upsampling_rate=upsampling_rate,
+                                                    receptive_field_radius=receptive_field_radius,
+                                                    input_radius=input_radius,
+                                                    no_channels=no_channels)
+
+    # ------------------------ Extract patches and store in chunks -------------------------------:
+    if not(os.path.exists(save_dir)):
+        os.makedirs(save_dir)
+
+    # Get all the indices of voxels in the brain and subsample:
+    brain_indices = [(i, j, k) for i in xrange(dim_x_highres)
+                               for j in xrange(dim_y_highres)
+                               for k in xrange(dim_z_highres) if brain_mask[i, j, k] == True]
+
+    # random.shuffle(brain_indices)  # shuffle the brain indices
+
+    print('number of effective patches = %i' % len(brain_indices))
+    chunk_size = len(brain_indices) // no_chunks
+    chunk_list = range(0, len(brain_indices), chunk_size)
+
+    filenames_list = []  # store the list of file names for merging.
+
+    for itr, chunk_idx in enumerate(chunk_list):
+
+        filename = 'Chunk%04i.h5' % (itr + 1)
+        filenames_list.append(os.path.join(save_dir, filename))
+
+        if not(os.path.exists(os.path.join(save_dir, filename))):
+
+            print("Processing chunk %i/%i" % (itr + 1, len(chunk_list)))
+            start_time = timeit.default_timer()
+
+            # Construct patch libraries (without shuffling):
+            input_library = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        no_channels), dtype='float64')
+
+
+            output_library_tmp = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
+                                             2 * output_radius + upsampling_rate,
+                                             2 * output_radius + upsampling_rate,
+                                             2 * output_radius + upsampling_rate,
+                                             no_channels), dtype='float64')
+
+            for patch_idx, (i, j, k) in enumerate(brain_indices[chunk_idx:chunk_idx + chunk_size]):
+                input_library[patch_idx, :, :, :, :] = \
+                dti_lowres[(i - upsampling_rate * input_radius):(i + upsampling_rate * (input_radius + 1)):upsampling_rate,
+                           (j - upsampling_rate * input_radius):(j + upsampling_rate * (input_radius + 1)):upsampling_rate,
+                           (k - upsampling_rate * input_radius):(k + upsampling_rate * (input_radius + 1)):upsampling_rate, 2:]
+
+                output_library_tmp[patch_idx, :, :, :, :] = \
+                dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
+                (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
+                (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
+
+            if shuffle:
+                # Now apply shuffling to the output library:
+                chunk_size_real = len(brain_indices[chunk_idx:chunk_idx + chunk_size])
+                output_library = np.ndarray((chunk_size_real, ) + output_patch_shape, dtype='float64')
+
+                print("output_library size %s \n output_temp size %s" % (output_library.shape, output_library_tmp.shape))
+                print("size of indices_after %s \n size of indices_before %s" % (len(indices_after), len(indices_before)))
+
+                for patch_idx in xrange(chunk_size_real):
+                    for ijk_idx in xrange(len(indices_after)):
+                        output_library[(patch_idx, ) + indices_after[ijk_idx]] \
+                            = output_library_tmp[(patch_idx, ) + indices_before[ijk_idx]]
+
+                # Save the chunk patchlib as h5:
+                try:
+                    create_hdf5(filename=os.path.join(save_dir, filename),
+                                input_library=input_library, output_library=output_library)
+
+                    end_time = timeit.default_timer()
+                    print("It took %f secs." % (end_time - start_time))
+
+                except KeyboardInterrupt:
+                    os.remove(os.path.join(save_dir, filename))
+                    print("removing %s" % filename)
+                    pass
+
+            else:
+                # Save the chunk patchlib as h5:
+                try:
+                    create_hdf5(filename=os.path.join(save_dir, filename),
+                                input_library=input_library, output_library=output_library_tmp)
+
+                    end_time = timeit.default_timer()
+                    print("It took %f secs." % (end_time - start_time))
+
+                except KeyboardInterrupt:
+                    os.remove(os.path.join(save_dir, filename))
+                    print("removing %s" % filename)
+                    pass
 
         else:
             print('Chunk %i/%i already exists' % (itr + 1, len(chunk_list)))
@@ -377,25 +547,29 @@ def subsample_patchlib(patchlib_dir,
         idx_sub = np.random.random((shape_in[0],)) < (1.0 / sampling_rate)
         indices_sub = indices[idx_sub]
 
-        if not(indices_sub.size == 0):
-            s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
-            s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
-                             maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
+        try:
+            if not(indices_sub.size == 0):
+                s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
+                s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
+                                 maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
 
-            s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
-                             maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
-            s.close()
-            c.close()
-            end_time = timeit.default_timer()
-            print("It took %f secs." % (end_time - start_time))
-            return os.path.join(save_dir, patchlib_name_sub)
-        else:
-            print("Empty subsampled chunk. Return none ...")
+                s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
+                                 maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+                s.close()
+                c.close()
+                end_time = timeit.default_timer()
+                print("It took %f secs." % (end_time - start_time))
+                return os.path.join(save_dir, patchlib_name_sub)
+            else:
+                print("Empty subsampled chunk. Return none ...")
+        except KeyboardInterrupt:
+            os.remove(os.path.join(save_dir, patchlib_name_sub))
+            print("removing subsampled chunk %s" % patchlib_name_sub)
+            pass
 
     else:
         print("Already exists.")
         return os.path.join(save_dir, patchlib_name_sub)
-
 
 
 # Periodic shuffling:
@@ -538,6 +712,45 @@ def backward_periodic_shuffle(patch, upsampling_rate=2):
                                              c // (upsampling_rate ** 3)]
 
     return patch_bps
+
+
+# fetch indices of
+def backward_periodic_shuffle_get_indices(upsampling_rate=2,
+                                          receptive_field_radius=2,
+                                          input_radius=5,
+                                          no_channels=6
+                                          ):
+    """ Get the coupled indices of the reverses the periodic shuffling defined by forward_periodic_shuffle()
+    Args:
+        patch (numpy array): 3 or 4 dimensional array with the last dimension
+        upsampling_rate (int): upsampling rate
+    Returns:
+    """
+
+    # The dimensions of the output patch:
+    input_width, receptive_field_width = 2 * input_radius + 1, 2 * receptive_field_radius + 1
+    output_radius = upsampling_rate * ((input_width - receptive_field_width + 1) // 2)
+    dim_i = 2 * output_radius + upsampling_rate
+    dim_j = 2 * output_radius + upsampling_rate
+    dim_k = 2 * output_radius + upsampling_rate
+    dim_filters = no_channels
+
+    # get the indices of reverse periodic shuffled output patch:
+    patch_bps = np.ndarray((dim_i / upsampling_rate,
+                            dim_j / upsampling_rate,
+                            dim_k / upsampling_rate,
+                            dim_filters * (upsampling_rate ** 3)), dtype='float64')
+
+    indices_after = [(i, j, k, c) for i, j, k, c in np.ndindex(patch_bps.shape)]
+    indices_before = []
+
+    for (i, j, k, c) in indices_after:
+        indices_before.append((upsampling_rate * i + np.mod(c, upsampling_rate),
+                               upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
+                               upsampling_rate * k + np.mod(c // upsampling_rate**2, upsampling_rate),
+                               c // (upsampling_rate ** 3)))
+
+    return patch_bps.shape, indices_after, indices_before
 
 
 # Load in a DT volume .nii:

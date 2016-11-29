@@ -20,6 +20,6 @@ opt['receptive_field_radius'] = 2
 opt['input_radius'] = 5
 opt['no_channels'] = 6
 opt['no_chunks'] = 100
-opt['shuffle'] = False
+opt['shuffle'] = True
 
 filenames = sr_preprocessing_new.create_training_data(opt)
