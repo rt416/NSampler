@@ -26,13 +26,11 @@ import sr_preprocessing_new
 
 opt = {}
 
-opt['data_parent_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
+opt['data_parent_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc'
 opt['data_subpath'] = 'T1w/Diffusion'
-opt['chunks_parent_dir'] = '/Users/ryutarotanno/tmp/IPMI'
-opt['save_dir'] = '/Users/ryutarotanno/tmp'
-opt['cohort'] = "Small"
+opt['chunks_parent_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
+opt['save_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet'
 
-opt['no_randomisation'] = 1  # number of distinct training sets you want to create.
 opt['sampling_rate'] = 64
 opt['b_value'] = 1000
 
