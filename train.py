@@ -28,29 +28,29 @@ def load_data(opt):
 	print('... loading the training dataset %s' % data_file)
 	patchlib = sr_utility.load_patchlib(patchlib=dataset)
 	# load the original patch libs
-	train_set_x, valid_set_x, train_set_y, valid_set_y = patchlib  
+	train_x, valid_x, train_y, valid_y = patchlib  
 	
 	# normalise the data and keep the transforms:
-	data = sr_utility.standardise_data(train_set_x, train_set_y, option='default')
+	data = sr_utility.standardise_data(train_x, train_y, option='default')
 	data = list(data)
-	train_set_x_scaled = data[0]
-	train_set_x_mean = data[1]
-	train_set_x_std = data[2]
-	train_set_y_scaled = data[3]
-	train_set_y_mean = data[4]
-	train_set_y_std = data[5]
+	train_x_scaled = data[0]
+	train_x_mean = data[1]
+	train_x_std = data[2]
+	train_y_scaled = data[3]
+	train_y_mean = data[4]
+	train_y_std = data[5]
 	
 	# normalise the validation sets into the same space as training sets:
-	valid_set_x_scaled = (valid_set_x - train_set_x_mean) / train_set_x_std
-	valid_set_y_scaled = (valid_set_y - train_set_y_mean) / train_set_y_std
-	data.append(valid_set_x_scaled)
-	data.append(valid_set_y_scaled)
+	valid_x_scaled = (valid_x - train_x_mean) / train_x_std
+	valid_y_scaled = (valid_y - train_y_mean) / train_y_std
+	data.append(valid_x_scaled)
+	data.append(valid_y_scaled)
 	
 	return data
 
 def train_cnn(opt):
 	# Load opt
-	optimisation_method = opt['optimisation_method'] 
+	optimisation_method = opt['optimizer'].__name__
 	dropout_rate = opt['dropout_rate'] 
 	learning_rate = opt['learning_rate']
 	L1_reg =opt['L1_reg']
@@ -72,30 +72,32 @@ def train_cnn(opt):
 	
 	# ---------------------------load data--------------------------:
 	data = load_data(opt)
-	train_set_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
-	train_set_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
-	train_set_x_std = np.reshape(data[2], (-1,5,5,5,6), order='F')
-	train_set_y_scaled = np.reshape(data[3], (-1,2,2,2,6), order='F')
-	train_set_y_mean = np.reshape(data[4], (-1,2,2,2,6), order='F')
-	train_set_y_std = np.reshape(data[5], (-1,2,2,2,6), order='F')
-	valid_set_x_scaled = np.reshape(data[6], (-1,5,5,5,6), order='F')
-	valid_set_y_scaled = np.reshape(data[7], (-1,2,2,2,6), order='F')
+	train_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
+	train_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
+	train_x_std = np.reshape(data[2], (-1,5,5,5,6), order='F')
+	train_y_scaled = np.reshape(data[3], (-1,2,2,2,6), order='F')
+	train_y_mean = np.reshape(data[4], (-1,2,2,2,6), order='F')
+	train_y_std = np.reshape(data[5], (-1,2,2,2,6), order='F')
+	valid_x_scaled = np.reshape(data[6], (-1,5,5,5,6), order='F')
+	valid_y_scaled = np.reshape(data[7], (-1,2,2,2,6), order='F')
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
 	n_in = 6 * (2 * n + 1) ** 3
 	n_out = 6 * m ** 3  
 	opt['n_in'] = n_in
-	opt['n_out'] = n_out
 	x_scaled = tf.placeholder(tf.float32, shape=[None,5,5,5,6]) # low res
-	y_scaled = tf.placeholder(tf.float32, shape=[None,2,2,2,6])  # high res
+	y_scaled = tf.placeholder(tf.float32, shape=[None,m,m,m,6])  # high res
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
 	
 	y_pred_scaled, L2_sqr, L1 = models.inference(method, x_scaled, keep_prob, opt)
 	cost = models.cost(y_scaled, y_pred_scaled, L2_sqr, L1, L2_reg, L1_reg)
-	train_step = models.training(cost, learning_rate, global_step=global_step, option=optimisation_method)
-	mse = tf.reduce_mean(tf.square(train_set_y_std * (y_scaled - y_pred_scaled)))
+	
+	# Define gradient descent op
+	optim = opt['optimizer'](learning_rate=learning_rate)
+	train_step = optim.minimize(cost, global_step=global_step)
+	mse = tf.reduce_mean(tf.square(train_y_std * (y_scaled - y_pred_scaled)))
 	
 	# -------------------------- Start training -----------------------------:
 	saver = tf.train.Saver()
@@ -114,8 +116,8 @@ def train_cnn(opt):
 	
 	# Save the transforms used for data normalisation:
 	print('... saving the transforms used for data normalisation for the test time')
-	transform = {'input_mean': train_set_x_mean, 'input_std': train_set_x_std,
-				 'output_mean': train_set_y_mean, 'output_std': train_set_y_std}
+	transform = {'input_mean': train_x_mean, 'input_std': train_x_std,
+				 'output_mean': train_y_mean, 'output_std': train_y_std}
 	f = file(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb')
 	cPickle.dump(transform, f, protocol=cPickle.HIGHEST_PROTOCOL)
 	
@@ -129,8 +131,8 @@ def train_cnn(opt):
 		sess.run(init)
 	
 		# Compute number of minibatches for training, validation and testing
-		n_train_batches = train_set_x_scaled.shape[0] // batch_size
-		n_valid_batches = valid_set_x_scaled.shape[0] // batch_size
+		n_train_batches = train_x_scaled.shape[0] // batch_size
+		n_valid_batches = valid_x_scaled.shape[0] // batch_size
 	
 		# early-stopping parameters
 		patience = 10000  # look as this many examples regardless
@@ -160,10 +162,10 @@ def train_cnn(opt):
 			for minibatch_index in range(n_train_batches):
 	
 				# Select batches:
-				x_batch_train = train_set_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				y_batch_train = train_set_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				x_batch_valid = valid_set_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
-				y_batch_valid = valid_set_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
+				x_batch_train = train_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
+				y_batch_train = train_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
+				x_batch_valid = valid_x_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
+				y_batch_valid = valid_y_scaled[minibatch_index * batch_size:(minibatch_index + 1) * batch_size, :]
 	
 				# track the number of steps
 				current_step = tf.train.global_step(sess, global_step)

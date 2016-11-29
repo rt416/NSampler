@@ -36,23 +36,11 @@ def inference(method, x, keep_prob, opt):
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
 	n_h3 = opt['n_h3']
-	# build the selected model: followed http://cs231n.github.io/neural-networks-2/ for initialisation.
-	# todo: remove dropout in the first hidden layer. Done!
+
 	if method == 'cnn_simple':
-		weights = {'w1_1' : get_weights([3,3,3,6,n_h1], name='l1_1'),
-				   'w1_2' : get_weights([1,1,1,n_h1,n_h2], name='l1_2'),
-				   'w2_1' : get_weights([2,2,2,n_h2,6], name='l2_1')
-		}
-		biases = {'b1_1' : tf.get_variable('b1_1', dtype=tf.float32, shape=[n_h1],
-									initializer=tf.constant_initializer(1e-2)),
-				'b1_2' : tf.get_variable('b1_2', dtype=tf.float32, shape=[n_h2],
-								  initializer=tf.constant_initializer(1e-2)),
-				'b2_1' : tf.get_variable('b2_1', dtype=tf.float32, shape=[6],
-								  initializer=tf.constant_initializer(1e-2))
-				}
-		h1_1 = conv3d(x, weights['w1_1'], biases['b1_1'])
-		h1_2 = conv3d(tf.nn.relu(h1_1), weights['w1_2'], biases['b1_2'])
-		y_pred = conv3d(tf.nn.relu(h1_2), weights['w2_1'], biases['b2_1'])
+		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')
+		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2')
+		y_pred = conv3d(tf.nn.relu(h1_2), [2,2,2,n_h2,6], [6], '2_1')
 		L2_sqr = 1.
 		L1 = 1.
 	else:
@@ -62,28 +50,21 @@ def inference(method, x, keep_prob, opt):
 
 def get_weights(filter_shape, W_init=None, name=''):
 	if W_init == None:
-		mean = 0.
-		stddev = np.sqrt(2.0 / np.prod(filter_shape[:4]))
-		if len(filter_shape) == 1:
-			mean = 0.01
-			stddev = 0.
-		W_init = tf.random_normal(filter_shape, mean=mean, stddev=stddev)
+		# He/Xavier
+		prod_length = len(filter_shape) - 1
+		stddev = np.sqrt(2.0 / np.prod(filter_shape[:prod_length])) 
+		W_init = tf.random_normal(filter_shape, stddev=stddev)
 	return tf.Variable(W_init, name=name)
 
-
-def conv3d(x, w, b):
+def conv3d(x, w_shape, b_shape, name):
+	"""Return the 3D convolution"""
+	w_name = 'w' + name
+	b_name = 'b' + name
+	w = get_weights(w_shape, name='l1_1')
+	b = tf.get_variable(b_name, dtype=tf.float32, shape=b_shape,
+						initializer=tf.constant_initializer(1e-2))
 	z = tf.nn.conv3d(x, w, strides=(1,1,1,1,1), padding='VALID')
 	return tf.nn.bias_add(z, b)
-
-
-def kl_log_uniform_prior(varQ):
-    """Compute the gaussian-log uniform KL-div from VDLRT"""
-    c1 = 1.16145124
-    c2 = -1.50204118
-    c3 = 0.58629921
-    KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
-    return tf.reduce_mean(KL)
-
 
 def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
     """ Define the cost dunction
@@ -103,22 +84,3 @@ def cost(y, y_pred, L2_sqr, L1, L2_reg, L1_reg):
     return cost
 
 
-def training(cost, learning_rate, global_step=None, option='standard'):
-    """ Define the optimisation method
-        Args:
-            cost: loss function to be minimised
-            global_step (tensor): the number of optimization steps undergone.
-            learning_rate: the learning rate
-            option: optimisation method
-        Returns:
-            train_op: training operation
-    """
-    if option == 'standard':
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-    elif option == 'adam':
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-    else:
-        raise ValueError('The chosen method not available ...')
-
-    train_op = optimizer.minimize(cost, global_step=global_step)
-    return train_op

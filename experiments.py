@@ -2,12 +2,13 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from train import train_cnn
 
 # Options
 opt = {}
-opt['optimisation_method'] = 'adam'
+opt['optimizer'] = tf.train.AdamOptimizer
 opt['dropout_rate'] = 0.0
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
@@ -21,7 +22,7 @@ opt['n_h2'] = 20
 opt['n_h3'] = 10
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['sample_rate'] = 32
+opt['sample_rate'] = 8
 opt['us'] = 2
 opt['n'] = 2
 opt['m'] = 2
