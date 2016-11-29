@@ -69,12 +69,12 @@ def create_training_data(opt):
 
             # Set the directory name:
             if shuffle:
-                patchlib_dir = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
-                                % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                patchlib_dir = 'PatchLibs_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
+                                % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                 no_chunks)
             else:
-                patchlib_dir = 'PatchLibs_NoShuffle_%s_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
-                                % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                patchlib_dir = 'PatchLibs_NoShuffle_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
+                                % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                 no_chunks)
 
             data_path_subject = os.path.join(data_parent_dir, subject, data_subpath)
@@ -120,6 +120,62 @@ def create_training_data(opt):
         merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
 
     return filenames_list
+
+
+# Extract randomly patches from given list of patients and save as HDF5.
+def chunk_subjects(opt, subjects_list):
+    """ Extract patches from a subject(s) and store them in small chunks"""
+    # ------------------ Specify the config of your training data ----------------------:
+    data_parent_dir = opt['data_parent_dir']
+    data_subpath = opt['data_subpath']
+    chunks_parent_dir = opt['chunks_parent_dir']
+
+    b_value = opt['b_value']
+    upsampling_rate = opt['upsampling_rate']
+    receptive_field_radius = opt['receptive_field_radius']
+    input_radius = opt['input_radius']
+    no_channels = opt['no_channels']
+    no_chunks = opt['no_chunks']
+
+    shuffle = opt['shuffle']
+
+    if shuffle:
+        print("Perform reverse periodic shuffling to the output patches!")
+    else:
+        print("No shuffling applied to the output patches.  ")
+
+    for subject in subjects_list:
+        print("Processing subject: %s" % subject)
+
+        highres_name = 'dt_b' + str(b_value) + '_'
+        lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
+
+        # Set the directory name:
+        if shuffle:
+            patchlib_dir = 'PatchLibs_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
+                            % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                            no_chunks)
+        else:
+            patchlib_dir = 'PatchLibs_NoShuffle_Upsample%02i_Input%02i_Recep%02i_Chunks%04i' \
+                            % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                            no_chunks)
+
+        data_path_subject = os.path.join(data_parent_dir, subject, data_subpath)
+        save_dir_subject = os.path.join(chunks_parent_dir, subject, patchlib_dir)
+
+        extract_patches_new(data_dir=data_path_subject,
+                            save_dir=save_dir_subject,
+                            highres_name=highres_name,
+                            lowres_name=lowres_name,
+                            upsampling_rate=upsampling_rate,
+                            receptive_field_radius=receptive_field_radius,
+                            input_radius=input_radius,
+                            no_channels=no_channels,
+                            no_chunks=no_chunks,
+                            shuffle=shuffle)
+        print("Done. \n")
+
+
 
 
 def fetch_subjects_list(cohort_name):
