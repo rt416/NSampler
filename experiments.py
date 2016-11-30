@@ -22,12 +22,12 @@ opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['sample_rate'] = 4
+opt['sample_rate'] = 16
 opt['us'] = 2
 opt['n'] = 5
 opt['m'] = 2
 
-opt['data_dir'] ='../data/'
+opt['data_dir'] = '/media/daniel/HDD/SuperRes/Training/IPMI/' # '../data/'
 opt['save_dir'] = '../models'
 
 train_cnn(opt)

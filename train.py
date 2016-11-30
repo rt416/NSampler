@@ -45,6 +45,24 @@ def load_data(opt):
 	data.append(valid_y_scaled)
 	return data
 
+def load_hdf5(opt):
+	cohort = opt['cohort']
+	no_subjects =opt['no_subjects'] 
+	sample_rate = opt['sample_rate'] 
+	us = opt['us'] 
+	n = opt['n'] // 2
+	m = opt['m']
+	data_dir = opt['data_dir']
+	
+	filename = data_dir + 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%i_TS%i_SRi%03i_001.h5' \
+			% (cohort, us, 2*n+1, 2*n+1, no_subjects, sample_rate)
+	print filename
+	f = h5py.File(filename, 'r')
+	input_lib = f["input_lib"]
+	output_lib = f["output_lib"]
+	return input_lib, output_lib
+
+
 def define_checkpoint(opt):
 	nn_file = sr_utility.name_network(opt)
 	checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
@@ -102,6 +120,7 @@ def train_cnn(opt):
 	save_dir = opt['save_dir']
 	
 	# ---------------------------load data--------------------------:
+	load_hdf5(opt)
 	data = load_data(opt)
 	train_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
 	train_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
@@ -230,26 +249,12 @@ def train_cnn(opt):
 					# Save
 					model_details.update(bests)
 					save_model(opt, sess, saver, global_step, model_details)
-					
-					'''
-					# Terminate training if validation loss increases.
-					if this_val_loss > bests['val_loss']:
-						if bests['counter'] > bests['counter_thresh']:
-							done_looping = True
-							break
-					'''
 	
 					# Start counting again:
 					total_val_loss_epoch = 0
 					total_tr_loss_epoch = 0
 					iter_valid = 0
 					start_time_epoch = timeit.default_timer()
-				'''
-				if patience_params['patience'] <= iter_:
-					print('Patient < iter')
-					done_looping = True
-					break
-				'''
 	
 		# Display the best results:
 		print(('\nOptimization complete. Best validation score of %f  '
