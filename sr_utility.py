@@ -153,39 +153,39 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
 
 def name_network(opt):
     """given inputs, return the model name."""
-    optimisation_method = opt['optimizer'].__name__
-    dropout_rate = opt['dropout_rate'] 
-    method = opt['method']
-    n_h1 = opt['n_h1']
-    n_h2 = opt['n_h2']
-    n_h3 = opt['n_h3']
-    cohort = opt['cohort']
-    no_subjects =opt['no_subjects'] 
-    sample_rate = opt['sample_rate'] 
-    us = opt['us'] 
-    n = opt['n']
-    m = opt['m']
+    optim = opt['optimizer'].__name__
+    
+    nn_tuple = (opt['method'], 6*(2*opt['n']+1)**3, 6*opt['m']**3)
+    nn_str = '%s_%i-%i_'
+    nn_tuple += (optim, str(opt['dropout_rate']), opt['cohort'], opt['us'],
+                 2*opt['n']+1, opt['m'], opt['no_subjects'], opt['sample_rate'])
+    nn_str += 'opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i'
+   
+    return nn_str % nn_tuple
 
-    if method == 'linear':
-        nn_file = '%s_%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
-                  (method, 6 * (2 * n + 1) ** 3, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
-                   us, 2 * n + 1, m, no_subjects, sample_rate)
-    elif method == 'mlp_h=1':
-        nn_file = '%s_%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
-                  (method, 6 * (2 * n + 1) ** 3, n_h1, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
-                   us, 2 * n + 1, m, no_subjects, sample_rate)
-    elif method == 'mlp_h=2':
-        nn_file = '%s_%i-%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
-                  (method, 6 * (2 * n + 1) ** 3, n_h1, n_h2, 6 * m ** 3, optimisation_method, str(dropout_rate), cohort,
-                   us, 2 * n + 1, m, no_subjects, sample_rate)
-    elif method == 'mlp_h=3':
-        nn_file = '%s_%i-%i-%i-%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
-                  (method, 6 * (2 * n + 1) ** 3, n_h1, n_h2, n_h3, 6 * m ** 3, optimisation_method, str(dropout_rate),
-                   cohort, us, 2 * n + 1, m, no_subjects, sample_rate)
-    elif method == 'cnn_simple':
-        nn_file = '%s_%i-%i_opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i' % \
-                  (method, 6 * (2 * n + 1) ** 3, 6 * m ** 3, optimisation_method, str(dropout_rate),
-                   cohort, us, 2 * n + 1, m, no_subjects, sample_rate)
-    else:
-        raise
-    return nn_file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

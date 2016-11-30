@@ -186,7 +186,7 @@ def train_cnn(opt):
 		while (epoch < n_epochs) and (not done_looping):
 			epoch += 1
 			start_time_epoch = timeit.default_timer()
-			if epoch % 25 == 0:
+			if epoch % 50 == 0:
 				lr_ = lr_ / 10.
 	
 			for mi in xrange(n_train_batches):

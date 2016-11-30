@@ -33,10 +33,32 @@ def inference(method, x, opt):
 		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')
 		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2')
 		y_pred = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,6*(m**3)], [6*(m**3)], '2_1')
+	elif method == 'cnn_residual':
+		h1 = tf.nn.relu(conv3d(x, [3,3,3,6,n_h1], [n_h1], '1'))
+		# Residual blocks
+		h2 = residual_block(h1, n_h1, n_h1, 'res2')
+		h3 = residual_block(h2, n_h1, n_h1, 'res3')
+		# Output
+		h4 = conv3d(h3, [3,3,3,n_h1,n_h2], [n_h2], '4')
+		h5 = residual_block(h4, n_h2, n_h2, 'res5')
+		h6 = residual_block(h5, n_h2, n_h2, 'res6')
+		y_pred = conv3d(h6, [1,1,1,n_h2,6*(m**3)], [6*(m**3)], '7')
 	else:
 		raise ValueError('The chosen method not available ...')
 	
 	return y_pred
+
+def residual_block(x, n_in, n_out, name):
+	"""A residual block of constant spatial dimensions and 1x1 convs only"""
+	b = tf.get_variable(name+'_2b', dtype=tf.float32, shape=[n_out],
+						initializer=tf.constant_initializer(1e-2))
+	assert n_out >= n_in
+	
+	h1 = conv3d(x, [1,1,1,n_in,n_out], [n_out], name+'1')
+	h2 = conv3d(tf.nn.relu(h1), [1,1,1,n_out,n_out], None, name+'2')
+	h3 = tf.pad(x, [[0,0],[0,0],[0,0],[0,0],[0,n_out-n_in]]) + h2
+	return tf.nn.relu(tf.nn.bias_add(h3, b))
+
 
 def get_weights(filter_shape, W_init=None, name=''):
 	if W_init == None:
@@ -46,13 +68,15 @@ def get_weights(filter_shape, W_init=None, name=''):
 		W_init = tf.random_normal(filter_shape, stddev=stddev)
 	return tf.Variable(W_init, name=name)
 
-def conv3d(x, w_shape, b_shape, name):
+def conv3d(x, w_shape, b_shape=None, name=''):
 	"""Return the 3D convolution"""
-	w_name = 'w' + name
-	b_name = 'b' + name
-	w = get_weights(w_shape, name='l1_1')
-	b = tf.get_variable(b_name, dtype=tf.float32, shape=b_shape,
-						initializer=tf.constant_initializer(1e-2))
+	w_name = name + '_w'
+	b_name = name + '_b'
+	w = get_weights(w_shape, name=w_name)
 	z = tf.nn.conv3d(x, w, strides=(1,1,1,1,1), padding='VALID')
-	return tf.nn.bias_add(z, b)
+	if b_shape is not None:
+		b = tf.get_variable(b_name, dtype=tf.float32, shape=b_shape,
+							initializer=tf.constant_initializer(1e-2))
+		z = tf.nn.bias_add(z, b)
+	return z
 

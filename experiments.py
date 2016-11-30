@@ -13,12 +13,12 @@ opt['dropout_rate'] = 0.0
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
-opt['n_epochs'] = 100
+opt['n_epochs'] = 200
 opt['batch_size'] = 25
 
-opt['method'] = 'cnn_simple'
+opt['method'] = 'cnn_residual'
 opt['n_h1'] = 50
-opt['n_h2'] = 50
+opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
