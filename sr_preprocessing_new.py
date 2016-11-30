@@ -15,8 +15,7 @@ The starndard 3D periodic shuffling (see eq.4 in MagicPony, CVPR 2016) is implem
 """
 
 # todo: parallel implementation.
-# todo: make a coupled indices, so there is no need to compute the the indices for every patch.
-# todo: modify so with a keyboard interupt save the last chunk.
+# todo: save h5df files in chunks.
 
 from __future__ import absolute_import
 from __future__ import division
@@ -510,7 +509,6 @@ def extract_patches_new(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/'
                                         2 * input_radius + 1,
                                         no_channels), dtype='float64')
 
-
             output_library_tmp = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
                                              2 * output_radius + upsampling_rate,
                                              2 * output_radius + upsampling_rate,
@@ -607,10 +605,10 @@ def subsample_patchlib(patchlib_dir,
             if not(indices_sub.size == 0):
                 s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
                 s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
-                                 maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
+                                 maxshape=(len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
 
                 s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
-                                 maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+                                 maxshape=(len(indices_sub), shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
                 s.close()
                 c.close()
                 end_time = timeit.default_timer()
