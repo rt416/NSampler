@@ -342,7 +342,7 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                                for j in xrange(dim_y_highres)
                                for k in xrange(dim_z_highres) if brain_mask[i, j, k] == True]
 
-    # random.shuffle(brain_indices)  # shuffle the brain indices
+    random.shuffle(brain_indices)  # shuffle the brain indices
 
     print('number of effective patches = %i' % len(brain_indices))
     chunk_size = len(brain_indices) // no_chunks
@@ -604,6 +604,9 @@ def subsample_patchlib(patchlib_dir,
         try:
             if not(indices_sub.size == 0):
                 s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
+                print("the shape of the selected chunk is %s:" % input_lib[indices_sub, :, :, :, :].shape)
+                print("the shape of the max_shape is %s:" % ((len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]), ))
+
                 s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
                                  maxshape=(len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
 
