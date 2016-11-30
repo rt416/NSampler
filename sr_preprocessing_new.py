@@ -604,7 +604,8 @@ def subsample_patchlib(patchlib_dir,
         try:
             if not(indices_sub.size == 0):
                 s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
-                print("the shape of the selected chunk is %s:" % input_lib[indices_sub, :, :, :, :].shape)
+                shape_in_2 = input_lib[indices_sub, :, :, :, :].shape
+                print("the shape of the selected chunk is %s:" % (shape_in_2, ))
                 print("the shape of the max_shape is %s:" % ((len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]), ))
 
                 s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
