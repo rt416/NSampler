@@ -16,7 +16,7 @@ opt['L2_reg'] = 1e-5
 opt['n_epochs'] = 200
 opt['batch_size'] = 25
 
-opt['method'] = 'cnn_residual'
+opt['method'] = 'cnn_simple'
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
