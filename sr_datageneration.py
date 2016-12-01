@@ -34,11 +34,12 @@ def create_training_data(opt):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
     data_parent_dir = opt['data_parent_dir']
+    save_parent_dir = opt['save_parent_dir']
     data_subpath = opt['data_subpath']
     save_dir = opt['save_dir']
     cohort = opt['cohort']
     no_randomisation = opt['no_randomisation']
-    sampling_rate = opt['sampling_rate']
+    subsampling_rate = opt['subsampling_rate']
 
     b_value = opt['b_value']
     upsampling_rate = opt['upsampling_rate']
@@ -47,8 +48,8 @@ def create_training_data(opt):
     no_channels = opt['no_channels']
 
     shuffle = opt['shuffle']
+    chunks = opt['chunks']
 
-    # ----------------- Start data generation -------------------------------------------:
     # Fetch subjects list.
     subjects_list = fetch_subjects_list(cohort_name=cohort)
 
@@ -58,61 +59,94 @@ def create_training_data(opt):
         # -----------------------  Extract patches from each subject -----------------------------------:
         filenames_list = []  # store all the filenames for the subsequent merging.
 
-        for subject in subjects_list:
-            print("Processing subject: %s" % subject)
-            data_path = os.path.join(data_parent_dir, subject, data_subpath)
+        for subject_id in subjects_list:
+            print("Processing subject: %s" % subject_id)
+
             highres_name = 'dt_b' + str(b_value) + '_'
             lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
-
-            # Set the file name:
-            if shuffle:
-                patchlib_name = 'Subjectwise_PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%04i_%03i.h5' \
-                                % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
-                                   len(subjects_list), sampling_rate, idx_randomisation)
-            else:
-                patchlib_name = 'Subjectwise_NoShuffle_PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_%03i.h5' \
-                                % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
-                                   len(subjects_list), sampling_rate, idx_randomisation)
-
-            filename = os.path.join(data_path, patchlib_name)
-            print(filename)
-
-            if not os.path.exists(filename):
-                filenames_list.append(filename)
-                input_library, output_library = extract_patches(data_dir=data_path,
-                                                                highres_name=highres_name,
-                                                                lowres_name=lowres_name,
-                                                                upsampling_rate=upsampling_rate,
-                                                                receptive_field_radius=receptive_field_radius,
-                                                                input_radius=input_radius,
-                                                                no_channels=no_channels,
-                                                                sampling_rate=sampling_rate,
-                                                                shuffle=shuffle)
-
-                print("The sizes of the library are: %s and %s" % (input_library.shape, output_library.shape))
-
-
-                create_hdf5(filename, input_library=input_library, output_library=output_library)
-                print("Done. \n")
-            else:
-                print('Patch library already exists for this subject. Move on ...')
+            filenames_list = main_extract_patches_and_save(subject_id=subject_id,
+                                                           data_dir=data_parent_dir,
+                                                           data_subpath=data_subpath,
+                                                           save_dir=save_parent_dir,
+                                                           inputfile_name=lowres_name,
+                                                           outputfile_name=highres_name,
+                                                           upsampling_rate=upsampling_rate,
+                                                           receptive_field_radius=receptive_field_radius,
+                                                           input_radius=input_radius,
+                                                           no_channels=no_channels,
+                                                           subsampling_rate=subsampling_rate,
+                                                           chunks=chunks,
+                                                           shuffle=chunks)
 
         # ------------------ Merge all patch libraries into a single h5 file: -----------------------------------:
         if shuffle:
-            patchlib_name_cohort = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_%03i.h5' \
-                                % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
-                                len(subjects_list), sampling_rate, idx_randomisation)
-        else:
-            patchlib_name_cohort = 'PatchLibs_NoShuffle_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_%03i.h5' \
+            patchlib_name_cohort = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5' \
                                    % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
-                                      len(subjects_list), sampling_rate, idx_randomisation)
+                                      len(subjects_list), subsampling_rate, idx_randomisation)
+        else:
+            patchlib_name_cohort = 'PatchLibs_NoShuffle_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5' \
+                                   % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                                      len(subjects_list), subsampling_rate, idx_randomisation)
 
         global_filename = os.path.join(save_dir, patchlib_name_cohort)
 
-        if not os.path.exists(global_filename):
-            merge_hdf5(global_filename=global_filename, filenames_list=filenames_list)
-        else:
-            print('Patch library already exists. Done.')
+        merge_hdf5(global_filename=global_filename,
+                   filenames_list=filenames_list,
+                   chunks=chunks)
+
+
+def main_extract_patches_and_save(subject_id,
+                                  data_dir,
+                                  data_subpath,
+                                  save_dir,
+                                  inputfile_name,
+                                  outputfile_name,
+                                  upsampling_rate,
+                                  receptive_field_radius,
+                                  input_radius,
+                                  no_channels,
+                                  subsampling_rate,
+                                  chunks=True,
+                                  shuffle=True):
+
+    """ Umbrella function for setting the file names and extraction methods"""
+
+    # Set the directory name:
+    if shuffle:
+        patchlib_dir = 'PatchLibs_Upsample%02i_Input%02i_Recep%02i_Subsample%04i' \
+                       % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                          subsampling_rate)
+    else:
+        patchlib_dir = 'PatchLibs_NoShuffle_Upsample%02i_Input%02i_Recep%02i_Subsample%04i' \
+                       % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
+                          subsampling_rate)
+
+    data_path_subject = os.path.join(data_dir, subject_id, data_subpath)
+    save_dir_subject = os.path.join(save_dir, subject_id, patchlib_dir)
+
+    if shuffle:
+        filenames_list = extract_patches_shuffle(data_dir=data_path_subject,
+                                                 save_dir=save_dir_subject,
+                                                 inputfile_name=inputfile_name,
+                                                 outputfile_name=outputfile_name,
+                                                 upsampling_rate=upsampling_rate,
+                                                 receptive_field_radius=receptive_field_radius,
+                                                 input_radius=input_radius,
+                                                 no_channels=no_channels,
+                                                 sampling_rate=subsampling_rate,
+                                                 chunks=chunks)
+    else:
+        filenames_list = extract_patches(data_dir=data_path_subject,
+                                         save_dir=save_dir_subject,
+                                         inputfile_name=inputfile_name,
+                                         outputfile_name=outputfile_name,
+                                         upsampling_rate=upsampling_rate,
+                                         receptive_field_radius=receptive_field_radius,
+                                         input_radius=input_radius,
+                                         no_channels=no_channels,
+                                         sampling_rate=subsampling_rate,
+                                         chunks=chunks)
+    return filenames_list
 
 
 def fetch_subjects_list(cohort_name):
@@ -130,7 +164,7 @@ def fetch_subjects_list(cohort_name):
     return subjects_list
 
 
-def create_hdf5(filename, input_library, output_library):
+def create_hdf5(filename, input_library, output_library, chunks=True):
     """ Save the given input and output patch library in HDF5 format. In the main training data generation script,
     create_training_data(), to reduce memory burden,  we first create patch library for each patient using this script
     and then merge them together using merge_hdf5().
@@ -145,13 +179,15 @@ def create_hdf5(filename, input_library, output_library):
 
     f = h5py.File(filename, 'w')
     f.create_dataset("input_lib", data=input_library,
-                     maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
+                     maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]),
+                     chunks=chunks)
     f.create_dataset("output_lib", data=output_library,
-                     maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+                     maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]),
+                     chunks=chunks)
     f.close()
 
 
-def merge_hdf5(global_filename, filenames_list):
+def merge_hdf5(global_filename, filenames_list, chunks=True):
 
     """ Merge patch-libraries (in HDF5 format) for individual subjects into a single h5 file.
 
@@ -177,8 +213,12 @@ def merge_hdf5(global_filename, filenames_list):
         raise Warning("The number of data in in/ouput library don't match!!")
     else:
         g = h5py.File(global_filename, 'w')
-        g.create_dataset("input_lib", shape=(no_data_input, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
-        g.create_dataset("output_lib", shape=(no_data_input, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+        g.create_dataset("input_lib",
+                         shape=(no_data_input, shape_in[1], shape_in[2], shape_in[3], shape_in[4]),
+                         chunks=True)
+        g.create_dataset("output_lib",
+                         shape=(no_data_input, shape_out[1], shape_out[2], shape_out[3], shape_out[4]),
+                         chunks=True)
 
     # Sequentially fill the global h5 file with small h5 files in 'filenames_list'.
     start_idx = 0
@@ -216,22 +256,30 @@ def load_and_shuffle_hdf5(filename):
 
 # Extract corresponding patches from DTI volumes. Here we sample all patches centred at a foreground voxel.
 def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
-                    highres_name='dt_b1000_', lowres_name='dt_b1000_lowres_2_',
-                    upsampling_rate=2, receptive_field_radius=2, input_radius=5, no_channels=6,
-                    sampling_rate=32, shuffle=True):
+                    save_dir='/Users/ryutarotanno/tmp/IPMI/',
+                    inputfile_name='dt_b1000_lowres_2_',
+                    outputfile_name='dt_b1000_',
+                    upsampling_rate=2,
+                    receptive_field_radius=2,
+                    input_radius=5,
+                    no_channels=6,
+                    sampling_rate=32,
+                    chunks=True):
     """
     Args:
-        data_dir (str): the directory of the diffusion tensor images (DTIs) of a single patient
-        highres_name:  the file name of the original DTIs
-        lowres_name:  the file name of the downsampled DTIs
+        data_dir (str): the directory of the diffusion tensor images (DTIs) of a single subject
+        save_dir (str): the dir for saving the subsampled patchlibrary from a given subject
+        inputfile_name:  the file name of the input nifti data. e.g. downsampled DTI
+        outputfile_name: the file name of the output nifti data e.g. original DTIs
         upsampling_rate: the upsampling rate
         receptive_field_radius: the width of the receptive field is (2*receptive_field_radius + 1)
         input_radius: the width of the input patch is (2*input_radius + 1)
         no_channels (int) : the number of channels in each voxel
         sampling_rate (int): subsample on the usable patch pairs at rate 1/sampling_rate.
-        shuffle (logic) : if True (default), apply reverse shuffling to the output patches.
+        chunks (logic) : set true if you want to create a chunked HDF file.
 
     Returns:
+        filenames_list (list): the names of all the extracted libraries.
     """
     start_time = timeit.default_timer()
 
@@ -242,12 +290,12 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
     # Load the original and down-sampled DTI volumes, and pad with zeros so all brain-voxel-centred pathces
     # are extractable.
     pad = max(input_radius + 1, output_radius + upsampling_rate)  # padding width
-    dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, highres_name))
+    dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
     dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
     dti_highres = np.pad(dti_highres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
                          mode='constant', constant_values=0)
 
-    dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, lowres_name))
+    dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
     dti_lowres[:, :, :, 0] += 1
     dti_lowres = np.pad(dti_lowres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
                         mode='constant', constant_values=0)
@@ -272,18 +320,12 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                                 2 * input_radius + 1,
                                 2 * input_radius + 1,
                                 no_channels), dtype='float64')
-    if shuffle:
-        output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * (output_radius // upsampling_rate) + 1,
-                                     2 * (output_radius // upsampling_rate) + 1,
-                                     2 * (output_radius // upsampling_rate) + 1,
-                                     no_channels * upsampling_rate**3), dtype='float64')
-    else:
-        output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * output_radius + upsampling_rate,
-                                     2 * output_radius + upsampling_rate,
-                                     2 * output_radius + upsampling_rate,
-                                     no_channels), dtype='float64')
+
+    output_library = np.ndarray((len(brain_indices_subsampled),
+                                 2 * output_radius + upsampling_rate,
+                                 2 * output_radius + upsampling_rate,
+                                 2 * output_radius + upsampling_rate,
+                                 no_channels), dtype='float64')
 
     for patch_idx, (i, j, k) in enumerate(brain_indices_subsampled):
         input_library[patch_idx, :, :, :, :] = \
@@ -291,48 +333,61 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
                    (j - upsampling_rate * input_radius):(j + upsampling_rate * (input_radius + 1)):upsampling_rate,
                    (k - upsampling_rate * input_radius):(k + upsampling_rate * (input_radius + 1)):upsampling_rate, 2:]
 
-        if shuffle:
-            output_library[patch_idx, :, :, :, :] = backward_periodic_shuffle(
-                patch=dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
-                                  (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
-                                  (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:],
-                upsampling_rate=upsampling_rate)
-        else:
-            output_library[patch_idx, :, :, :, :] = \
-            dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
-            (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
-            (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
+        output_library[patch_idx, :, :, :, :] = \
+        dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
+        (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
+        (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
 
 
     end_time = timeit.default_timer()
 
     print("It took %f secs." % (end_time - start_time))
 
-    return input_library, output_library
+    filenames_list = []
+    filename = 'Chunk0001.h5'
+
+    try:
+        create_hdf5(filename=os.path.join(save_dir, filename),
+                    input_library=input_library,
+                    output_library=output_library,
+                    chunks=chunks)
+
+        filenames_list.append(os.path.join(save_dir, filename))
+
+        end_time = timeit.default_timer()
+        print("It took %f secs." % (end_time - start_time))
+
+    except KeyboardInterrupt:
+        os.remove(os.path.join(save_dir, filename))
+        print("removing %s" % filename)
+        raise
+
+    return filenames_list
 
 
 # Extract corresponding patches from DTI volumes. Here we sample all patches centred at a foreground voxel.
-def extract_patches_fast_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
-                                 save_dir='/Users/ryutarotanno/tmp/IPMI/',
-                                 highres_name='dt_b1000_',
-                                 lowres_name='dt_b1000_lowres_2_',
-                                 upsampling_rate=2,
-                                 receptive_field_radius=2,
-                                 input_radius=5,
-                                 no_channels=6,
-                                 sampling_rate=32):
-    """
+def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
+                            save_dir='/Users/ryutarotanno/tmp/IPMI/',
+                            inputfile_name='dt_b1000_lowres_2_',
+                            outputfile_name='dt_b1000_',
+                            upsampling_rate=2,
+                            receptive_field_radius=2,
+                            input_radius=5,
+                            no_channels=6,
+                            sampling_rate=32,
+                            chunks=True):
+
+    """ Extract pairs of high-res and low-res patches where reverse shuffling is applied to the former.
     Args:
         data_dir (str): the directory of the diffusion tensor images (DTIs) of a single patient
-        highres_name:  the file name of the original DTIs
-        lowres_name:  the file name of the downsampled DTIs
+        inputfile_name:  the file name of the input nifti data. e.g. downsampled DTI
+        outputfile_name: the file name of the output nifti data e.g. original DTIs
         upsampling_rate: the upsampling rate
         receptive_field_radius: the width of the receptive field is (2*receptive_field_radius + 1)
         input_radius: the width of the input patch is (2*input_radius + 1)
         no_channels (int) : the number of channels in each voxel
         sampling_rate (int): subsample on the usable patch pairs at rate 1/sampling_rate.
-        shuffle (logic) : if True (default), apply reverse shuffling to the output patches.
-
+        chunks (logical) : set true if you want to create a chunked HDF file.
     Returns:
     """
     # Define width of all patches for brevity:
@@ -351,8 +406,8 @@ def extract_patches_fast_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test
         start_time = timeit.default_timer()
 
         # --------------------- Load the original and down-sampled DTI volumes ------------------------:
-        dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, highres_name))
-        dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, lowres_name))
+        dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
+        dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
 
         dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
         dti_lowres[:, :, :, 0] += 1
@@ -457,7 +512,9 @@ def extract_patches_fast_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test
         filename = 'Shift%04i.h5' % (itr + 1)
         try:
             create_hdf5(filename=os.path.join(save_dir, filename),
-                        input_library=input_library, output_library=output_library)
+                        input_library=input_library,
+                        output_library=output_library,
+                        chunks=chunks)
 
             filenames_list.append(os.path.join(save_dir, filename))
 
@@ -637,5 +694,6 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
 
 if __name__ == "__main__":
     read_dt_volume()
+    extract_patches_shuffle()
     extract_patches()
     create_training_data()
