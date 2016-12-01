@@ -27,6 +27,8 @@ opt['us'] = 2
 opt['n'] = 5
 opt['m'] = 2
 
+opt['validation_fraction'] = 0.5
+
 opt['data_dir'] = '/media/daniel/HDD/SuperRes/Training/IPMI/' # '../data/'
 opt['save_dir'] = '../models'
 

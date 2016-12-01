@@ -5,9 +5,11 @@ import sys
 import timeit
 
 import cPickle as pkl
+import h5py
 import numpy as np
 import tensorflow as tf
 
+import preprocess
 import sr_utility 
 import models
 
@@ -45,6 +47,7 @@ def load_data(opt):
 	data.append(valid_y_scaled)
 	return data
 
+'''
 def load_hdf5(opt):
 	cohort = opt['cohort']
 	no_subjects =opt['no_subjects'] 
@@ -54,13 +57,14 @@ def load_hdf5(opt):
 	m = opt['m']
 	data_dir = opt['data_dir']
 	
-	filename = data_dir + 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%i_TS%i_SRi%03i_001.h5' \
+	filename = data_dir + 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_001.h5' \
 			% (cohort, us, 2*n+1, 2*n+1, no_subjects, sample_rate)
 	print filename
 	f = h5py.File(filename, 'r')
 	input_lib = f["input_lib"]
 	output_lib = f["output_lib"]
-	return input_lib, output_lib
+	print np.mean(input_lib)
+'''
 
 
 def define_checkpoint(opt):
@@ -119,22 +123,19 @@ def train_cnn(opt):
 	data_dir = opt['data_dir']
 	save_dir = opt['save_dir']
 	
+	# Set the directory for saving checkpoints:
+	checkpoint_dir = define_checkpoint(opt)
+	opt['checkpoint_dir'] = checkpoint_dir
+	
 	# ---------------------------load data--------------------------:
-	load_hdf5(opt)
-	data = load_data(opt)
-	train_x_scaled = np.reshape(data[0], (-1,5,5,5,6), order='F')
-	train_x_mean = np.reshape(data[1], (-1,5,5,5,6), order='F')
-	train_x_std = np.reshape(data[2], (-1,5,5,5,6), order='F')
-	train_y_scaled = np.reshape(data[3], (-1,1,1,1,2*2*2*6), order='F')
-	train_y_mean = np.reshape(data[4], (-1,1,1,1,2*2*2*6), order='F')
-	train_y_std = np.reshape(data[5], (-1,1,1,1,2*2*2*6), order='F')
-	valid_x_scaled = np.reshape(data[6], (-1,5,5,5,6), order='F')
-	valid_y_scaled = np.reshape(data[7], (-1,1,1,1,2*2*2*6), order='F')
+	data = preprocess.load_hdf5(opt)
+	##############################################ndata
+	out_shape = data['out']['X'].shape[-1]
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
 	x = tf.placeholder(tf.float32, [None,n,n,n,6], name='lo_res') 
-	y = tf.placeholder(tf.float32, [None,1,1,1,6*(m**3)], name='hi_res') 
+	y = tf.placeholder(tf.float32, [None,1,1,1,out_shape[-1]], name='hi_res') 
 	lr = tf.placeholder(tf.float32, [], name='learning_rate')
 	keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 	global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -146,21 +147,10 @@ def train_cnn(opt):
 	# Define gradient descent op
 	optim = opt['optimizer'](learning_rate=lr)
 	train_step = optim.minimize(cost, global_step=global_step)
-	mse = tf.reduce_mean(tf.square(train_y_std * (y - y_pred)))
+	mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
 	
 	# -------------------------- Start training -----------------------------:
 	saver = tf.train.Saver()
-	# Set the directory for saving checkpoints:
-	checkpoint_dir = define_checkpoint(opt)
-	opt['checkpoint_dir'] = checkpoint_dir
-	
-	# Save the transforms used for data normalisation:
-	print('... saving transformsfor data normalisation for test time')
-	transform = {'input_mean': train_x_mean, 'input_std': train_x_std,
-				 'output_mean': train_y_mean, 'output_std': train_y_std}
-	with open(os.path.join(checkpoint_dir, 'transforms.pkl'), 'wb') as fp:
-		pkl.dump(transform, fp, protocol=pkl.HIGHEST_PROTOCOL)
-	
 	print('... training')
 	with tf.Session() as sess:
 		# Run the Op to initialize the variables.
@@ -168,7 +158,7 @@ def train_cnn(opt):
 		sess.run(init)
 	
 		# Compute number of minibatches for training, validation and testing
-		n_train_batches = train_x_scaled.shape[0] // bs
+		n_train_batches = data['in']['X'].shape[0] // bs
 		n_valid_batches = valid_x_scaled.shape[0] // bs
 	
 		# early-stopping parameters
