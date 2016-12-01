@@ -408,6 +408,8 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
                                for j in xrange(upsampling_rate)
                                for i in xrange(upsampling_rate)]
 
+    print(shift_indices)
+
     total_possible_patches = 0
     filenames_list = []
 
