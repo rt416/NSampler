@@ -34,7 +34,7 @@ def create_training_data(opt):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
     data_parent_dir = opt['data_parent_dir']
-    save_parent_dir = opt['save_parent_dir']
+    save_parent_dir = opt['save_parent_dir']  # this is where you save your temporary chunks
     data_subpath = opt['data_subpath']
     save_dir = opt['save_dir']
     cohort = opt['cohort']
@@ -596,16 +596,29 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                dim_j * upsampling_rate,
                                dim_filters / (upsampling_rate ** 3)), dtype='float64')
 
-        for (i, j, k, c) in [(i, j, k, c) for i, j, k, c in np.ndindex(patch_ps.shape)]:
-            patch_ps[i, j, k, c] = patch[i // upsampling_rate,
-                                         j // upsampling_rate,
-                                         k // upsampling_rate,
-                                         np.mod(i, upsampling_rate) +
-                                         np.mod(j, upsampling_rate) * upsampling_rate +
-                                         np.mod(k, upsampling_rate) * (upsampling_rate**2) +
-                                         c * (upsampling_rate**3 - 1)]
+        # Apply reverse shuffling (optional):
+        shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
+                                     for j in xrange(upsampling_rate)
+                                     for i in xrange(upsampling_rate)]
+
+        no_channels = dim_filters / (upsampling_rate ** 3)
+
+        for c in xrange(dim_filters):
+            for (i, j, k) in shuffle_indices:
+                patch_ps[i::upsampling_rate,
+                         j::upsampling_rate,
+                         k::upsampling_rate,
+                         c // no_channels] = patch[:, :, :, c]
+
+
     elif patch.ndim == 5:  # apply periodic shuffling to a batch of examples.
+
         batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
+
+        # Apply reverse shuffling (optional):
+        shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
+                                     for j in xrange(upsampling_rate)
+                                     for i in xrange(upsampling_rate)]
 
         # apply periodic shuffling:
         patch_ps = np.ndarray((batch_size,
@@ -614,15 +627,16 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                dim_j * upsampling_rate,
                                dim_filters / (upsampling_rate ** 3)), dtype='float64')
 
-        for (b, i, j, k, c) in [(b, i, j, k, c) for b, i, j, k, c in np.ndindex(patch_ps.shape)]:
-            patch_ps[b, i, j, k, c] = patch[b,
-                                            i // upsampling_rate,
-                                            j // upsampling_rate,
-                                            k // upsampling_rate,
-                                            np.mod(i, upsampling_rate) +
-                                            np.mod(j, upsampling_rate) * upsampling_rate +
-                                            np.mod(k, upsampling_rate) * (upsampling_rate ** 2) +
-                                            c * (upsampling_rate ** 3 - 1)]
+        no_channels = dim_filters / (upsampling_rate ** 3)
+
+        for c in xrange(dim_filters):
+            for (i, j, k) in shuffle_indices:
+                patch_ps[:,
+                         i::upsampling_rate,
+                         j::upsampling_rate,
+                         k::upsampling_rate,
+                         c // no_channels] = patch[:, :, :, :, c]
+
     return patch_ps
 
 
