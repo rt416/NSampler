@@ -79,6 +79,9 @@ def create_training_data(opt):
                                                            shuffle=chunks)
 
         # ------------------ Merge all patch libraries into a single h5 file: -----------------------------------:
+        if not (os.path.exists(save_dir)):
+            os.makedirs(save_dir)
+
         if shuffle:
             patchlib_name_cohort = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5' \
                                    % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
@@ -123,6 +126,9 @@ def main_extract_patches_and_save(subject_id,
 
     data_path_subject = os.path.join(data_dir, subject_id, data_subpath)
     save_dir_subject = os.path.join(save_dir, subject_id, patchlib_dir)
+
+    if not (os.path.exists(save_dir_subject)):
+        os.makedirs(save_dir_subject)
 
     if shuffle:
         filenames_list = extract_patches_shuffle(data_dir=data_path_subject,
