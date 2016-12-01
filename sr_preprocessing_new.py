@@ -57,6 +57,8 @@ def create_training_data(opt):
     # Generate 'no_randomisation' many separate training sets.
     for idx_randomisation in xrange(1, no_randomisation + 1):
 
+
+
         # -----------------------  Extract patches from each subject -----------------------------------:
         filenames_list = []  # store all the filenames for the subsequent merging.
 

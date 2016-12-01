@@ -54,13 +54,17 @@ def create_training_data(opt):
     subjects_list = fetch_subjects_list(cohort_name=cohort)
 
     # Generate 'no_randomisation' many separate training sets.
+
     for idx_randomisation in xrange(1, no_randomisation + 1):
 
         # -----------------------  Extract patches from each subject -----------------------------------:
+
+        start_time = timeit.default_timer()
+
         filenames_list = []  # store all the filenames for the subsequent merging.
 
         for subject_id in subjects_list:
-            print("Processing subject: %s" % subject_id)
+            print("\nProcessing subject: %s" % subject_id)
 
             highres_name = 'dt_b' + str(b_value) + '_'
             lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
@@ -96,6 +100,10 @@ def create_training_data(opt):
         merge_hdf5(global_filename=global_filename,
                    filenames_list=filenames_list,
                    chunks=chunks)
+
+        end_time = timeit.default_timer()
+
+        print("It took %f secs." % (end_time - start_time))
 
 
 def main_extract_patches_and_save(subject_id,
@@ -537,8 +545,9 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
             print("removing %s" % filename)
             raise
 
-        print("total number of possible patchs+ %i" % total_possible_patches)
-        return filenames_list
+        print("total number of possible patchs+ %i \n" % total_possible_patches)
+
+    return filenames_list
 
 
 def forward_periodic_shuffle(patch, upsampling_rate = 2):
