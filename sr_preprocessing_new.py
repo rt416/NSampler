@@ -110,7 +110,7 @@ def create_training_data(opt):
                                     % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                     len(subjects_list), sampling_rate, idx_randomisation)
         else:
-            patchlib_name_cohort = 'PatchLibs_NoShuffle_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5' \
+            patchlib_name_cohort = 'PatchLibs_NoShuffle_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5'\
                                     % (cohort, upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                                     len(subjects_list), sampling_rate, idx_randomisation)
 
@@ -207,9 +207,11 @@ def create_hdf5(filename, input_library, output_library):
 
     f = h5py.File(filename, 'w')
     f.create_dataset("input_lib", data=input_library,
-                     maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
+                     maxshape=(None, shape_in[1], shape_in[2], shape_in[3], shape_in[4]),
+                     chunks=True)
     f.create_dataset("output_lib", data=output_library,
-                     maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+                     maxshape=(None, shape_out[1], shape_out[2], shape_out[3], shape_out[4]),
+                     chunks=True)
     f.close()
 
 
@@ -240,8 +242,12 @@ def merge_hdf5(global_filename, filenames_list):
         raise Warning("The number of data in in/ouput library don't match!!")
     else:
         g = h5py.File(global_filename, 'w')
-        g.create_dataset("input_lib", shape=(no_data_input, shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
-        g.create_dataset("output_lib", shape=(no_data_input, shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
+        g.create_dataset("input_lib",
+                         shape=(no_data_input, shape_in[1], shape_in[2], shape_in[3], shape_in[4]),
+                         chunks=True)
+        g.create_dataset("output_lib",
+                         shape=(no_data_input, shape_out[1], shape_out[2], shape_out[3], shape_out[4]),
+                         chunks=True)
 
     # Sequentially fill the global h5 file with small h5 files in 'filenames_list'.
     start_idx = 0
@@ -602,18 +608,15 @@ def subsample_patchlib(patchlib_dir,
         indices_sub = indices[idx_sub]
 
         try:
-            if not(indices_sub.size == 0):
-                s = h5py.File(os.path.join(save_dir, patchlib_name_sub), 'w')
-                shape_in_2 = input_lib[indices_sub, :, :, :, :].shape
-                print("the shape of the selected chunk is %s:" % (shape_in_2, ))
+            if not(indices_sub.size == 0) or not(indices_sub.size == 1):
+
+                create_hdf5(filename=os.path.join(save_dir, patchlib_name_sub),
+                            input_library=input_lib[indices_sub, :, :, :, :],
+                            output_library=output_lib[indices_sub, :, :, :, :])
+
+                print("the shape of the selected chunk is %s:" % (input_lib[indices_sub, :, :, :, :].shape, ))
                 print("the shape of the max_shape is %s:" % ((len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]), ))
 
-                s.create_dataset("input_lib", data=input_lib[indices_sub, :, :, :, :],
-                                 maxshape=(len(indices_sub), shape_in[1], shape_in[2], shape_in[3], shape_in[4]))
-
-                s.create_dataset("output_lib", data=output_lib[indices_sub, :, :, :, :],
-                                 maxshape=(len(indices_sub), shape_out[1], shape_out[2], shape_out[3], shape_out[4]))
-                s.close()
                 c.close()
                 end_time = timeit.default_timer()
                 print("It took %f secs." % (end_time - start_time))
@@ -622,9 +625,13 @@ def subsample_patchlib(patchlib_dir,
                 print("Empty subsampled chunk. Return none ...")
         except KeyboardInterrupt:
             os.remove(os.path.join(save_dir, patchlib_name_sub))
-            print("removing subsampled chunk %s" % patchlib_name_sub)
-            pass
-
+            print("Keyboard interrupted. Removing subsampled chunk %s" % patchlib_name_sub)
+            raise
+        except ValueError as ve:
+            os.remove(os.path.join(save_dir, patchlib_name_sub))
+            print("Removing subsampled chunk %s" % patchlib_name_sub)
+            print(ve)
+            raise
     else:
         print("Already exists.")
         return os.path.join(save_dir, patchlib_name_sub)
