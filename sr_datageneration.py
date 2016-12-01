@@ -64,19 +64,19 @@ def create_training_data(opt):
 
             highres_name = 'dt_b' + str(b_value) + '_'
             lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
-            filenames_list = main_extract_patches_and_save(subject_id=subject_id,
-                                                           data_dir=data_parent_dir,
-                                                           data_subpath=data_subpath,
-                                                           save_dir=save_parent_dir,
-                                                           inputfile_name=lowres_name,
-                                                           outputfile_name=highres_name,
-                                                           upsampling_rate=upsampling_rate,
-                                                           receptive_field_radius=receptive_field_radius,
-                                                           input_radius=input_radius,
-                                                           no_channels=no_channels,
-                                                           subsampling_rate=subsampling_rate,
-                                                           chunks=chunks,
-                                                           shuffle=chunks)
+            filenames_list += main_extract_patches_and_save(subject_id=subject_id,
+                                                            data_dir=data_parent_dir,
+                                                            data_subpath=data_subpath,
+                                                            save_dir=save_parent_dir,
+                                                            inputfile_name=lowres_name,
+                                                            outputfile_name=highres_name,
+                                                            upsampling_rate=upsampling_rate,
+                                                            receptive_field_radius=receptive_field_radius,
+                                                            input_radius=input_radius,
+                                                            no_channels=no_channels,
+                                                            subsampling_rate=subsampling_rate,
+                                                            chunks=chunks,
+                                                            shuffle=chunks)
 
         # ------------------ Merge all patch libraries into a single h5 file: -----------------------------------:
         if not (os.path.exists(save_dir)):
@@ -230,6 +230,7 @@ def merge_hdf5(global_filename, filenames_list, chunks=True):
     start_idx = 0
 
     for idx, file in enumerate(filenames_list):
+
         start_time = timeit.default_timer()
 
         f = h5py.File(file, 'r')
@@ -241,13 +242,15 @@ def merge_hdf5(global_filename, filenames_list, chunks=True):
         g["input_lib"][start_idx:end_idx, :, :, :, :] = input_lib[:]
         g["output_lib"][start_idx:end_idx, :, :, :, :] = output_lib[:]
 
+        print('merging: %s' % (file, ))
+
         start_idx += input_lib.shape[0]
         f.close()
         print("removing the subject-specific file ...")
         os.remove(file)
 
         end_time = timeit.default_timer()
-        print("%i/%i subjects done. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
+        print("%i/%i files merged. It took %f secs." % (idx + 1, len(filenames_list), end_time - start_time))
 
     g.close()
 
