@@ -559,15 +559,154 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
 
     return filenames_list
 
+def extract_patches_new(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
+                        save_dir='/Users/ryutarotanno/tmp/IPMI/',
+                        highres_name='dt_b1000_',
+                        lowres_name='dt_b1000_lowres_2_',
+                        upsampling_rate=2,
+                        receptive_field_radius=2,
+                        input_radius=5,
+                        no_channels=6,
+                        sampling_rate=8,
+                        no_chunks=100,
+                        shuffle=True):
 
-def forward_periodic_shuffle(patch, upsampling_rate = 2):
+    """
+    Args:
+        data_dir (str): the directory of the diffusion tensor images (DTIs) of a single patient
+        save_dir: directory for saving the outputs
+        highres_name:  the file name of the original DTIs
+        lowres_name:  the file name of the downsampled DTIs
+        upsampling_rate: the upsampling rate
+        receptive_field_radius: the width of the receptive field is (2*receptive_field_radius + 1)
+        input_radius: the width of the input patch is (2*input_radius + 1)
+        no_channels (int) : the number of channels in each voxel
+        no_chunks (int): subsample on the usable patch pairs at rate 1/sampling_rate.
+        shuffle (logic) : if True (default), apply reverse shuffling to the output patches.
+
+    Returns:
+    """
+    # ---------------------- preprocess the high-res/low-res image volumes --------------------------:
+    # Define width of all patches for brevity:
+    input_width, receptive_field_width = 2 * input_radius + 1, 2 * receptive_field_radius + 1
+    output_radius = upsampling_rate * ((input_width - receptive_field_width + 1) // 2)
+
+    # Load the original and down-sampled DTI volumes, and pad with zeros so all brain-voxel-centred pathces
+    # are extractable.
+    pad = max(input_radius + 1, output_radius + upsampling_rate)  # padding width
+    dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, highres_name))
+    dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
+    dti_highres = np.pad(dti_highres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
+                         mode='constant', constant_values=0)
+
+    dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, lowres_name))
+    dti_lowres[:, :, :, 0] += 1
+    dti_lowres = np.pad(dti_lowres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
+                        mode='constant', constant_values=0)
+
+    print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+
+    dim_x_highres, dim_y_highres, dim_z_highres, dim_dt = dti_highres.shape
+    brain_mask = dti_highres[:, :, :, 0] == 1
+
+    # ------------------------ Extract patches and store in chunks -------------------------------:
+    if not (os.path.exists(save_dir)):
+        os.makedirs(save_dir)
+
+    # Get all the indices of voxels in the brain and subsample:
+    brain_indices = [(i, j, k) for i in xrange(dim_x_highres)
+                     for j in xrange(dim_y_highres)
+                     for k in xrange(dim_z_highres) if brain_mask[i, j, k] == True]
+
+    random.shuffle(brain_indices)  # shuffle the brain indices
+    brain_indices_subsampled = random.sample(brain_indices, len(brain_indices) // sampling_rate)
+
+    print('number of effective patches = %i' % len(brain_indices))
+    print('number of selected patches = %i' % len(brain_indices_subsampled))
+
+    print('number of effective patches = %i' % len(brain_indices))
+    chunk_size = len(brain_indices) // no_chunks
+    chunk_list = range(0, len(brain_indices_subsampled), chunk_size)
+
+    filenames_list = []  # store the list of file names for merging.
+
+    for itr, chunk_idx in enumerate(chunk_list):
+
+        filename = 'Chunk%04i.h5' % (itr + 1)
+        filenames_list.append(os.path.join(save_dir, filename))
+
+        if not (os.path.exists(os.path.join(save_dir, filename))):
+
+            print("Processing chunk %i/%i" % (itr + 1, len(chunk_list)))
+            start_time = timeit.default_timer()
+
+            # Construct patch libraries:
+            input_library = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        no_channels), dtype='float64')
+
+            if shuffle:
+                output_library = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
+                                             2 * (output_radius // upsampling_rate) + 1,
+                                             2 * (output_radius // upsampling_rate) + 1,
+                                             2 * (output_radius // upsampling_rate) + 1,
+                                             no_channels * upsampling_rate ** 3), dtype='float64')
+            else:
+                output_library = np.ndarray((len(brain_indices[chunk_idx:chunk_idx + chunk_size]),
+                                             2 * output_radius + upsampling_rate,
+                                             2 * output_radius + upsampling_rate,
+                                             2 * output_radius + upsampling_rate,
+                                             no_channels), dtype='float64')
+
+            for patch_idx, (i, j, k) in enumerate(brain_indices[chunk_idx:chunk_idx + chunk_size]):
+                input_library[patch_idx, :, :, :, :] = \
+                    dti_lowres[
+                    (i - upsampling_rate * input_radius):(i + upsampling_rate * (input_radius + 1)):upsampling_rate,
+                    (j - upsampling_rate * input_radius):(j + upsampling_rate * (input_radius + 1)):upsampling_rate,
+                    (k - upsampling_rate * input_radius):(k + upsampling_rate * (input_radius + 1)):upsampling_rate, 2:]
+
+                if shuffle:
+                    output_library[patch_idx, :, :, :, :] = backward_periodic_shuffle(
+                        patch=dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
+                              (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
+                              (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:],
+                        upsampling_rate=upsampling_rate)
+                else:
+                    output_library[patch_idx, :, :, :, :] = \
+                        dti_highres[(i - output_radius): (i + output_radius + (upsampling_rate - 1) + 1),
+                        (j - output_radius): (j + output_radius + (upsampling_rate - 1) + 1),
+                        (k - output_radius): (k + output_radius + (upsampling_rate - 1) + 1), 2:]
+
+            try:
+                # Save the chunk patchlib as h5:
+                create_hdf5(filename=os.path.join(save_dir, filename),
+                            input_library=input_library, output_library=output_library)
+
+                end_time = timeit.default_timer()
+                print("It took %f secs." % (end_time - start_time))
+
+            except KeyboardInterrupt:
+                os.remove(os.path.join(save_dir, filename))
+                print("removing %s" % filename)
+                pass
+
+
+        else:
+            print('Chunk %i/%i already exists' % (itr + 1, len(chunk_list)))
+
+    del dti_highres, dti_lowres, brain_indices
+    return filenames_list
+
+
+def forward_periodic_shuffle(patch, upsampling_rate=2):
     """ This is the 3D extension of periodic shuffling (equation (4) in Magic Pony CVPR 2016).
     Args:
         patch (numpy array): 3 or 4 dimensional array with the last dimension being the dt components
         upsampling_rate (int): upsampling rate
 
     Returns:
-
     """
     if patch.ndim == 3:
         if patch.shape[2] == (upsampling_rate ** 2):
@@ -577,11 +716,18 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                   dim_j * upsampling_rate),
                                   dtype='float64')
 
-            for (i, j) in [(i, j) for i, j in np.ndindex(patch_ps.shape)]:
-                patch_ps[i, j] = patch[i // upsampling_rate,
-                                       j // upsampling_rate,
-                                       np.mod(i, upsampling_rate) +
-                                       np.mod(j, upsampling_rate) * upsampling_rate]
+            # Apply reverse shuffling (optional):
+            shuffle_indices = [(i, j)
+                               for j in xrange(upsampling_rate)
+                               for i in xrange(upsampling_rate)]
+
+            no_channels = dim_filters / (upsampling_rate ** 3)
+
+            for (i, j) in shuffle_indices:
+                patch_ps[i::upsampling_rate,
+                         j::upsampling_rate] \
+                    = patch[:, :, np.mod(i, upsampling_rate) +
+                                  np.mod(j, upsampling_rate) * upsampling_rate]
 
         else:
             dim_i, dim_j, dim_filters = patch.shape
@@ -591,12 +737,20 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                    dim_j * upsampling_rate,
                                    dim_filters / (upsampling_rate**2)), dtype='float64')
 
-            for (i, j, c) in [(i, j, c) for i, j, c in np.ndindex(patch_ps.shape)]:
-                patch_ps[i, j, c] = patch[i // upsampling_rate,
-                                          j // upsampling_rate,
-                                          np.mod(i, upsampling_rate) +
-                                          np.mod(j, upsampling_rate) * upsampling_rate +
-                                          c * (upsampling_rate**2 - 1)]
+            shuffle_indices = [(i, j)
+                               for j in xrange(upsampling_rate)
+                               for i in xrange(upsampling_rate)]
+
+            no_channels = dim_filters / (upsampling_rate ** 2)
+
+            for c in xrange(dim_filters // (upsampling_rate ** 2)):
+                for (i, j) in shuffle_indices:
+                    patch_ps[i::upsampling_rate,
+                             j::upsampling_rate,
+                             c] = patch[:, :, np.mod(i, upsampling_rate) +
+                                              np.mod(j, upsampling_rate) * upsampling_rate +
+                                              c * (upsampling_rate**2)]
+
     elif patch.ndim == 4:
         dim_i, dim_j, dim_k, dim_filters = patch.shape
 
@@ -606,19 +760,19 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                dim_j * upsampling_rate,
                                dim_filters / (upsampling_rate ** 3)), dtype='float64')
 
-        # Apply reverse shuffling (optional):
         shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
                                      for j in xrange(upsampling_rate)
                                      for i in xrange(upsampling_rate)]
 
         no_channels = dim_filters / (upsampling_rate ** 3)
 
-        for c in xrange(dim_filters):
+        for c in xrange(dim_filters // (upsampling_rate ** 3)):
             for (i, j, k) in shuffle_indices:
-                patch_ps[i::upsampling_rate,
-                         j::upsampling_rate,
-                         k::upsampling_rate,
-                         c // no_channels] = patch[:, :, :, c]
+                patch_ps[i::upsampling_rate, j::upsampling_rate, k::upsampling_rate, c] \
+                    = patch[:, :, :, np.mod(i, upsampling_rate) +
+                                     np.mod(j, upsampling_rate) * upsampling_rate +
+                                     np.mod(k, upsampling_rate) * (upsampling_rate**2) +
+                                     c * (upsampling_rate**3)]
 
     elif patch.ndim == 5:  # apply periodic shuffling to a batch of examples.
         batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
@@ -628,23 +782,21 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                                      for j in xrange(upsampling_rate)
                                      for i in xrange(upsampling_rate)]
 
-        # apply periodic shuffling:
         patch_ps = np.ndarray((batch_size,
                                dim_i * upsampling_rate,
                                dim_j * upsampling_rate,
                                dim_j * upsampling_rate,
                                dim_filters / (upsampling_rate ** 3)), dtype='float64')
 
-        no_channels = dim_filters / (upsampling_rate ** 3)
+        no_channels = dim_filters // (upsampling_rate ** 3)
 
-        for c in xrange(dim_filters):
+        for c in xrange(dim_filters // (upsampling_rate ** 3)):
             for (i, j, k) in shuffle_indices:
-                patch_ps[:,
-                         i::upsampling_rate,
-                         j::upsampling_rate,
-                         k::upsampling_rate,
-                         c // no_channels] = patch[:, :, :, :, c]
-
+                patch_ps[:, i::upsampling_rate, j::upsampling_rate, k::upsampling_rate, c] \
+                    = patch[:, :, :, :, np.mod(i, upsampling_rate) +
+                                        np.mod(j, upsampling_rate) * upsampling_rate +
+                                        np.mod(k, upsampling_rate) * (upsampling_rate**2) +
+                                        c * (upsampling_rate**3)]
     return patch_ps
 
 
@@ -656,60 +808,70 @@ def backward_periodic_shuffle(patch, upsampling_rate=2):
         upsampling_rate (int): upsampling rate
     Returns:
     """
-    if patch.ndim == 2:
+    if patch.ndim == 2:  # 2d image
         dim_i, dim_j = patch.shape
 
-        # apply periodic shuffling:
-        patch_bps = np.ndarray((dim_i / upsampling_rate,
-                                dim_j / upsampling_rate,
-                                upsampling_rate ** 2), dtype='float64')
+        shuffle_indices = [(i, j)
+                           for j in xrange(upsampling_rate)
+                           for i in xrange(upsampling_rate)]
+        shuffled_arrays = []
 
-        for (i, j, c) in [(i, j, c) for i, j, c in np.ndindex(patch_bps.shape)]:
-            patch_bps[i, j, c] = patch[upsampling_rate * i + np.mod(c, upsampling_rate),
-                                       upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate)]
+        for (i, j) in shuffle_indices:
+            shuffled_arrays.append(patch[i::upsampling_rate,
+                                         j::upsampling_rate])
 
-    elif patch.ndim == 3:
-        dim_i, dim_j, dim_filters = patch.shape
+        patch_bps = np.stack(shuffled_arrays, axis=2)  # this is the reshuffled version.
+        shuffled_arrays = []
+    elif patch.ndim == 3:  # 2d image with channels
+        dim_i, dim_j, no_channels = patch.shape
 
-        # apply periodic shuffling:
-        patch_bps = np.ndarray((dim_i / upsampling_rate,
-                                dim_j / upsampling_rate,
-                                dim_filters * (upsampling_rate**2)), dtype='float64')
+        shuffle_indices = [(i, j) for j in xrange(upsampling_rate)
+                                  for i in xrange(upsampling_rate)]
+        shuffled_arrays = []
 
-        for (i, j, c) in [(i, j, c) for i, j, c in np.ndindex(patch_bps.shape)]:
-            patch_bps[i, j, c] = patch[upsampling_rate * i + np.mod(c, upsampling_rate),
-                                       upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
-                                       c // (upsampling_rate**2)]
-    elif patch.ndim == 4:
-        dim_i, dim_j, dim_k, dim_filters = patch.shape
+        for c in xrange(no_channels):
+            for (i, j) in shuffle_indices:
+                shuffled_arrays.append(patch[i::upsampling_rate,
+                                             j::upsampling_rate, c])
 
-        # apply periodic shuffling:
-        patch_bps = np.ndarray((dim_i / upsampling_rate,
-                                dim_j / upsampling_rate,
-                                dim_k / upsampling_rate,
-                                dim_filters * (upsampling_rate ** 3)), dtype='float64')
+        patch_bps = np.stack(shuffled_arrays, axis=2)  # this is the reshuffled version.
+        shuffled_arrays = []
+    elif patch.ndim == 4:  # 3d image with channels
+        dim_i, dim_j, dim_k, no_channels = patch.shape
 
-        for (i, j, k, c) in [(i, j, k, c) for i, j, k, c in np.ndindex(patch_bps.shape)]:
-            patch_bps[i, j, k, c] = patch[upsampling_rate * i + np.mod(c, upsampling_rate),
-                                          upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
-                                          upsampling_rate * k + np.mod(c // upsampling_rate**2, upsampling_rate),
-                                          c // (upsampling_rate ** 3)]
-    elif patch.ndim == 5:
-        batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
+        shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
+                                     for j in xrange(upsampling_rate)
+                                     for i in xrange(upsampling_rate)]
+        shuffled_arrays = []
 
-        # apply periodic shuffling:
-        patch_bps = np.ndarray((batch_size,
-                                dim_i / upsampling_rate,
-                                dim_j / upsampling_rate,
-                                dim_k / upsampling_rate,
-                                dim_filters * (upsampling_rate ** 3)), dtype='float64')
+        for c in xrange(no_channels):
+            for (i, j, k) in shuffle_indices:
+                shuffled_arrays.append(patch[i::upsampling_rate,
+                                             j::upsampling_rate,
+                                             k::upsampling_rate, c])
 
-        for (b, i, j, k, c) in [(b, i, j, k, c) for b, i, j, k, c in np.ndindex(patch_bps.shape)]:
-            patch_bps[b, i, j, k, c] = patch[b, upsampling_rate * i + np.mod(c, upsampling_rate),
-                                             upsampling_rate * j + np.mod(c // upsampling_rate, upsampling_rate),
-                                             upsampling_rate * k + np.mod(c // upsampling_rate ** 2, upsampling_rate),
-                                             c // (upsampling_rate ** 3)]
+        patch_bps = np.stack(shuffled_arrays, axis=3)  # this is the reshuffled version.
+        shuffled_arrays = []
 
+    elif patch.ndim == 5:  # a batch of 3d images with channels
+        batch_size, dim_i, dim_j, dim_k, no_channels = patch.shape
+
+        shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
+                                     for j in xrange(upsampling_rate)
+                                     for i in xrange(upsampling_rate)]
+
+        shuffled_arrays = []
+
+        for c in xrange(no_channels):
+            for (i, j, k) in shuffle_indices:
+                shuffled_arrays.append(patch[:,
+                                             i::upsampling_rate,
+                                             j::upsampling_rate,
+                                             k::upsampling_rate,
+                                             c])
+
+        patch_bps = np.stack(shuffled_arrays, axis=4)  # this is the reshuffled version.
+        shuffled_arrays = []
     return patch_bps
 
 
@@ -737,5 +899,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
 if __name__ == "__main__":
     read_dt_volume()
     extract_patches_shuffle()
+    extract_patches_new()
     extract_patches()
     create_training_data()
+
