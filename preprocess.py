@@ -20,7 +20,8 @@ def load_hdf5(opt):
 	filename = data_dir + fstr \
 					% (cohort, us, 2*n+1, 2*n+1, no_subjects, sample_rate)
 	
-	# {'in': {'X': <raw_data>, 'mean': <mean>, 'std': <std>}, 'out' : {...}}
+	# {'in': {'train': <raw_data>, 'valid': <raw_data>,
+	# 	'mean': <mean>, 'std': <std>}, 'out' : {...}}
 	f = h5py.File(filename, 'r')
 	data = {}
 	
@@ -28,8 +29,13 @@ def load_hdf5(opt):
 	for i in ['in','out']:
 		print("\tLoading input and stats")
 		data[i] = {}
-		data[i]['X'] = f[i+"put_lib"]
-		data[i]['mean'], data[i]['std'] = rescale(opt, data[i]['X'])
+		X = f[i+"put_lib"]
+		xsh = X.shape[0]
+		num_train = int((1.-opt['validation_fraction'])*xsh)
+		
+		data[i]['train'] = X[:num_train,...]
+		data[i]['valid'] = X[num_train:,...]
+		data[i]['mean'], data[i]['std'] = rescale(opt, data[i]['train'])
 
 	# Save the transforms used for data normalisation:
 	print('\tSaving transforms for data normalization for test time')
@@ -43,10 +49,39 @@ def load_hdf5(opt):
 	
 
 def rescale(opt, x):
-	"""Per-element whitenin on the training set"""
-	xsh = x.shape[0]
-	num_train = int((1.-opt['validation_fraction'])*xsh)
-	
-	mean = np.mean(x[:num_train,...], axis=0, keepdims=True)
-	std = np.std(x[num_train:,...], axis=0, keepdims=True)
+	"""Per-element whitening on the training set"""	
+	mean = np.mean(x, axis=0, keepdims=True)
+	std = np.std(x, axis=0, keepdims=True)
 	return mean, std
+
+def dict_whiten(data, field1, field2, idx):
+	"""Whiten the data at indices idx, under field"""
+	x = data[field1][field2][idx]
+	return diag_whiten(x, mean=data[field1]['mean'], std=data[field1]['std'])
+
+def diag_whiten(x, mean=0., std=1.):
+	"""Whiten on a per-pixel basis"""
+	return (x - mean)/std
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

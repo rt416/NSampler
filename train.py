@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-import preprocess
+import preprocess as pp
 import sr_utility 
 import models
 
@@ -47,25 +47,6 @@ def load_data(opt):
 	data.append(valid_y_scaled)
 	return data
 
-'''
-def load_hdf5(opt):
-	cohort = opt['cohort']
-	no_subjects =opt['no_subjects'] 
-	sample_rate = opt['sample_rate'] 
-	us = opt['us'] 
-	n = opt['n'] // 2
-	m = opt['m']
-	data_dir = opt['data_dir']
-	
-	filename = data_dir + 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_001.h5' \
-			% (cohort, us, 2*n+1, 2*n+1, no_subjects, sample_rate)
-	print filename
-	f = h5py.File(filename, 'r')
-	input_lib = f["input_lib"]
-	output_lib = f["output_lib"]
-	print np.mean(input_lib)
-'''
-
 
 def define_checkpoint(opt):
 	nn_file = sr_utility.name_network(opt)
@@ -74,23 +55,14 @@ def define_checkpoint(opt):
 		os.makedirs(checkpoint_dir)
 	return checkpoint_dir
 
-def update_best_loss(this_val_loss, bests, iter_, patience_params, current_step):
-	improvement_threshold = patience_params['improvement_threshold']
-	patience = patience_params['patience']
-	patience_increase = patience_params['patience_increase']
-	
+def update_best_loss(this_loss, bests, iter_, current_step):	
 	bests['counter'] += 1
-	if this_val_loss < bests['val_loss']:
-		# improve patience if loss improvement is good enough
-		if this_val_loss < bests['val_loss']*improvement_threshold:
-			patience_params['patience'] = max(patience, iter_*patience_increase)
-			print('\treduces the previous error by more than %f %%'
-				  % ((1 - improvement_threshold) * 100.))
+	if this_loss < bests['val_loss']:
 		bests['counter'] = 0
-		bests['val_loss'] = this_val_loss
+		bests['val_loss'] = this_loss
 		bests['iter_'] = iter_
 		bests['step'] = current_step + 1
-	return bests, patience_params
+	return bests
 
 def save_model(opt, sess, saver, global_step, model_details):
 	checkpoint_dir = opt['checkpoint_dir']
@@ -102,35 +74,19 @@ def save_model(opt, sess, saver, global_step, model_details):
 	print('Model details saved')
 
 def train_cnn(opt):
-	# Load opt
+	# Load opt into namespace
 	optimisation_method = opt['optimizer'].__name__
-	dr = opt['dropout_rate'] 
-	learning_rate = opt['learning_rate']
-	L1_reg =opt['L1_reg']
-	L2_reg = opt['L2_reg'] 
-	n_epochs = opt['n_epochs'] 
-	bs = opt['batch_size'] 
-	method = opt['method']
-	n_h1 = opt['n_h1']
-	n_h2 = opt['n_h2']
-	n_h3 = opt['n_h3'] 
-	cohort = opt['cohort']
-	no_subjects =opt['no_subjects'] 
-	sample_rate = opt['sample_rate'] 
-	us = opt['us'] 
-	n = opt['n']
-	m = opt['m']
-	data_dir = opt['data_dir']
-	save_dir = opt['save_dir']
+	globals().update(opt)
+	train_fraction = int(1.-opt['validation_fraction'])
 	
 	# Set the directory for saving checkpoints:
 	checkpoint_dir = define_checkpoint(opt)
 	opt['checkpoint_dir'] = checkpoint_dir
 	
 	# ---------------------------load data--------------------------:
-	data = preprocess.load_hdf5(opt)
-	##############################################ndata
-	out_shape = data['out']['X'].shape[-1]
+	data = pp.load_hdf5(opt)
+	in_shape = data['in']['train'].shape[1:]
+	out_shape = data['out']['train'].shape[1:]
 	
 	# --------------------------- Define the model--------------------------:
 	# define input and output:
@@ -158,19 +114,8 @@ def train_cnn(opt):
 		sess.run(init)
 	
 		# Compute number of minibatches for training, validation and testing
-		n_train_batches = data['in']['X'].shape[0] // bs
-		n_valid_batches = valid_x_scaled.shape[0] // bs
-	
-		# early-stopping parameters
-		patience = 10000 
-		patience_increase = 2  
-		improvement_threshold = 0.995  
-		validation_frequency = min(n_train_batches, patience // 2)
-		patience_params = {}
-		patience_params['patience'] = patience
-		patience_params['patience_increase'] = patience_increase
-		patience_params['improvement_threshold'] = improvement_threshold
-		patience_params['validation_frequency'] = validation_frequency
+		n_train_batches = data['in']['train'].shape[0] // batch_size
+		n_valid_batches = data['in']['valid'].shape[0] // batch_size
 		
 		# Define some counters
 		test_score = 0
@@ -188,6 +133,8 @@ def train_cnn(opt):
 		bests['step'] = 0
 		bests['counter'] = 0
 		bests['counter_thresh'] = 10
+		validation_frequency = n_train_batches
+		save_frequency = 10
 		
 		model_details = opt.copy()
 		model_details.update(bests)
@@ -197,21 +144,21 @@ def train_cnn(opt):
 			start_time_epoch = timeit.default_timer()
 			if epoch % 50 == 0:
 				lr_ = lr_ / 10.
-	
 			for mi in xrange(n_train_batches):
-				# Select minibatches:
-				x_batch_train = train_x_scaled[mi*bs:(mi+1)*bs, :]
-				y_batch_train = train_y_scaled[mi*bs:(mi+1)*bs, :]
-				x_batch_valid = valid_x_scaled[mi*bs:(mi+1)*bs, :]
-				y_batch_valid = valid_y_scaled[mi*bs:(mi+1)*bs, :]
+				# Select minibatches using a slice object
+				idx = np.s_[mi*batch_size:(mi+1)*batch_size,...]
+				xt = pp.dict_whiten(data, 'in', 'train', idx)
+				yt = pp.dict_whiten(data, 'out', 'train', idx)
+				xv = pp.dict_whiten(data, 'in', 'valid', idx)
+				yv = pp.dict_whiten(data, 'out', 'valid', idx)
 				current_step = tf.train.global_step(sess, global_step)
 				
 				# train op and loss
-				fd={x: x_batch_train, y: y_batch_train, lr: lr_,keep_prob:1.-dr}
+				fd={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
 				__, tr_loss = sess.run([train_step, mse], feed_dict=fd)
 				total_tr_loss_epoch += tr_loss
 				# valid loss
-				fd = {x: x_batch_valid, y: y_batch_valid, keep_prob: 1.-dr}
+				fd = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
 				va_loss = sess.run(mse, feed_dict=fd)
 				total_val_loss_epoch += va_loss
 	
@@ -232,20 +179,18 @@ def train_cnn(opt):
 							np.sqrt(this_tr_loss*10**10), 
 							np.sqrt(this_val_loss*10**10), 
 							end_time_epoch - start_time_epoch))
-					print('\tn mb = %i, patience = %i' % (iter_+1, patience))
-					bests, patience_params = update_best_loss(this_val_loss,
-									bests, iter_, patience_params, current_step)
-	
-					# Save
-					model_details.update(bests)
-					save_model(opt, sess, saver, global_step, model_details)
+					bests = update_best_loss(this_val_loss, bests, iter_, current_step)
 	
 					# Start counting again:
 					total_val_loss_epoch = 0
 					total_tr_loss_epoch = 0
 					iter_valid = 0
 					start_time_epoch = timeit.default_timer()
-	
+					
+			if epoch % save_frequency == 0:
+				model_details.update(bests)
+				save_model(opt, sess, saver, global_step, model_details)
+			
 		# Display the best results:
 		print(('\nOptimization complete. Best validation score of %f  '
 			   'obtained at iteration %i') %
