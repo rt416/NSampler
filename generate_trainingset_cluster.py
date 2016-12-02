@@ -17,7 +17,13 @@ opt['receptive_field_radius'] = input("Enter receptive field radius: ")
 opt['input_radius'] = input("Enter input radius: ")
 opt['no_channels'] = 6
 opt['shuffle'] = True
-opt['chunks'] = True
+
+chunks = input("Press 1 if you want to chunk the HDF5 file.")
+
+if chunks == 1:
+    opt['chunks'] = True
+else:
+    opt['chunks'] = False
 
 sr_datageneration.create_training_data(opt)
 

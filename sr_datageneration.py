@@ -409,6 +409,13 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
         chunks (logical) : set true if you want to create a chunked HDF file.
     Returns:
     """
+    # --------------------- Load the original and down-sampled DTI volumes ------------------------:
+    dti_highres_orig = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
+    dti_lowres_orig = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
+
+    dti_highres_orig[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
+    dti_lowres_orig[:, :, :, 0] += 1
+
     # Define width of all patches for brevity:
     input_width, receptive_field_width = 2 * input_radius + 1, 2 * receptive_field_radius + 1
     output_radius = (input_width - receptive_field_width + 1) // 2  # output radius in the high-res space.
@@ -432,17 +439,10 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
 
         if not(os.path.exists(os.path.join(save_dir, filename))):
 
-            # --------------------- Load the original and down-sampled DTI volumes ------------------------:
-            dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
-            dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
-
-            dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
-            dti_lowres[:, :, :, 0] += 1
-
             # --------------------- Preprocess the volumes: padding & shuffling if required ---------------:
             # Pad with zeros so all brain-voxel-centred pathces are extractable and
             # each dimension is divisible by upsampling rate.
-            dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres.shape
+            dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres_orig.shape
             pad_min = max((input_radius + 1) * upsampling_rate, (output_radius + 1) * upsampling_rate)  # padding width
 
             print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
@@ -457,7 +457,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
             pad_z = pad_min if np.mod(2 * pad_min + dim_z_highres, upsampling_rate) == 0 \
                 else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_z_highres, upsampling_rate))
 
-            dti_highres = np.pad(dti_highres,
+            dti_highres = np.pad(dti_highres_orig,
                                  pad_width=((pad_min - shift_x, pad_x + shift_x),
                                             (pad_min - shift_y, pad_y + shift_y),
                                             (pad_min - shift_z, pad_z + shift_z), (0, 0)),
@@ -465,7 +465,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
 
             brain_mask = dti_highres[::upsampling_rate, ::upsampling_rate, ::upsampling_rate, 0] == 1
 
-            dti_lowres = np.pad(dti_lowres,
+            dti_lowres = np.pad(dti_lowres_orig,
                                 pad_width=((pad_min - shift_x, pad_x + shift_x),
                                            (pad_min - shift_y, pad_y + shift_y),
                                            (pad_min - shift_z, pad_z + shift_z), (0, 0)),
