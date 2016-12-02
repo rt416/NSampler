@@ -14,7 +14,9 @@ Here the output patch of shape (upsampling_rate * m, upsampling_rate * m, upsamp
 The starndard 3D periodic shuffling (see eq.4 in MagicPony, CVPR 2016) is implemented in 'forward_periodic_shuffle()'.
 """
 
-# todo: randomised the mini-batch generation.
+# todo: may be with chunking saving files take more time, but loading it takes less time. Need to check.
+# todo: implement a more efficient version of backward_periodic_shuffle()
+# todo: debug forward/backward_periodic_shuffle(). Try them also on real training sets.
 
 
 from __future__ import absolute_import
@@ -424,128 +426,136 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
     for itr, (shift_x, shift_y, shift_z) in enumerate(shift_indices):
         start_time = timeit.default_timer()
 
-        # --------------------- Load the original and down-sampled DTI volumes ------------------------:
-        dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
-        dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
-
-        dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
-        dti_lowres[:, :, :, 0] += 1
-
-        # --------------------- Preprocess the volumes: padding & shuffling if required ---------------:
-        # Pad with zeros so all brain-voxel-centred pathces are extractable and
-        # each dimension is divisible by upsampling rate.
-        dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres.shape
-        pad_min = max(input_radius + 1, (output_radius + 1) * upsampling_rate)  # padding width
-
-        print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
-        print("np.mod(upsampling_rate, 2 * pad_min + dim_x_highres) = %i" % np.mod(upsampling_rate, 2 * pad_min + dim_x_highres))
-
-        pad_x = pad_min if np.mod(2 * pad_min + dim_x_highres, upsampling_rate) == 0 \
-            else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_x_highres, upsampling_rate))
-
-        pad_y = pad_min if np.mod(2 * pad_min + dim_y_highres, upsampling_rate) == 0 \
-            else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_y_highres, upsampling_rate))
-
-        pad_z = pad_min if np.mod(2 * pad_min + dim_z_highres, upsampling_rate) == 0 \
-            else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_z_highres, upsampling_rate))
-
-        dti_highres = np.pad(dti_highres,
-                             pad_width=((pad_min - shift_x, pad_x + shift_x),
-                                        (pad_min - shift_y, pad_y + shift_y),
-                                        (pad_min - shift_z, pad_z + shift_z), (0, 0)),
-                             mode='constant', constant_values=0)
-
-        brain_mask = dti_highres[::upsampling_rate, ::upsampling_rate, ::upsampling_rate, 0] == 1
-
-        dti_lowres = np.pad(dti_lowres,
-                            pad_width=((pad_min - shift_x, pad_x + shift_x),
-                                       (pad_min - shift_y, pad_y + shift_y),
-                                       (pad_min - shift_z, pad_z + shift_z), (0, 0)),
-                            mode='constant', constant_values=0)
-
-        print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
-
-        # Apply reverse shuffling (optional):
-        shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
-                                     for j in xrange(upsampling_rate)
-                                     for i in xrange(upsampling_rate)]
-        shuffled_arrays = []
-
-        for c in xrange(no_channels):
-            for (i, j, k) in shuffle_indices:
-                shuffled_arrays.append(dti_highres[i::upsampling_rate,
-                                                   j::upsampling_rate,
-                                                   k::upsampling_rate, c + 2])
-
-        del dti_highres  # delete the original high-res volume from memory
-
-        dti_highres = np.stack(shuffled_arrays, axis=3)  # this is the reshuffled version.
-
-        del shuffled_arrays   # delete the original high-res volume from memory
-
-        dti_lowres = dti_lowres[0::upsampling_rate, 0::upsampling_rate, 0::upsampling_rate, :]
-        print("The size of HR/LR volumes after shuffling are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
-
-        # ---------------------------- Extract patches -----------------------------------------:
-        # brain_mask = dti_lowres[:, :, :, 0] == 1
-
-        # Get all the indices of voxels in the brain and subsample:
-        brain_indices = [(i, j, k) for i in xrange(dti_lowres.shape[0])
-                                   for j in xrange(dti_lowres.shape[1])
-                                   for k in xrange(dti_lowres.shape[2]) if brain_mask[i, j, k] == True]
-
-        random.shuffle(brain_indices)  # shuffle the brain indices
-
-        brain_indices_subsampled = random.sample(brain_indices, len(brain_indices) // sampling_rate)
-        total_possible_patches += len(brain_indices)
-        print('number of effective patches = %i' % len(brain_indices))
-        print('number of selected patches = %i' % len(brain_indices_subsampled))
-
-        # Construct patch libraries:
-        input_library = np.ndarray((len(brain_indices_subsampled),
-                                    2 * input_radius + 1,
-                                    2 * input_radius + 1,
-                                    2 * input_radius + 1,
-                                    no_channels), dtype='float64')
-
-        output_library = np.ndarray((len(brain_indices_subsampled),
-                                     2 * output_radius + 1,
-                                     2 * output_radius + 1,
-                                     2 * output_radius + 1,
-                                     no_channels * upsampling_rate**3), dtype='float64')
-
-        for patch_idx, (i, j, k) in enumerate(brain_indices_subsampled):
-            input_library[patch_idx, :, :, :, :] = dti_lowres[(i - input_radius):(i + input_radius + 1),
-                                                              (j - input_radius):(j + input_radius + 1),
-                                                              (k - input_radius):(k + input_radius + 1), 2:]
-
-            output_library[patch_idx, :, :, :, :] = dti_highres[(i - output_radius): (i + output_radius + 1),
-                                                                (j - output_radius): (j + output_radius + 1),
-                                                                (k - output_radius): (k + output_radius + 1), :]
-
-        del dti_lowres, dti_highres
-
-        print("The size of input/output libs are: %s and %s" % (input_library.shape, output_library.shape))
-
-        # -------------------------- Save temporarily for merging ------------------------------:
+        # ---------------------File name and avoid duplication ----------------------------------------:
         filename = 'Shift%04i.h5' % (itr + 1)
-        try:
-            create_hdf5(filename=os.path.join(save_dir, filename),
-                        input_library=input_library,
-                        output_library=output_library,
-                        chunks=chunks)
+        print("\nCreating shifted file %i/%i ..." %(itr + 1, len(shift_indices)))
 
-            filenames_list.append(os.path.join(save_dir, filename))
+        if not(os.path.exists(os.path.join(save_dir, filename))):
 
-            end_time = timeit.default_timer()
-            print("It took %f secs." % (end_time - start_time))
+            # --------------------- Load the original and down-sampled DTI volumes ------------------------:
+            dti_highres = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
+            dti_lowres = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
 
-        except KeyboardInterrupt:
-            os.remove(os.path.join(save_dir, filename))
-            print("removing %s" % filename)
-            raise
+            dti_highres[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
+            dti_lowres[:, :, :, 0] += 1
 
-        print("total number of possible patchs+ %i \n" % total_possible_patches)
+            # --------------------- Preprocess the volumes: padding & shuffling if required ---------------:
+            # Pad with zeros so all brain-voxel-centred pathces are extractable and
+            # each dimension is divisible by upsampling rate.
+            dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres.shape
+            pad_min = max((input_radius + 1) * upsampling_rate, (output_radius + 1) * upsampling_rate)  # padding width
+
+            print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+            print("np.mod(upsampling_rate, 2 * pad_min + dim_x_highres) = %i" % np.mod(upsampling_rate, 2 * pad_min + dim_x_highres))
+
+            pad_x = pad_min if np.mod(2 * pad_min + dim_x_highres, upsampling_rate) == 0 \
+                else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_x_highres, upsampling_rate))
+
+            pad_y = pad_min if np.mod(2 * pad_min + dim_y_highres, upsampling_rate) == 0 \
+                else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_y_highres, upsampling_rate))
+
+            pad_z = pad_min if np.mod(2 * pad_min + dim_z_highres, upsampling_rate) == 0 \
+                else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_z_highres, upsampling_rate))
+
+            dti_highres = np.pad(dti_highres,
+                                 pad_width=((pad_min - shift_x, pad_x + shift_x),
+                                            (pad_min - shift_y, pad_y + shift_y),
+                                            (pad_min - shift_z, pad_z + shift_z), (0, 0)),
+                                 mode='constant', constant_values=0)
+
+            brain_mask = dti_highres[::upsampling_rate, ::upsampling_rate, ::upsampling_rate, 0] == 1
+
+            dti_lowres = np.pad(dti_lowres,
+                                pad_width=((pad_min - shift_x, pad_x + shift_x),
+                                           (pad_min - shift_y, pad_y + shift_y),
+                                           (pad_min - shift_z, pad_z + shift_z), (0, 0)),
+                                mode='constant', constant_values=0)
+
+            print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+
+            # Apply reverse shuffling (optional):
+            shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
+                                         for j in xrange(upsampling_rate)
+                                         for i in xrange(upsampling_rate)]
+            shuffled_arrays = []
+
+            for c in xrange(no_channels):
+                for (i, j, k) in shuffle_indices:
+                    shuffled_arrays.append(dti_highres[i::upsampling_rate,
+                                                       j::upsampling_rate,
+                                                       k::upsampling_rate, c + 2])
+
+            del dti_highres  # delete the original high-res volume from memory
+
+            dti_highres = np.stack(shuffled_arrays, axis=3)  # this is the reshuffled version.
+
+            del shuffled_arrays   # delete the original high-res volume from memory
+
+            dti_lowres = dti_lowres[0::upsampling_rate, 0::upsampling_rate, 0::upsampling_rate, :]
+            print("The size of HR/LR volumes after shuffling are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+
+            # ---------------------------- Extract patches -----------------------------------------:
+            # brain_mask = dti_lowres[:, :, :, 0] == 1
+
+            # Get all the indices of voxels in the brain and subsample:
+            brain_indices = [(i, j, k) for i in xrange(dti_lowres.shape[0])
+                                       for j in xrange(dti_lowres.shape[1])
+                                       for k in xrange(dti_lowres.shape[2]) if brain_mask[i, j, k] == True]
+
+            random.shuffle(brain_indices)  # shuffle the brain indices
+
+            brain_indices_subsampled = random.sample(brain_indices, len(brain_indices) // sampling_rate)
+            total_possible_patches += len(brain_indices)
+            print('number of effective patches = %i' % len(brain_indices))
+            print('number of selected patches = %i' % len(brain_indices_subsampled))
+
+            # Construct patch libraries:
+            input_library = np.ndarray((len(brain_indices_subsampled),
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        no_channels), dtype='float64')
+
+            output_library = np.ndarray((len(brain_indices_subsampled),
+                                         2 * output_radius + 1,
+                                         2 * output_radius + 1,
+                                         2 * output_radius + 1,
+                                         no_channels * upsampling_rate**3), dtype='float64')
+
+            for patch_idx, (i, j, k) in enumerate(brain_indices_subsampled):
+                input_library[patch_idx, :, :, :, :] = dti_lowres[(i - input_radius):(i + input_radius + 1),
+                                                                  (j - input_radius):(j + input_radius + 1),
+                                                                  (k - input_radius):(k + input_radius + 1), 2:]
+
+                output_library[patch_idx, :, :, :, :] = dti_highres[(i - output_radius): (i + output_radius + 1),
+                                                                    (j - output_radius): (j + output_radius + 1),
+                                                                    (k - output_radius): (k + output_radius + 1), :]
+
+            del dti_lowres, dti_highres
+
+            print("The size of input/output libs are: %s and %s" % (input_library.shape, output_library.shape))
+
+            # -------------------------- Save temporarily for merging ------------------------------:
+            try:
+                create_hdf5(filename=os.path.join(save_dir, filename),
+                            input_library=input_library,
+                            output_library=output_library,
+                            chunks=chunks)
+
+                filenames_list.append(os.path.join(save_dir, filename))
+
+                end_time = timeit.default_timer()
+                print("It took %f secs." % (end_time - start_time))
+
+            except KeyboardInterrupt:
+                os.remove(os.path.join(save_dir, filename))
+                print("removing %s" % filename)
+                raise
+
+            # print("total number of possible patchs+ %i \n" % total_possible_patches)
+
+        else:
+            print(" The file exists already move on ...")
 
     return filenames_list
 
@@ -610,9 +620,7 @@ def forward_periodic_shuffle(patch, upsampling_rate = 2):
                          k::upsampling_rate,
                          c // no_channels] = patch[:, :, :, c]
 
-
     elif patch.ndim == 5:  # apply periodic shuffling to a batch of examples.
-
         batch_size, dim_i, dim_j, dim_k, dim_filters = patch.shape
 
         # Apply reverse shuffling (optional):
