@@ -31,8 +31,8 @@ def inference(method, x, opt):
 
 	if method == 'cnn_simple':
 		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')
-		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2')
-		y_pred = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,6*(m**3)], [6*(m**3)], '2_1')
+		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h1], [n_h1], '1_2')
+		y_pred = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h1,6*(m**3)], [6*(m**3)], '2_1')
 	elif method == 'cnn_residual':
 		h1 = tf.nn.relu(conv3d(x, [3,3,3,6,n_h1], [n_h1], '1'))
 		# Residual blocks
