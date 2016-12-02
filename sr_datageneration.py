@@ -445,7 +445,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
             dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres_orig.shape
             pad_min = max((input_radius + 1) * upsampling_rate, (output_radius + 1) * upsampling_rate)  # padding width
 
-            print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+            print("The size of HR/LR volumes are: %s and %s" % (dti_highres_orig.shape, dti_lowres_orig.shape))
             print("np.mod(upsampling_rate, 2 * pad_min + dim_x_highres) = %i" % np.mod(upsampling_rate, 2 * pad_min + dim_x_highres))
 
             pad_x = pad_min if np.mod(2 * pad_min + dim_x_highres, upsampling_rate) == 0 \
