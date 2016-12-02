@@ -13,12 +13,11 @@ def load_hdf5(opt):
 	no_subjects =opt['no_subjects'] 
 	sample_rate = opt['sample_rate'] 
 	us = opt['us'] 
-	n = opt['n'] // 2
+	n = opt['n'] 
 	m = opt['m']
 	data_dir = opt['data_dir']
 	fstr = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_SRi%03i_001.h5'
-	filename = data_dir + fstr \
-					% (cohort, us, 2*n+1, 2*n+1, no_subjects, sample_rate)
+	filename = data_dir + fstr % (cohort, us, n, n, no_subjects, sample_rate)
 	
 	# {'in': {'train': <raw_data>, 'valid': <raw_data>,
 	# 	'mean': <mean>, 'std': <std>}, 'out' : {...}}
@@ -35,7 +34,7 @@ def load_hdf5(opt):
 		
 		data[i]['train'] = X[:num_train,...]
 		data[i]['valid'] = X[num_train:,...]
-		data[i]['mean'], data[i]['std'] = rescale(opt, data[i]['train'])
+		data[i]['mean'], data[i]['std'] = moments(opt, data[i]['train'])
 
 	# Save the transforms used for data normalisation:
 	print('\tSaving transforms for data normalization for test time')
@@ -47,8 +46,7 @@ def load_hdf5(opt):
 		pkl.dump(transform, fp, protocol=pkl.HIGHEST_PROTOCOL)
 	return data
 	
-
-def rescale(opt, x):
+def moments(opt, x):
 	"""Per-element whitening on the training set"""	
 	mean = np.mean(x, axis=0, keepdims=True)
 	std = np.std(x, axis=0, keepdims=True)

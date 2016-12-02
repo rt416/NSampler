@@ -38,6 +38,41 @@ def save_model(opt, sess, saver, global_step, model_details):
 		pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
 	print('Model details saved')
 
+def load_data(opt):
+	cohort = opt['cohort']
+	no_subjects =opt['no_subjects'] 
+	sample_rate = opt['sample_rate'] 
+	us = opt['us'] 
+	n = opt['n'] // 2
+	m = opt['m']
+	data_dir = opt['data_dir']
+
+	dataset = data_dir + 'PatchLibs%sDS%02i_%ix%i_%ix%i_TS%i_SRi%03i_0001.mat' \
+			% (cohort, us, 2 * n + 1, 2 * n + 1, m, m, no_subjects, sample_rate)
+	data_dir, data_file = os.path.split(dataset)
+
+	print('... loading the training dataset %s' % data_file)
+	patchlib = sr_utility.load_patchlib(patchlib=dataset)
+	# load the original patch libs
+	train_x, valid_x, train_y, valid_y = patchlib  
+	train_x = np.reshape(train_x, (-1,5,5,5,6), order='F')
+	valid_x = np.reshape(valid_x, (-1,5,5,5,6), order='F')
+	train_y = np.reshape(train_y, (-1,1,1,1,6*8), order='F')
+	valid_y = np.reshape(valid_y, (-1,1,1,1,6*8), order='F')
+	
+	data = {}
+	data['in'] = {}
+	data['out'] = {}
+	data['in']['train'] = train_x
+	data['in']['valid'] = valid_x
+	data['in']['mean'], data['in']['std'] = pp.moments(opt, train_x)
+	
+	data['out']['train'] = train_y
+	data['out']['valid'] = valid_y
+	data['out']['mean'], data['out']['std']  = pp.moments(opt, train_y)
+	
+	return data
+
 def train_cnn(opt):
 	# Load opt into namespace
 	optimisation_method = opt['optimizer'].__name__
@@ -50,6 +85,7 @@ def train_cnn(opt):
 	
 	# ---------------------------load data--------------------------:
 	data = pp.load_hdf5(opt)
+	#data = load_data(opt)
 	in_shape = data['in']['train'].shape[1:]
 	out_shape = data['out']['train'].shape[1:]
 	
@@ -109,7 +145,10 @@ def train_cnn(opt):
 			start_time_epoch = timeit.default_timer()
 			if epoch % 50 == 0:
 				lr_ = lr_ / 10.
-			indices = np.random.permutation(data['in']['train'].shape[0])
+			if shuffle:
+				indices = np.random.permutation(data['in']['train'].shape[0])
+			else:
+				indices = np.arange(data['in']['train'].shape[0])
 			for mi in xrange(n_train_batches):
 				# Select minibatches using a slice object---consider
 				# multi-threading for speed if this is too slow
@@ -133,6 +172,12 @@ def train_cnn(opt):
 				# iteration number
 				iter_ = (epoch - 1) * n_train_batches + mi
 				iter_valid += 1
+				
+				# Print out current progress
+				if (iter_ + 1) % (validation_frequency/100) == 0:
+					vl = np.sqrt(va_loss*10**10)
+					sys.stdout.flush()
+					sys.stdout.write('\tvalidation error: %.2f\r' % (vl,))
 	
 				if (iter_ + 1) % validation_frequency == 0:
 					# Print out the errors for each epoch:
