@@ -34,7 +34,8 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
 
 # Select the patch-library and load into tensor shared variables:
 def load_patchlib(
-        patchlib='/Users/ryutarotanno/DeepLearning/Test_1/data/' + 'PatchLibsDiverseDS02_5x5_2x2_TS8_SRi032_0001.mat'):
+        patchlib='/Users/ryutarotanno/DeepLearning/Test_1/data/'
+                 + 'PatchLibsDiverseDS02_5x5_2x2_TS8_SRi032_0001.mat'):
     """ Split a patch library into trainign and validation sets and
     load them into theano.tensor shared variables
     :type patchlib: string
@@ -64,7 +65,8 @@ def load_patchlib(
     comipatchlib_train, comipatchlib_test, comopatchlib_train, comopatchlib_test \
         = train_test_split(comipatchlib, comopatchlib, test_size=.5)
 
-    rval = (comipatchlib_train, comipatchlib_test, comopatchlib_train, comopatchlib_test)
+    rval = (comipatchlib_train, comipatchlib_test,
+            comopatchlib_train, comopatchlib_test)
     return rval
 
 
@@ -122,14 +124,14 @@ def save_as_nifti(recon_file='mlp_h=1_highres_dti.npy',
         dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 3) + '.nii'))  # get the GT k+1 th dt component.
         affine = dt_gt.get_affine()  # fetch its affine transfomation
         header = dt_gt.get_header()  # fetch its header
-        img = nib.Nifti1Image(dt_est[:-1, :, :-1, k + 2], affine=affine, header=header)
+        # img = nib.Nifti1Image(dt_est[:-1, :, :-1, k + 2], affine=affine, header=header)
+        img = nib.Nifti1Image(dt_est[:, :, :, k + 2], affine=affine, header=header)
 
         print('... saving estimated ' + str(k + 1) + ' th dt element')
         nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
 
 
 # Compute reconsturction error:
-
 def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
                  recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
                  gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data'):
@@ -142,8 +144,10 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
         reconstruction error (RMSE)
     """
     dt_gt = read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_'))
-    dt_est_tmp = np.load(os.path.join(recon_dir, recon_file))
-    dt_est = dt_est_tmp[:-1, :, :-1, :]
+    dt_est = np.load(os.path.join(recon_dir, recon_file))
+    # dt_est_tmp = np.load(os.path.join(recon_dir, recon_file))
+    # dt_est = dt_est_tmp[:-1, :, :-1, :]
+
     mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
     rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0))
     rmse_volume = dt_est.copy()
