@@ -33,7 +33,7 @@ def name_network(opt):
                 optim, str(opt['dropout_rate']),)
     nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_'
     nn_tuple += (opt['cohort'], opt['no_subjects'], opt['subsampling_rate'])
-    nn_str += '%s_TS%i_SR%04i'
+    nn_str += '%s_TS%i_Subsample%03i'
 
     return nn_str % nn_tuple
 

@@ -9,10 +9,10 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-import preprocess as pp
+import ryu_preprocess as pp
 import sr_utility
 import models
-from train_h5 import define_checkpoint, name_network
+from ryu_train import define_checkpoint, name_network
 from sr_datageneration import forward_periodic_shuffle
 
 
@@ -25,7 +25,6 @@ def dt_pad(dt_volume, opt):
     receptive_field_radius = opt['receptive_field_radius']
     input_radius = opt['input_radius']
     output_radius = opt['output_radius']
-
 
     # --------------------- Pad ---------------:
     # Pad with zeros so all brain-voxel-centred pathces are extractable and
@@ -91,14 +90,8 @@ def super_resolve(dt_lowres, opt):
     # ------------------ Load in the parameters ------------------:
 
     # Network details:
-    dropout_rate = opt['dropout_rate']
-    learning_rate = opt['learning_rate']
-    L1_reg = opt['L1_reg']
-    L2_reg = opt['L2_reg']
-    n_epochs = opt['n_epochs']
-    batch_size = opt['batch_size']
-
     method = opt['method']
+    dropout_rate = opt['dropout_rate']
     n_h1 = opt['n_h1']
     n_h2 = opt['n_h2']
     n_h3 = opt['n_h3']
@@ -113,12 +106,10 @@ def super_resolve(dt_lowres, opt):
     upsampling_rate = opt['upsampling_rate']
     receptive_field_radius = opt['receptive_field_radius']
     input_radius = opt['input_radius']
-    output_radius = (2 * input_radius - 2 * receptive_field_radius + 1) // 2
-    opt['output_radius'] = output_radius
+    output_radius = opt['output_radius']
 
     # get the dir where the network is saved
-    network_dir = opt('save_dir')
-    checkpoint_dir = define_checkpoint(opt)
+    network_dir = define_checkpoint(opt)
 
     # --------------------------- Define the model--------------------------:
 
@@ -127,23 +118,25 @@ def super_resolve(dt_lowres, opt):
                                     2*input_radius+1,
                                     2*input_radius+1,
                                     2*input_radius+1,
-                                    no_channels], name='lo_res')
+                                    no_channels],
+                                    name='lo_res')
     y = tf.placeholder(tf.float32, [None,
                                     2*output_radius+1,
                                     2*output_radius+1,
                                     2*output_radius+1,
-                                    no_channels*(upsampling_rate**3)], name='hi_res')
+                                    no_channels*(upsampling_rate**3)],
+                                    name='hi_res')
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Load normalisation parameters and define prediction:
-    transform = pkl.load(open(os.path.join(checkpoint_dir, 'transforms.pkl'),'rb'))
+    transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'),'rb'))
     y_pred = models.scaled_prediction(method, x, transform, opt)
 
     # Specify the network parameters to be restored:
-    model_details = pkl.load(open(os.path.join(checkpoint_dir,'settings.pkl'),'rb'))
-    nn_file = os.path.join(checkpoint_dir, "model-" + str(model_details['step_save']))
+    model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'),'rb'))
+    nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
 
     # -------------------------- Reconstruct --------------------------------:
     # Restore all the variables and perform reconstruction:
@@ -157,9 +150,9 @@ def super_resolve(dt_lowres, opt):
         # Apply padding:
         print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
-        dt_lowres = dt_lowres[0::upsampling_rate,
-                              0::upsampling_rate,
-                              0::upsampling_rate, :]
+        dt_lowres = dt_lowres[::upsampling_rate,
+                              ::upsampling_rate,
+                              ::upsampling_rate, :]
         print("Size of dt_lowres after padding: %s", (dt_lowres.shape,))
 
         # Prepare the high-res vol skeleton
@@ -208,38 +201,48 @@ def super_resolve(dt_lowres, opt):
 
 
 # Main reconstruction code:
-def sr_reconstruct(opt,
-                   recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
-                   gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data'):
-    # load parameters:
-    input_file_name = opt['input_file_name']  # 'dt_b1000_lowres_2_'
+def sr_reconstruct(opt):
 
-    start_time = timeit.default_timer()
+    # load parameters:
+    recon_dir = opt['recon_dir']
+    gt_dir = opt['gt_dir_root']
+    subpath = opt['subpath']
+    subject = opt['subject']
+    input_file_name = opt['input_file_name']
+
 
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
-    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, input_file_name))
+    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject,
+                                                       subpath, input_file_name))
 
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
 
     # Reconstruct:
+    start_time = timeit.default_timer()
     nn_file = name_network(opt)
     print('\nReconstruct high-res dti with the network: \n%s.' % nn_file)
     dt_hr = super_resolve(dt_lowres, opt)
-    end_time = timeit.default_timer()
 
     # Save:
-    output_file = os.path.join(recon_dir, 'dt_' + nn_file + '.npy')
+    output_file = os.path.join(recon_dir, subject, 'dt_' + nn_file + '.npy')
     print('... saving as %s' % output_file)
+    if not(os.path.exists(os.path.join(recon_dir, subject))):
+        os.mkdir(os.path.join(recon_dir, subject))
     np.save(output_file, dt_hr)
+    end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
     # Compute the reconstruction error:
-    recon_dir, recon_file = os.path.split(output_file)
-    rmse, rmse_volume = sr_utility.compute_rmse(recon_file, recon_dir, gt_dir)
+    __, recon_file = os.path.split(output_file)
+    rmse, rmse_volume = sr_utility.compute_rmse(recon_file,
+                                                os.path.join(recon_dir, subject),
+                                                os.path.join(gt_dir, subject, subpath))
     print('\nReconsturction error (RMSE) is %f.' % rmse)
 
     # Save each estimated dti separately as a nifti file for visualisation:
     print('\nSave each estimated dti separately as a nii file ...')
-    sr_utility.save_as_nifti(recon_file, recon_dir, gt_dir)
+    sr_utility.save_as_nifti(recon_file,
+                             os.path.join(recon_dir, subject),
+                             os.path.join(gt_dir, subject, subpath))

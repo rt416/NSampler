@@ -12,7 +12,7 @@ import nibabel as nib
 
 
 # Load in a DT volume .nii:
-def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_lowres_2_'):
+def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_'):
     for idx in np.arange(1, 9):
         data_path_new = nameroot + str(idx) + '.nii'
         print("... loading %s" % data_path_new)
@@ -149,9 +149,11 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     # dt_est = dt_est_tmp[:-1, :, :-1, :]
 
     mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
-    rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis]) / (mask.sum() * 6.0))
+    rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
+           * mask[..., np.newaxis]) / (mask.sum() * 6.0))
     rmse_volume = dt_est.copy()
-    rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) * mask[..., np.newaxis] / 6.0
+    rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
+                               * mask[..., np.newaxis] / 6.0
     return rmse, rmse_volume
 
 
