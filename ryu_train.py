@@ -1,4 +1,4 @@
-'''Training file'''
+"""Training file (Ryu) """
 
 import os
 import sys
@@ -9,72 +9,65 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-import preprocess as pp
+import ryu_preprocess as pp
 import sr_utility
 import models
 
+
 def define_checkpoint(opt):
-	nn_file = sr_utility.name_network(opt)
-	checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
-	if not os.path.exists(checkpoint_dir):
-		os.makedirs(checkpoint_dir)
-	return checkpoint_dir
+    nn_file = name_network(opt)
+    checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    return checkpoint_dir
+
+
+def name_network(opt):
+    """given inputs, return the model name."""
+    optim = opt['optimizer'].__name__
+
+    nn_tuple = (opt['method'], opt['upsampling_rate'],
+                2*opt['input_radius']+1,
+                2*opt['receptive_field_radius']+1,
+                (2*opt['output_radius']+1)*opt['upsampling_rate'],
+                optim, str(opt['dropout_rate']),)
+    nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_'
+    nn_tuple += (opt['cohort'], opt['no_subjects'], opt['subsampling_rate'])
+    nn_str += '%s_TS%i_SR%04i'
+
+    return nn_str % nn_tuple
+
 
 def update_best_loss(this_loss, bests, iter_, current_step):
-	bests['counter'] += 1
-	if this_loss < bests['val_loss']:
-		bests['counter'] = 0
-		bests['val_loss'] = this_loss
-		bests['iter_'] = iter_
-		bests['step'] = current_step + 1
-	return bests
+    bests['counter'] += 1
+    if this_loss < bests['val_loss']:
+        bests['counter'] = 0
+        bests['val_loss'] = this_loss
+        bests['iter_'] = iter_
+        bests['step'] = current_step + 1
+    return bests
+
+def update_best_loss_epoch(this_loss, bests, current_step):
+    if this_loss < bests['val_loss_save']:
+        bests['val_loss_save'] = this_loss
+        bests['step_save'] = current_step + 1
+    return bests
+
 
 def save_model(opt, sess, saver, global_step, model_details):
-	checkpoint_dir = opt['checkpoint_dir']
-	checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-	save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
-	print("Model saved in file: %s" % save_path)
-	with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
-		pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
-	print('Model details saved')
+    checkpoint_dir = opt['checkpoint_dir']
+    checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+    save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
+    print("Model saved in file: %s" % save_path)
+    with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
+        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Model details saved')
 
-def load_data(opt):
-	cohort = opt['cohort']
-	no_subjects =opt['no_subjects']
-	sample_rate = opt['sample_rate']
-	us = opt['us']
-	n = opt['n'] // 2
-	m = opt['m']
-	data_dir = opt['data_dir']
-
-	dataset = data_dir + 'PatchLibs%sDS%02i_%ix%i_%ix%i_TS%i_SRi%03i_0001.mat' \
-			% (cohort, us, 2 * n + 1, 2 * n + 1, m, m, no_subjects, sample_rate)
-	data_dir, data_file = os.path.split(dataset)
-
-	print('... loading the training dataset %s' % data_file)
-	patchlib = sr_utility.load_patchlib(patchlib=dataset)
-	# load the original patch libs
-	train_x, valid_x, train_y, valid_y = patchlib
-	train_x = np.reshape(train_x, (-1,5,5,5,6), order='F')
-	valid_x = np.reshape(valid_x, (-1,5,5,5,6), order='F')
-	train_y = np.reshape(train_y, (-1,1,1,1,6*8), order='F')
-	valid_y = np.reshape(valid_y, (-1,1,1,1,6*8), order='F')
-
-	data = {}
-	data['in'] = {}
-	data['out'] = {}
-	data['in']['train'] = train_x
-	data['in']['valid'] = valid_x
-	data['in']['mean'], data['in']['std'] = pp.moments(opt, train_x)
-
-	data['out']['train'] = train_y
-	data['out']['valid'] = valid_y
-	data['out']['mean'], data['out']['std'] = pp.moments(opt, train_y)
-
-	return data
 
 def train_cnn(opt):
     # ------------------ Load inputs from op ------------------------:
+
+    # Network details:
     optimizer = opt['optimizer']
     optimisation_method = opt['optimizer'].__name__
 
@@ -84,38 +77,54 @@ def train_cnn(opt):
     L2_reg = opt['L2_reg']
     n_epochs = opt['n_epochs']
     batch_size = opt['batch_size']
+    validation_fraction = opt['validation_fraction']
+    train_fraction = int(1.0 - validation_fraction)
+    shuffle = opt['shuffle']
 
     method = opt['method']
     n_h1 = opt['n_h1']
     n_h2 = opt['n_h2']
     n_h3 = opt['n_h3']
     cohort = opt['cohort']
+
+    # Data details:
     no_subjects = opt['no_subjects']
-    sample_rate = opt['sample_rate']
-    us = opt['us']
-    n = opt['n']
-    m = opt['m']
+    subsampling_rate = opt['subsampling_rate']
 
-    validation_fraction = opt['validation_fraction']
-    shuffle = opt['shuffle']
+    # Input/Output details:
+    upsampling_rate = opt['upsampling_rate']
+    no_channels = opt['no_channels']
+    input_radius = opt['input_radius']
+    receptive_field_radius = opt['receptive_field_radius']
+    output_radius = ((2*input_radius - 2*receptive_field_radius + 1) // 2)
+    opt['output_radius'] = output_radius
 
+
+    # Dir:
     data_dir = opt['data_dir']  # '../data/'
     save_dir = opt['save_dir']
-    train_fraction = int(1.0 - validation_fraction)
 
     # Set the directory for saving checkpoints:
     checkpoint_dir = define_checkpoint(opt)
     opt["checkpoint_dir"] = checkpoint_dir
 
-    # ------------------------load data-------------------------:
+    # ------------------------load data------------------------------------:
     data = pp.load_hdf5(opt)
     in_shape = data['in']['train'].shape[1:]
     out_shape = data['out']['train'].shape[1:]
 
     # --------------------------- Define the model--------------------------:
     #  define input and output:
-    x = tf.placeholder(tf.float32, [None,n,n,n,6], name='lo_res')
-    y = tf.placeholder(tf.float32, [None,1,1,1,out_shape[-1]], name='hi_res')
+    x = tf.placeholder(tf.float32, [None,
+                                    2*input_radius+1,
+                                    2*input_radius+1,
+                                    2*input_radius+1,
+                                    no_channels], name='lo_res')
+    y = tf.placeholder(tf.float32, [None,
+                                    2*output_radius+1,
+                                    2*output_radius+1,
+                                    2*output_radius+1,
+                                    no_channels*(upsampling_rate**3)], name='hi_res')
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
     global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -152,9 +161,11 @@ def train_cnn(opt):
         lr_ = opt['learning_rate']
 
         bests = {}
-        bests['val_loss'] = np.inf
+        bests['val_loss'] = np.inf  # best valid loss itr wise
+        bests['val_loss_save'] = np.inf  # best valid loss in saved checkpoints
         bests['iter_'] = 0
         bests['step'] = 0
+        bests['step_save'] = 0 # globalstep for the best saved model
         bests['counter'] = 0
         bests['counter_thresh'] = 10
         validation_frequency = n_train_batches
@@ -187,6 +198,7 @@ def train_cnn(opt):
                 fd={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
                 __, tr_loss = sess.run([train_step, mse], feed_dict=fd)
                 total_tr_loss_epoch += tr_loss
+
                 # valid loss
                 fd = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
                 va_loss = sess.run(mse, feed_dict=fd)
@@ -215,6 +227,7 @@ def train_cnn(opt):
                         np.sqrt(this_tr_loss*10**10),
                         np.sqrt(this_val_loss*10**10),
                         end_time_epoch - start_time_epoch))
+
                     bests = update_best_loss(this_val_loss, bests, iter_,
                                              current_step)
 
@@ -225,13 +238,20 @@ def train_cnn(opt):
                     start_time_epoch = timeit.default_timer()
 
             if epoch % save_frequency == 0:
-                model_details.update(bests)
-                save_model(opt, sess, saver, global_step, model_details)
+                bests = update_best_loss_epoch(this_val_loss, bests, current_step)
+                if this_val_loss < bests['val_loss_save']:
+                    model_details.update(bests)
+                    save_model(opt, sess, saver, global_step, model_details)
 
         # Display the best results:
         print(('\nOptimization complete. Best validation score of %f  '
                'obtained at iteration %i') %
               (np.sqrt(bests['val_loss']*10**10), bests['step']))
+
+        # Display the best results for saved models:
+        print(('\nOptimization complete. Best validation score of %f  '
+               'obtained at iteration %i') %
+              (np.sqrt(bests['val_loss_save'] * 10 ** 10), bests['step_save']))
 
         end_time = timeit.default_timer()
         time_train = end_time - start_time
