@@ -80,3 +80,13 @@ def conv3d(x, w_shape, b_shape=None, name=''):
 		z = tf.nn.bias_add(z, b)
 	return z
 
+def scaled_prediction(method, x, transform, opt):
+	x_mean = tf.constant(transform['input_mean'], name='x_mean')
+	x_std = tf.constant(transform['input_std'], name='x_std')
+	y_mean = tf.constant(transform['output_mean'], name='y_mean')
+	y_std = tf.constant(transform['output_std'], name='y_std')
+
+	x_scaled = tf.div(tf.subtract(x - transform['input_mean']), transform['input_std'])
+	y = inference(method, x_scaled, opt)
+	y_pred = tf.add(tf.mul(transform['output_std'], y), transform['output_mean'], name='y_pred')
+	return y_pred
