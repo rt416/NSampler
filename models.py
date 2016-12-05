@@ -26,15 +26,17 @@ def inference(method, x, opt):
 	n_h1 = opt['n_h1']
 	n_h2 = opt['n_h2']
 	n_h3 = opt['n_h3']
-	m = opt['m']
-	n = opt['n']
+	upsampling_rate = opt['upsampling_rate']
+	no_channels = opt['no_channels']
 
 	if method == 'cnn_simple':
-		h1_1 = conv3d(x, [3,3,3,6,n_h1], [n_h1], '1_1')
+		h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1_1')
 		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h1], [n_h1], '1_2')
-		y_pred = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h1,6*(m**3)], [6*(m**3)], '2_1')
+		y_pred = conv3d(tf.nn.relu(h1_2),
+						[3,3,3,n_h1,no_channels*(upsampling_rate**3)],
+						[no_channels*(upsampling_rate**3)], '2_1')
 	elif method == 'cnn_residual':
-		h1 = tf.nn.relu(conv3d(x, [3,3,3,6,n_h1], [n_h1], '1'))
+		h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
 		# Residual blocks
 		h2 = residual_block(h1, n_h1, n_h1, 'res2')
 		h3 = residual_block(h2, n_h1, n_h1, 'res3')
@@ -42,7 +44,8 @@ def inference(method, x, opt):
 		h4 = conv3d(h3, [3,3,3,n_h1,n_h2], [n_h2], '4')
 		h5 = residual_block(h4, n_h2, n_h2, 'res5')
 		h6 = residual_block(h5, n_h2, n_h2, 'res6')
-		y_pred = conv3d(h6, [1,1,1,n_h2,6*(m**3)], [6*(m**3)], '7')
+		y_pred = conv3d(h6, [1,1,1,n_h2,no_channels*(upsampling_rate**3)],
+							[no_channels*(upsampling_rate**3)], '7')
 	else:
 		raise ValueError('The chosen method not available ...')
 	
