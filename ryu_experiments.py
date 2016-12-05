@@ -36,14 +36,14 @@ if choose == 1:
     opt['no_subjects'] = 8
     opt['subsampling_rate'] = 32
     opt['upsampling_rate'] = 2
-    opt['input_radius'] = 5
+    opt['input_radius'] = 2
     opt['receptive_field_radius'] = 2
     output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
     opt['output_radius'] = output_radius
     opt['no_channels'] = 6
 
     # Dir:
-    opt['data_dir'] = '/media/daniel/HDD/SuperRes/Training/IPMI/' # '../data/'
+    opt['data_dir'] = '/home/rtanno/Shared/HDD/SuperRes/Training/IPMI/' # '../data/'
     opt['save_dir'] = '../models'
 
     train_cnn(opt)
