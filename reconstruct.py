@@ -114,14 +114,12 @@ def super_resolve(dt_lowres, opt):
     # --------------------------- Define the model--------------------------:
 
     print('... defining the network model %s .' % method)
-    x = tf.placeholder(tf.float32, [None,
-                                    2*input_radius+1,
+    x = tf.placeholder(tf.float32, [2*input_radius+1,
                                     2*input_radius+1,
                                     2*input_radius+1,
                                     no_channels],
                                     name='lo_res')
-    y = tf.placeholder(tf.float32, [None,
-                                    2*output_radius+1,
+    y = tf.placeholder(tf.float32, [2*output_radius+1,
                                     2*output_radius+1,
                                     2*output_radius+1,
                                     no_channels*(upsampling_rate**3)],
@@ -150,20 +148,21 @@ def super_resolve(dt_lowres, opt):
         # Apply padding:
         print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
-        dt_lowres = dt_lowres[::upsampling_rate,
-                              ::upsampling_rate,
-                              ::upsampling_rate, :]
+
         print("Size of dt_lowres after padding: %s", (dt_lowres.shape,))
 
-        # Prepare the high-res vol skeleton
-        (xsize, ysize, zsize, comp) = dt_lowres.shape
-        dt_hires = np.zeros((xsize * upsampling_rate,
-                             ysize * upsampling_rate,
-                             zsize * upsampling_rate, comp))
+        # Prepare high-res skeleton:
+        dt_hires = np.zeros(dt_lowres.shape)
         dt_hires[:, :, :, 0] = dt_lowres[:, :, :, 0]  # same brain mask as input
         print("Size of dt_hires after padding: %s", (dt_hires.shape,))
 
-        # reconstruct:
+        # Downsample:
+        dt_lowres = dt_lowres[::upsampling_rate,
+                    ::upsampling_rate,
+                    ::upsampling_rate, :]
+
+        # Reconstruct:
+        (xsize, ysize, zsize, comp) = dt_lowres.shape
         recon_indx = [(i, j, k) for k in np.arange(input_radius + 1,
                                                    zsize - input_radius + 1,
                                                    2 * output_radius + 1)
@@ -174,7 +173,9 @@ def super_resolve(dt_lowres, opt):
                                                    xsize - input_radius + 1,
                                                    2 * output_radius + 1)]
         for i, j, k in recon_indx:
-            print('Slice %i of %i.' % (k, zsize))
+            sys.stdout.flush()
+            sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
+
             ipatch = dt_lowres[(i - input_radius - 1):(i + input_radius),
                                (j - input_radius - 1):(j + input_radius),
                                (k - input_radius - 1):(k + input_radius),
@@ -205,7 +206,7 @@ def sr_reconstruct(opt):
 
     # load parameters:
     recon_dir = opt['recon_dir']
-    gt_dir = opt['gt_dir_root']
+    gt_dir = opt['gt_dir']
     subpath = opt['subpath']
     subject = opt['subject']
     input_file_name = opt['input_file_name']

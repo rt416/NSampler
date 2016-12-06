@@ -88,8 +88,8 @@ def scaled_prediction(method, x, transform, opt):
 	x_std = tf.constant(transform['input_std'], name='x_std')
 	y_mean = tf.constant(transform['output_mean'], name='y_mean')
 	y_std = tf.constant(transform['output_std'], name='y_std')
-
-	x_scaled = tf.div(tf.subtract(x - transform['input_mean']), transform['input_std'])
+	# x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
+	x_scaled = tf.div(tf.sub(x, x_mean), x_std)
 	y = inference(method, x_scaled, opt)
-	y_pred = tf.add(tf.mul(transform['output_std'], y), transform['output_mean'], name='y_pred')
+	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 	return y_pred
