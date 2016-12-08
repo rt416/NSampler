@@ -51,11 +51,18 @@ def load_hdf5(opt):
         pkl.dump(transform, fp, protocol=pkl.HIGHEST_PROTOCOL)
     return data
 
+
 def moments(opt, x):
-	"""Per-element whitening on the training set"""
-	mean = np.mean(x, axis=0, keepdims=True)
-	std = np.std(x, axis=0, keepdims=True)
-	return mean, std
+    """Per-element whitening on the training set"""
+    transform_opt = opt['transform_opt']
+    if transform_opt=='standard':
+        mean = np.mean(x, axis=0, keepdims=True)
+        std = np.std(x, axis=0, keepdims=True)
+    elif transform_opt=='scaling':
+        shape = np.mean(x, axis=0, keepdims=True).shape
+        mean = np.zeros(shape)
+        std = 1e-4*np.ones(shape)
+    return mean, std
 
 def dict_whiten(data, field1, field2, idx):
 	"""Whiten the data at indices idx, under field"""
