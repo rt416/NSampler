@@ -30,8 +30,8 @@ def name_network(opt):
                 2*opt['input_radius']+1,
                 2*opt['receptive_field_radius']+1,
                 (2*opt['output_radius']+1)*opt['upsampling_rate'],
-                optim, str(opt['dropout_rate']),)
-    nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_'
+                optim, str(opt['dropout_rate']), opt['transform_opt'],)
+    nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_prep=%s_'
     nn_tuple += (opt['cohort'], opt['no_subjects'], opt['subsampling_rate'])
     nn_str += '%s_TS%i_Subsample%03i'
 
@@ -98,7 +98,7 @@ def train_cnn(opt):
     receptive_field_radius = opt['receptive_field_radius']
     output_radius = ((2*input_radius - 2*receptive_field_radius + 1) // 2)
     opt['output_radius'] = output_radius
-
+    transform_opt = opt['transform_opt']
 
     # Dir:
     data_dir = opt['data_dir']  # '../data/'
