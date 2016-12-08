@@ -30,8 +30,14 @@ def inference(method, x, opt):
 	no_channels = opt['no_channels']
 
 	if method == 'cnn_simple':
+
 		h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1_1')
-		h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h1], [n_h1], '1_2')
+
+		if opt['receptive_field_radius'] == 2:
+			h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h1], [n_h1], '1_2')
+		elif opt['receptive_field_radius'] == 3:
+			h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h1], [n_h1], '1_2')
+
 		y_pred = conv3d(tf.nn.relu(h1_2),
 						[3,3,3,n_h1,no_channels*(upsampling_rate**3)],
 						[no_channels*(upsampling_rate**3)], '2_1')
