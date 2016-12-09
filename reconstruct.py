@@ -184,17 +184,17 @@ def super_resolve(dt_lowres, opt):
             # Predict high-res patch:
             fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
-            print("shape of opatch before shuffling is :%s" % (opatch_shuffled.shape, ))
+            # print("shape of opatch before shuffling is :%s" % (opatch_shuffled.shape, ))
             opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
-            print("shape of opatch is :%s" % (opatch.shape, ))
-            print("output_radius, %i" %output_radius)
+            # print("shape of opatch is :%s" % (opatch.shape, ))
+            # print("output_radius, %i" %output_radius)
 
-            dt_hires[upsampling_rate * (i - output_radius):
-                     upsampling_rate * (i + output_radius + 1),
-                     upsampling_rate * (j - output_radius):
-                     upsampling_rate * (j + output_radius + 1),
-                     upsampling_rate * (k - output_radius):
-                     upsampling_rate * (k + output_radius + 1),
+            dt_hires[upsampling_rate * (i - output_radius - 1):
+                     upsampling_rate * (i + output_radius),
+                     upsampling_rate * (j - output_radius - 1):
+                     upsampling_rate * (j + output_radius),
+                     upsampling_rate * (k - output_radius - 1):
+                     upsampling_rate * (k + output_radius),
                      2:] \
             = opatch
 
