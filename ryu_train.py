@@ -109,9 +109,9 @@ def train_cnn(opt):
     opt["checkpoint_dir"] = checkpoint_dir
 
     # ------------------------load data------------------------------------:
-    data = pp.load_hdf5(opt)
-    in_shape = data['in']['train'].shape[1:]
-    out_shape = data['out']['train'].shape[1:]
+    data, n_train = pp.load_hdf5(opt)
+    in_shape = data['in']['X'].shape[1:]
+    out_shape = data['out']['X'].shape[1:]
     #print('training data shape input/output: %s and %s' % (data['in']['train'].shape, data['out']['train'].shape))
 
     # --------------------------- Define the model--------------------------:
@@ -148,8 +148,8 @@ def train_cnn(opt):
         sess.run(init)
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = data['in']['train'].shape[0] // batch_size
-        n_valid_batches = data['in']['valid'].shape[0] // batch_size
+        n_train_batches = n_train // batch_size
+        n_valid_batches = n_train // batch_size
 
         # Define some counters
         test_score = 0
@@ -181,19 +181,22 @@ def train_cnn(opt):
             if epoch % 50 == 0:
                 lr_ = lr_ / 10.
             if shuffle:
-                indices = np.random.permutation(data['in']['train'].shape[0])
+                indices = np.random.permutation(data['in']['X'].shape[0])
             else:
-                indices = np.arange(data['in']['train'].shape[0])
+                indices = np.arange(data['in']['X'].shape[0])
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
                 idx = np.s_[indices[mi*batch_size:(mi+1)*batch_size],...]
+                # Sort array because h5py only accepts increasing indices
+                idx = np.sort(idx)
 
-                xt = pp.dict_whiten(data, 'in', 'train', idx)
-                yt = pp.dict_whiten(data, 'out', 'train', idx)
-                xv = pp.dict_whiten(data, 'in', 'valid', idx)
-                yv = pp.dict_whiten(data, 'out', 'valid', idx)
+                xt = pp.dict_whiten(data, 'in', 'train', idx, n_train)
+                yt = pp.dict_whiten(data, 'out', 'train', idx, n_train)
+                xv = pp.dict_whiten(data, 'in', 'valid', idx, n_train)
+                yv = pp.dict_whiten(data, 'out', 'valid', idx, n_train)
                 current_step = tf.train.global_step(sess, global_step)
+                
 
                 # print("Shape of xt, yt, xv, yv:%s, %s, %s, %s" % (xt.shape, yt.shape, xv.shape, yv.shape))
 
@@ -305,9 +308,9 @@ def train_cnn_new(opt):
     opt["checkpoint_dir"] = checkpoint_dir
 
     # ------------------------load data------------------------------------:
-    data = pp.load_hdf5(opt)
-    in_shape = data['in']['train'].shape[1:]
-    out_shape = data['out']['train'].shape[1:]
+    data, n_train = pp.load_hdf5(opt)
+    in_shape = data['in']['X'].shape[1:]
+    out_shape = data['out']['X'].shape[1:]
     #print('training data shape input/output: %s and %s' % (data['in']['train'].shape, data['out']['train'].shape))
 
     # --------------------------- Define the model--------------------------:
@@ -344,8 +347,8 @@ def train_cnn_new(opt):
         sess.run(init)
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = data['in']['train'].shape[0] // batch_size
-        n_valid_batches = data['in']['valid'].shape[0] // batch_size
+        n_train_batches = n_train // batch_size
+        n_valid_batches = n_train // batch_size
 
         # Define some counters
         test_score = 0
@@ -377,9 +380,9 @@ def train_cnn_new(opt):
             if epoch % 50 == 0:
                 lr_ = lr_ / 10.
             if shuffle:
-                indices = np.random.permutation(data['in']['train'].shape[0])
+                indices = np.random.permutation(n_train)
             else:
-                indices = np.arange(data['in']['train'].shape[0])
+                indices = np.arange(n_train)
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
