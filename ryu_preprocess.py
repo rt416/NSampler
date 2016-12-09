@@ -55,7 +55,8 @@ def moments(opt, x, n_train):
 	"""Per-element whitening on the training set"""
 	transform_opt = opt['transform_opt']
 	if transform_opt=='standard':
-		mean, std = mega_moments(x, 0, n_train)
+		#mean, std = mega_moments(x, 0, n_train)
+		mean, std = 0., 1.
 	elif transform_opt=='scaling':
 		shape = np.mean(x, axis=0, keepdims=True).shape
 		mean = np.zeros(shape)
@@ -63,10 +64,8 @@ def moments(opt, x, n_train):
 	return mean, std
 
 
-def dict_whiten(data, field1, field2, idx, n_train):
+def dict_whiten(data, field1, idx):
 	"""Whiten the data at indices idx, under field"""
-	if field2 == 'valid':
-		idx += n_train
 	x = data[field1]['X'][idx]
 	return diag_whiten(x, mean=data[field1]['mean'], std=data[field1]['std'])
 

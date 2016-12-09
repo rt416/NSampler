@@ -180,24 +180,24 @@ def train_cnn(opt):
             start_time_epoch = timeit.default_timer()
             if epoch % 50 == 0:
                 lr_ = lr_ / 10.
-            if shuffle:
-                indices = np.random.permutation(data['in']['X'].shape[0])
-            else:
-                indices = np.arange(data['in']['X'].shape[0])
+            #if shuffle:
+            #    indices = np.random.permutation(data['in']['X'].shape[0])
+            #else:
+            indices = np.arange(data['in']['X'].shape[0])
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
-                idx = np.s_[indices[mi*batch_size:(mi+1)*batch_size],...]
+                tidx = np.s_[indices[mi*batch_size:(mi+1)*batch_size],...]
+                vidx = np.s_[indices[mi*batch_size+n_train:(mi+1)*batch_size+n_train],...]
                 # Sort array because h5py only accepts increasing indices
-                idx = np.sort(idx)
+                #idx = np.sort(idx)
 
-                xt = pp.dict_whiten(data, 'in', 'train', idx, n_train)
-                yt = pp.dict_whiten(data, 'out', 'train', idx, n_train)
-                xv = pp.dict_whiten(data, 'in', 'valid', idx, n_train)
-                yv = pp.dict_whiten(data, 'out', 'valid', idx, n_train)
+                xt = pp.dict_whiten(data, 'in', tidx)
+                yt = pp.dict_whiten(data, 'out', vidx)
+                xv = pp.dict_whiten(data, 'in', tidx)
+                yv = pp.dict_whiten(data, 'out', vidx)
                 current_step = tf.train.global_step(sess, global_step)
                 
-
                 # print("Shape of xt, yt, xv, yv:%s, %s, %s, %s" % (xt.shape, yt.shape, xv.shape, yv.shape))
 
                 # train op and loss
@@ -215,7 +215,7 @@ def train_cnn(opt):
                 iter_valid += 1
 
                 # Print out current progress
-                if (iter_ + 1) % (validation_frequency/100) == 0:
+                if (iter_ + 1) % (validation_frequency/10000) == 0:
                     vl = np.sqrt(va_loss*10**10)
                     sys.stdout.flush()
                     sys.stdout.write('\tvalidation error: %.2f\r' % (vl,))

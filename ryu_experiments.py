@@ -25,7 +25,7 @@ if choose == 1:
     opt['L1_reg'] = 0.00
     opt['L2_reg'] = 1e-5
     opt['n_epochs'] = 200
-    opt['batch_size'] = 25
+    opt['batch_size'] = 12
     opt['validation_fraction'] = 0.5
     opt['shuffle'] = True
     opt['validation_fraction'] = 0.5
