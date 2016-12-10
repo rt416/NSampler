@@ -171,7 +171,27 @@ def name_network(opt):
 
 
 
+# Save each estimated dti separately as a nifti file for visualisation
+def save_error_as_nifti(error_file, recon_dir, gt_dir):
+    """Save each estimated dti separately as a nifti file for visualisation.
+    Args:
+        recon_file: file name of estimated DTI volume (4D numpy array)
+        recon_dir: directory name that contains recon_file
+        gt_dir: directory name that contains the ground truth high-res DTI.
+    """
+    dt_error = np.load(os.path.join(recon_dir, error_file))  # load the estimated DTI volume
+    base, ext = os.path.splitext(error_file)
 
+    for k in np.arange(6):
+        # Save each DT component separately as a nii file:
+        dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 3) + '.nii'))  # get the GT k+1 th dt component.
+        affine = dt_gt.get_affine()  # fetch its affine transfomation
+        header = dt_gt.get_header()  # fetch its header
+        # img = nib.Nifti1Image(dt_est[:-1, :, :-1, k + 2], affine=affine, header=header)
+        img = nib.Nifti1Image(dt_error[:, :, :, k + 2], affine=affine, header=header)
+
+        print('... saving estimated ' + str(k + 1) + ' th dt element')
+        nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
 
 
 

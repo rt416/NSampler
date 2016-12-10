@@ -225,15 +225,15 @@ def sr_reconstruct(opt):
 
     # Reconstruct:
     start_time = timeit.default_timer()
-    nn_file = name_network(opt)
-    print('\nReconstruct high-res dti with the network: \n%s.' % nn_file)
+    nn_dir = name_network(opt)
+    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
     dt_hr = super_resolve(dt_lowres, opt)
 
     # Save:
-    output_file = os.path.join(recon_dir, subject, 'dt_' + nn_file + '.npy')
+    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
     print('... saving as %s' % output_file)
-    if not(os.path.exists(os.path.join(recon_dir, subject))):
-        os.mkdir(os.path.join(recon_dir, subject))
+    if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+        os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
@@ -241,8 +241,9 @@ def sr_reconstruct(opt):
     # Compute the reconstruction error:
     __, recon_file = os.path.split(output_file)
     rmse, rmse_volume = sr_utility.compute_rmse(recon_file,
-                                                os.path.join(recon_dir, subject),
+                                                os.path.join(recon_dir, subject, nn_dir),
                                                 os.path.join(gt_dir, subject, subpath))
+
     print('\nReconsturction error (RMSE) is %f.' % rmse)
 
     # Save each estimated dti separately as a nifti file for visualisation:
