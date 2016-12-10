@@ -249,5 +249,5 @@ def sr_reconstruct(opt):
     # Save each estimated dti separately as a nifti file for visualisation:
     print('\nSave each estimated dti separately as a nii file ...')
     sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir, subject),
+                             os.path.join(recon_dir, subject, nn_dir),
                              os.path.join(gt_dir, subject, subpath))
