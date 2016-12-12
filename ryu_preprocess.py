@@ -55,12 +55,10 @@ def moments(opt, x, n_train):
 	"""Per-element whitening on the training set"""
 	transform_opt = opt['transform_opt']
 	if transform_opt=='standard':
-		#mean, std = mega_moments(x, 0, n_train)
-		mean, std = 0., 1.
+		mean, std = mega_moments(x, 0, n_train)
+		# mean, std = 0., 1.
 	elif transform_opt=='scaling':
-		shape = np.mean(x, axis=0, keepdims=True).shape
-		mean = np.zeros(shape)
-		std = 1e-4*np.ones(shape)
+		mean, std = 0., 1e-4
 	return mean, std
 
 

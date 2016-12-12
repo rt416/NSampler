@@ -237,9 +237,13 @@ def sr_reconstruct(opt):
 
     # Compute the reconstruction error:
     __, recon_file = os.path.split(output_file)
-    rmse, rmse_volume = sr_utility.compute_rmse(recon_file,
-                                                os.path.join(recon_dir, subject, nn_dir),
-                                                os.path.join(gt_dir, subject, subpath))
+    rmse, rmse_volume \
+        = sr_utility.compute_rmse(recon_file=recon_file,
+                                  recon_dir=os.path.join(recon_dir, subject, nn_dir),
+                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  mask_choose=False,
+                                  mask_dir=os.path.join(recon_dir, subject),
+                                  opt=opt)
 
     print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
 

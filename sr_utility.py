@@ -135,7 +135,9 @@ def save_as_nifti(recon_file='mlp_h=1_highres_dti.npy',
 def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
                  recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
                  gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data',
-                 mask_file=''):
+                 mask_choose=False,
+                 mask_dir = None,
+                 opt=None):
     """Compute root mean square error wrt the ground truth DTI.
      Args:
         recon_file: file name of estimated DTI volume (4D numpy array)
@@ -151,7 +153,15 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     # dt_est_tmp = np.load(os.path.join(recon_dir, recon_file))
     # dt_est = dt_est_tmp[:-1, :, :-1, :]
 
-    mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
+    if mask_choose:
+        img = nib.load(os.path.join(mask_dir, 'masks',
+                                    'mask_us=' + str(opt['upsampling_rate'])+
+                                    '_rec=' + str(2*opt['receptive_field_radius']+1)+
+                                    '.nii'))
+        mask = img.get_data() == 0
+    else:
+        mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
+
     rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
            * mask[..., np.newaxis]) / (mask.sum() * 6.0))
     rmse_volume = dt_est.copy()
@@ -208,9 +218,6 @@ def save_error_as_nifti(error_file, recon_dir, gt_dir):
 
         print('... saving estimated ' + str(k + 1) + ' th dt element')
         nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
-
-
-
 
 
 
