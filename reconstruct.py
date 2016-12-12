@@ -81,9 +81,7 @@ def super_resolve(dt_lowres, opt):
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
         dt_lowres (numpy array): a low-res diffusion tensor image volume
-        n (int): the width of an input patch is 2*n + 1
-        m (int): the width of an output patch is m
-        us (int): the upsampling factord
+        opt (dict):
     Returns:
         the estimated high-res volume
     """
@@ -214,7 +212,6 @@ def sr_reconstruct(opt):
     subject = opt['subject']
     input_file_name = opt['input_file_name']
 
-
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject,
@@ -244,7 +241,7 @@ def sr_reconstruct(opt):
                                                 os.path.join(recon_dir, subject, nn_dir),
                                                 os.path.join(gt_dir, subject, subpath))
 
-    print('\nReconsturction error (RMSE) is %f.' % rmse)
+    print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
 
     # Save each estimated dti separately as a nifti file for visualisation:
     print('\nSave each estimated dti separately as a nii file ...')
