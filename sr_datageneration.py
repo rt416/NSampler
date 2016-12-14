@@ -126,11 +126,11 @@ def main_extract_patches_and_save(subject_id,
 
     # Set the directory name:
     if shuffle:
-        patchlib_dir = 'PatchLibs_Upsample%02i_Input%02i_Recep%02i_Subsample%03i' \
+        patchlib_dir = 'PatchLibs_Upsample%02i_Input%02i_Recep%02i_Subsample%04i' \
                        % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                           subsampling_rate)
     else:
-        patchlib_dir = 'PatchLibs_NoShuffle_Upsample%02i_Input%02i_Recep%02i_Subsample%03i' \
+        patchlib_dir = 'PatchLibs_NoShuffle_Upsample%02i_Input%02i_Recep%02i_Subsample%04i' \
                        % (upsampling_rate, 2 * input_radius + 1, 2 * receptive_field_radius + 1,
                           subsampling_rate)
 
