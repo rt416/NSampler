@@ -235,20 +235,23 @@ def sr_reconstruct(opt):
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
-    # Compute the reconstruction error:
+    # Save each estimated dti separately as a nifti file for visualisation:
     __, recon_file = os.path.split(output_file)
+    print('\nSave each estimated dti separately as a nii file ...')
+    sr_utility.save_as_nifti(recon_file,
+                             os.path.join(recon_dir, subject, nn_dir),
+                             os.path.join(gt_dir, subject, subpath))
+
+    # Compute the reconstruction error:
+    mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
+                '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
     rmse, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir, subject, nn_dir),
                                   gt_dir=os.path.join(gt_dir, subject, subpath),
                                   mask_choose=False,
-                                  mask_dir=os.path.join(recon_dir, subject),
-                                  opt=opt)
+                                  mask_dir=os.path.join(recon_dir, subject, 'masks'),
+                                  mask_file=mask_file)
 
     print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
 
-    # Save each estimated dti separately as a nifti file for visualisation:
-    print('\nSave each estimated dti separately as a nii file ...')
-    sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir, subject, nn_dir),
-                             os.path.join(gt_dir, subject, subpath))

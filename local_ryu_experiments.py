@@ -32,7 +32,7 @@ if choose == 1:
     opt['shuffle'] = True
 
     # Data/task:
-    opt['cohort'] ='Diverse'
+    opt['cohort'] = 'Diverse'
     opt['no_subjects'] = 8
     opt['subsampling_rate'] = 32
     opt['upsampling_rate'] = 2
@@ -41,6 +41,7 @@ if choose == 1:
     output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
     opt['output_radius'] = output_radius
     opt['no_channels'] = 6
+    opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
     # Dir:
     opt['data_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/Training/IPMI/' # '../data/'
@@ -55,9 +56,9 @@ elif choose==2:
 
     # Network:
     opt['method'] = 'cnn_simple'
-    opt['n_h1'] = 50
-    opt['n_h2'] = 2 * opt['n_h1']
-    opt['n_h3'] = 10
+    opt['n_h1'] = 50  # 64 # 50
+    opt['n_h2'] = 2*opt['n_h1']
+    opt['n_h3'] = 10  # 32 #10
 
     # Training
     opt['optimizer'] = tf.train.AdamOptimizer
@@ -75,14 +76,16 @@ elif choose==2:
     # Training data/task:
     opt['cohort'] = 'Diverse'
     opt['no_subjects'] = 8
-    opt['subsampling_rate'] = 32
-    opt['upsampling_rate'] = 2
-    opt['input_radius'] = 2
-    opt['receptive_field_radius'] = 2
+    opt['subsampling_rate'] = 8
+    opt['upsampling_rate'] = 4
+    opt['input_radius'] = 5
+    opt['receptive_field_radius'] = 5
     output_radius = ((2 * opt['input_radius'] -
                       2 * opt['receptive_field_radius'] + 1) // 2)
+    print("output radius is %i" % output_radius)
     opt['output_radius'] = output_radius
     opt['no_channels'] = 6
+    opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
     # Dir:
     opt['data_dir'] = '/media/daniel/HDD/SuperRes/Training/IPMI/'  # '../data/'
