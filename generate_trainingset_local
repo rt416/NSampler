@@ -1,7 +1,34 @@
 """ Main script for creating training data """
+import sr_datageneration
 
-import sr_preprocessing_new
+opt = {}
+opt['data_parent_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
+opt['data_subpath'] = 'T1w/Diffusion'
+opt['save_parent_dir'] = '/Users/ryutarotanno/tmp/HCP/'
+opt['save_dir'] = '/Users/ryutarotanno/tmp/Training'
+opt['cohort'] = 'Small'
 
+opt['no_randomisation'] = 1
+opt['subsampling_rate'] = input("Enter subsampling rate: ")
+opt['b_value'] = 1000
+
+opt['upsampling_rate'] = input("Enter upsampling rate: ")
+opt['receptive_field_radius'] = input("Enter receptive field radius: ")
+opt['input_radius'] = input("Enter input radius: ")
+opt['no_channels'] = 6
+opt['shuffle'] = True
+
+chunks = input("Press 1 if you want to chunk the HDF5 file.")
+
+if chunks == 1:
+    opt['chunks'] = True
+else:
+    opt['chunks'] = False
+
+sr_datageneration.create_training_data(opt)
+
+
+# import sr_preprocessing_new
 # define the configurations of the training data:
 # opt = {}
 #
@@ -24,25 +51,23 @@ import sr_preprocessing_new
 #
 # filenames = sr_preprocessing_new.create_training_data(opt)
 
-opt = {}
-
-opt['data_parent_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
-opt['data_subpath'] = 'T1w/Diffusion'
-opt['chunks_parent_dir'] = '/Users/ryutarotanno/tmp/IPMI'
-opt['save_dir'] = '/Users/ryutarotanno/tmp'
-opt['cohort'] = "Small"
-
-opt['no_randomisation'] = 1  # number of distinct training sets you want to create.
-opt['sampling_rate'] = 64
-opt['b_value'] = 1000
-
-opt['upsampling_rate'] = 2
-opt['receptive_field_radius'] = 2
-opt['input_radius'] = 5
-opt['no_channels'] = 6
-opt['no_chunks'] = 100
-opt['shuffle'] = False
-
-
-subjects_list = ['117324']
-filenames = sr_preprocessing_new.chunk_subjects(opt, subjects_list=subjects_list)
+# opt = {}
+# opt['data_parent_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP'
+# opt['data_subpath'] = 'T1w/Diffusion'
+# opt['chunks_parent_dir'] = '/Users/ryutarotanno/tmp/IPMI'
+# opt['save_dir'] = '/Users/ryutarotanno/tmp'
+# opt['cohort'] = "Small"
+#
+# opt['no_randomisation'] = 1  # number of distinct training sets you want to create.
+# opt['sampling_rate'] = 64
+# opt['b_value'] = 1000
+#
+# opt['upsampling_rate'] = 2
+# opt['receptive_field_radius'] = 2
+# opt['input_radius'] = 5
+# opt['no_channels'] = 6
+# opt['no_chunks'] = 100
+# opt['shuffle'] = False
+#
+# subjects_list = ['117324']
+# filenames = sr_preprocessing_new.chunk_subjects(opt, subjects_list=subjects_list)
