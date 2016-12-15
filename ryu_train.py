@@ -212,7 +212,7 @@ def train_cnn(opt):
                 iter_valid += 1
 
                 # Print out current progress
-                if (iter_ + 1) % (validation_frequency/100) == 0:
+                if (iter_ + 1) % (validation_frequency/10) == 0:
                     vl = np.sqrt(va_loss*10**10)
                     sys.stdout.flush()
                     sys.stdout.write('\tvalidation error: %.2f\r' % (vl,))
