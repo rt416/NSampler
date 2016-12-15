@@ -14,11 +14,6 @@ Here the output patch of shape (upsampling_rate * m, upsampling_rate * m, upsamp
 The starndard 3D periodic shuffling (see eq.4 in MagicPony, CVPR 2016) is implemented in 'forward_periodic_shuffle()'.
 """
 
-# todo: may be with chunking saving files take more time, but loading it takes less time. Need to check.
-# todo: implement a more efficient version of backward_periodic_shuffle()
-# todo: debug forward/backward_periodic_shuffle(). Try them also on real training sets.
-
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -173,7 +168,7 @@ def fetch_subjects_list(cohort_name):
     elif cohort_name == 'Diverse_Test':
         subjects_list = ['904044', '165840', '889579', '713239', '899885', '117324', '214423', '857263']
     elif cohort_name == "Small":
-        subjects_list = ['992774', '117324']
+        subjects_list = ['117324']
     else:
         raise Warning("No specified dataset exists.")
 
@@ -319,7 +314,7 @@ def extract_patches(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/',
     dti_lowres = np.pad(dti_lowres, pad_width=((pad, pad), (pad, pad), (pad, pad), (0, 0)),
                         mode='constant', constant_values=0)
 
-    print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+    # print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
 
     dim_x_highres, dim_y_highres, dim_z_highres, dim_dt = dti_highres.shape
     brain_mask = dti_highres[:, :, :, 0] == 1
@@ -425,7 +420,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
                                for j in xrange(upsampling_rate)
                                for i in xrange(upsampling_rate)]
 
-    print(shift_indices)
+    #print(shift_indices)
 
     total_possible_patches = 0
     filenames_list = []
@@ -445,8 +440,8 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
             dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dti_highres_orig.shape
             pad_min = max((input_radius + 1) * upsampling_rate, (output_radius + 1) * upsampling_rate)  # padding width
 
-            print("The size of HR/LR volumes are: %s and %s" % (dti_highres_orig.shape, dti_lowres_orig.shape))
-            print("np.mod(upsampling_rate, 2 * pad_min + dim_x_highres) = %i" % np.mod(upsampling_rate, 2 * pad_min + dim_x_highres))
+            #print("The size of HR/LR volumes are: %s and %s" % (dti_highres_orig.shape, dti_lowres_orig.shape))
+            #print("np.mod(upsampling_rate, 2 * pad_min + dim_x_highres) = %i" % np.mod(upsampling_rate, 2 * pad_min + dim_x_highres))
 
             pad_x = pad_min if np.mod(2 * pad_min + dim_x_highres, upsampling_rate) == 0 \
                 else pad_min + (upsampling_rate - np.mod(2 * pad_min + dim_x_highres, upsampling_rate))
@@ -471,7 +466,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
                                            (pad_min - shift_z, pad_z + shift_z), (0, 0)),
                                 mode='constant', constant_values=0)
 
-            print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
+            #print("The size of HR/LR volumes are: %s and %s" % (dti_highres.shape, dti_lowres.shape))
 
             # Apply reverse shuffling (optional):
             shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
@@ -533,7 +528,7 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
 
             del dti_lowres, dti_highres
 
-            print("The size of input/output libs are: %s and %s" % (input_library.shape, output_library.shape))
+            # print("The size of input/output libs are: %s and %s" % (input_library.shape, output_library.shape))
 
             # -------------------------- Save temporarily for merging ------------------------------:
             try:

@@ -57,7 +57,7 @@ elif choose==2:
     # Network:
     opt['method'] = 'cnn_simple'
     opt['n_h1'] = 50  # 64 # 50
-    opt['n_h2'] = 2*opt['n_h1']
+    opt['n_h2'] = opt['n_h1']
     opt['n_h3'] = 10  # 32 #10
 
     # Training
@@ -76,10 +76,10 @@ elif choose==2:
     # Training data/task:
     opt['cohort'] = 'Diverse'
     opt['no_subjects'] = 8
-    opt['subsampling_rate'] = 8
-    opt['upsampling_rate'] = 4
+    opt['subsampling_rate'] = 1372
+    opt['upsampling_rate'] = 2
     opt['input_radius'] = 5
-    opt['receptive_field_radius'] = 5
+    opt['receptive_field_radius'] = 2
     output_radius = ((2 * opt['input_radius'] -
                       2 * opt['receptive_field_radius'] + 1) // 2)
     print("output radius is %i" % output_radius)
