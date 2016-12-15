@@ -76,16 +76,16 @@ elif choose==2:
     # Training data/task:
     opt['cohort'] = 'Diverse'
     opt['no_subjects'] = 8
-    opt['subsampling_rate'] = 1372
-    opt['upsampling_rate'] = 2
+    opt['subsampling_rate'] = 1000
+    opt['upsampling_rate'] = 4
     opt['input_radius'] = 5
-    opt['receptive_field_radius'] = 2
+    opt['receptive_field_radius'] = 3
     output_radius = ((2 * opt['input_radius'] -
                       2 * opt['receptive_field_radius'] + 1) // 2)
     print("output radius is %i" % output_radius)
     opt['output_radius'] = output_radius
     opt['no_channels'] = 6
-    opt['transform_opt'] = 'scaling'  # preprocessing of input/output variables
+    opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
     # Dir:
     opt['data_dir'] = '/media/daniel/HDD/SuperRes/Training/IPMI/'  # '../data/'
