@@ -81,9 +81,7 @@ def super_resolve(dt_lowres, opt):
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
         dt_lowres (numpy array): a low-res diffusion tensor image volume
-        n (int): the width of an input patch is 2*n + 1
-        m (int): the width of an output patch is m
-        us (int): the upsampling factord
+        opt (dict):
     Returns:
         the estimated high-res volume
     """
@@ -114,12 +112,14 @@ def super_resolve(dt_lowres, opt):
     # --------------------------- Define the model--------------------------:
 
     print('... defining the network model %s .' % method)
-    x = tf.placeholder(tf.float32, [2*input_radius+1,
+    x = tf.placeholder(tf.float32, [None,
+                                    2*input_radius+1,
                                     2*input_radius+1,
                                     2*input_radius+1,
                                     no_channels],
                                     name='lo_res')
-    y = tf.placeholder(tf.float32, [2*output_radius+1,
+    y = tf.placeholder(tf.float32, [None,
+                                    2*output_radius+1,
                                     2*output_radius+1,
                                     2*output_radius+1,
                                     no_channels*(upsampling_rate**3)],
@@ -176,10 +176,12 @@ def super_resolve(dt_lowres, opt):
             sys.stdout.flush()
             sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
 
-            ipatch = dt_lowres[(i - input_radius - 1):(i + input_radius),
+            ipatch_tmp = dt_lowres[(i - input_radius - 1):(i + input_radius),
                                (j - input_radius - 1):(j + input_radius),
                                (k - input_radius - 1):(k + input_radius),
                                2:comp]
+
+            ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
             fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
@@ -214,7 +216,6 @@ def sr_reconstruct(opt):
     subject = opt['subject']
     input_file_name = opt['input_file_name']
 
-
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject,
@@ -225,28 +226,36 @@ def sr_reconstruct(opt):
 
     # Reconstruct:
     start_time = timeit.default_timer()
-    nn_file = name_network(opt)
-    print('\nReconstruct high-res dti with the network: \n%s.' % nn_file)
+    nn_dir = name_network(opt)
+    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
     dt_hr = super_resolve(dt_lowres, opt)
 
     # Save:
-    output_file = os.path.join(recon_dir, subject, 'dt_' + nn_file + '.npy')
+    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
     print('... saving as %s' % output_file)
-    if not(os.path.exists(os.path.join(recon_dir, subject))):
-        os.mkdir(os.path.join(recon_dir, subject))
+    if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+        os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
-    # Compute the reconstruction error:
-    __, recon_file = os.path.split(output_file)
-    rmse, rmse_volume = sr_utility.compute_rmse(recon_file,
-                                                os.path.join(recon_dir, subject),
-                                                os.path.join(gt_dir, subject, subpath))
-    print('\nReconsturction error (RMSE) is %f.' % rmse)
-
     # Save each estimated dti separately as a nifti file for visualisation:
+    __, recon_file = os.path.split(output_file)
     print('\nSave each estimated dti separately as a nii file ...')
     sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir, subject),
+                             os.path.join(recon_dir, subject, nn_dir),
                              os.path.join(gt_dir, subject, subpath))
+
+    # Compute the reconstruction error:
+    mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
+                '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
+    rmse, rmse_volume \
+        = sr_utility.compute_rmse(recon_file=recon_file,
+                                  recon_dir=os.path.join(recon_dir, subject, nn_dir),
+                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  mask_choose=False,
+                                  mask_dir=os.path.join(recon_dir, subject, 'masks'),
+                                  mask_file=mask_file)
+
+    print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
+
