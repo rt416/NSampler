@@ -26,7 +26,12 @@ def load_hdf5(opt):
 
     # {'in': {'train': <raw_data>, 'valid': <raw_data>,
     # 	'mean': <mean>, 'std': <std>}, 'out' : {...}}
-    f = h5py.File(filename, 'r')
+
+    if not(os.path.exists(filename)):
+        print('The specified training set does not exist. Create ...')
+    else:
+        f = h5py.File(filename, 'r')
+
     data = {}
 
     print("Loading %s" % (filename,))
