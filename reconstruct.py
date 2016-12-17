@@ -9,10 +9,10 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-import ryu_preprocess as pp
+import sr_preprocess as pp
 import sr_utility
 import models
-from ryu_train import define_checkpoint, name_network
+from train import define_checkpoint, name_network
 from sr_datageneration import forward_periodic_shuffle
 
 

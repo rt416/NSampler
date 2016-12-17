@@ -1,13 +1,11 @@
-"""Ryu: main experiments script"""
+""" Main experiments script"""
 
-import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 
 choose = input("Press 1 for training or 2 for reconstruction: ")
 
 if choose == 1:
-    from ryu_train import train_cnn
+    from train import train_cnn
 
     # Options
     opt = {}
