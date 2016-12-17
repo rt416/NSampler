@@ -1,2 +1,8 @@
-# NSampler: IPMI branch
-On this branch we have the basic model for our IPMI generative superresolution submission. The main script is experiments.py
+# NSampler: ipmi_Dec09 branch
+
+On this branch we have a TensorFlow implementation of deep learning based IQT. 
+
+1. To create a training set, run **generate_trainingset.py**.
+2. To train/reconstruct, run **experiments.py**.
+
+
