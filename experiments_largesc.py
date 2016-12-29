@@ -36,8 +36,8 @@ if choose == 1:
     opt['no_subjects'] = 8
     opt['subsampling_rate'] = 1372
     opt['upsampling_rate'] = 2
-    opt['input_radius'] = 2
-    opt['receptive_field_radius'] = 5
+    opt['input_radius'] = 5
+    opt['receptive_field_radius'] = 2
     output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
     opt['output_radius'] = output_radius
     opt['no_channels'] = 6

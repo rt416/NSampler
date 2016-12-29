@@ -181,22 +181,28 @@ def train_cnn(opt):
             start_time_epoch = timeit.default_timer()
             if epoch % 50 == 0:
                 lr_ = lr_ / 10.
+
             if shuffle:
                 tindices = np.random.permutation(n_train)
                 vindices = np.random.permutation(n_valid)
             else:
-                tindices = np.arange(n_train)
-                vindices = np.arange(n_valid)
+                indices = np.arange(data['in']['X'].shape[0])
+                # tindices = np.arange(n_train)
+                # vindices = np.arange(n_valid)
 
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
-                tidx = np.s_[np.sort(tindices[mi*batch_size:(mi+1)*batch_size])
-                            ,...]
-                vidx = np.s_[np.sort(vindices[mi*batch_size:(mi+1)*batch_size]+n_train)
-                            ,...]
+                if shuffle:
+                    tidx = np.s_[np.sort(tindices[mi*batch_size:(mi+1)*batch_size])
+                                ,...]
+                    vidx = np.s_[np.sort(vindices[mi*batch_size:(mi+1)*batch_size]+n_train)
+                                ,...]
+                else:
+                    tidx = np.s_[indices[mi * batch_size:(mi + 1) * batch_size], ...]
+                    vidx = np.s_[indices[mi * batch_size + n_train:(mi + 1) * batch_size + n_train], ...]
 
-                # todo: check if the following is bug free
+                    # todo: check if the following is bug free
                 xt = pp.dict_whiten(data, 'in', tidx)  # training minbatch
                 yt = pp.dict_whiten(data, 'out', tidx)
                 xv = pp.dict_whiten(data, 'in', vidx)  # validation minbatch

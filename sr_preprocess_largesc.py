@@ -33,7 +33,6 @@ def load_hdf5(opt):
         print('The specified training set does not exist. Create ...')
     else:
         f = h5py.File(filename, 'r')
-
     data = {}
 
     print("Loading %s" % (filename,))
