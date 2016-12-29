@@ -1,4 +1,4 @@
-"""Training file (Ryu) """
+"""Training file for large datasets: """
 
 import os
 import sys
@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-import sr_preprocess as pp
+import sr_preprocess_largesc as pp
 import sr_utility
 import models
 
@@ -109,9 +109,9 @@ def train_cnn(opt):
     opt["checkpoint_dir"] = checkpoint_dir
 
     # -------------------------load data------------------------------------:
-    data = pp.load_hdf5(opt)
-    in_shape = data['in']['train'].shape[1:]
-    out_shape = data['out']['train'].shape[1:]
+    data, n_train, n_valid = pp.load_hdf5(opt)
+    in_shape = data['in']['X'].shape[1:]
+    out_shape = data['out']['X'].shape[1:]
 
     # --------------------------- Define the model--------------------------:
     #  define input and output:
@@ -149,8 +149,8 @@ def train_cnn(opt):
         sess.run(init)
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = data['in']['train'].shape[0] // batch_size
-        n_valid_batches = data['in']['valid'].shape[0] // batch_size
+        n_train_batches = n_train // batch_size
+        n_valid_batches = n_valid // batch_size
 
         # Define some counters
         test_score = 0
@@ -182,18 +182,25 @@ def train_cnn(opt):
             if epoch % 50 == 0:
                 lr_ = lr_ / 10.
             if shuffle:
-                indices = np.random.permutation(data['in']['train'].shape[0])
+                tindices = np.random.permutation(n_train)
+                vindices = np.random.permutation(n_valid)
             else:
-                indices = np.arange(data['in']['train'].shape[0])
+                tindices = np.arange(n_train)
+                vindices = np.arange(n_valid)
+
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
-                idx = np.s_[indices[mi*batch_size:(mi+1)*batch_size],...]
+                tidx = np.s_[np.sort(tindices[mi*batch_size:(mi+1)*batch_size])
+                            ,...]
+                vidx = np.s_[np.sort(vindices[mi*batch_size:(mi+1)*batch_size]+n_train)
+                            ,...]
 
-                xt = pp.dict_whiten(data, 'in', 'train', idx)
-                yt = pp.dict_whiten(data, 'out', 'train', idx)
-                xv = pp.dict_whiten(data, 'in', 'valid', idx)
-                yv = pp.dict_whiten(data, 'out', 'valid', idx)
+                # todo: check if the following is bug free
+                xt = pp.dict_whiten(data, 'in', tidx)  # training minbatch
+                yt = pp.dict_whiten(data, 'out', tidx)
+                xv = pp.dict_whiten(data, 'in', vidx)  # validation minbatch
+                yv = pp.dict_whiten(data, 'out', vidx)
                 current_step = tf.train.global_step(sess, global_step)
 
                 # print("Shape of xt, yt, xv, yv:%s, %s, %s, %s" % (xt.shape, yt.shape, xv.shape, yv.shape))
