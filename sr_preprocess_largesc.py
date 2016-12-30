@@ -1,5 +1,4 @@
-''' Load and preprocessing script '''
-
+"""Load and preprocessing script """
 import os
 import sys
 
@@ -7,8 +6,6 @@ import cPickle as pkl
 import h5py
 import numpy as np
 import tensorflow as tf
-
-# todo: need to redefine the function mega_moments():
 
 def load_hdf5(opt):
     cohort = opt['cohort']
@@ -62,7 +59,7 @@ def moments(opt, x, n_train):
     """Per-element whitening on the training set"""
     transform_opt = opt['transform_opt']
     if transform_opt=='standard':
-        mean, std = mega_moments(x, 0, n_train)
+        mean, std = mega_moments(x, n_train)
         # mean = np.mean(x, axis=0, keepdims=True)
         # std = np.std(x, axis=0, keepdims=True)
     elif transform_opt=='scaling':
@@ -84,26 +81,27 @@ def diag_whiten(x, mean=0., std=1.):
     return (x - mean)/std
 
 
-def mega_moments(x, axis, n_train, chunk_size=10000):
-	"""Compute moments of very large matrix"""
-	print('\tComputing moments of massive matrix')
-	n_chunks = int(np.ceil((n_train*1.)/chunk_size))
-	mean = 0
-	var = 0
-	running_size = 0
-	for i in xrange(n_chunks):
-		sys.stdout.write('\tChunk progress: %d/%d\r' % (i+1,n_chunks))
-		sys.stdout.flush()
-		current_size = np.minimum((i+1)*chunk_size,n_train) - i*chunk_size
-		rescale = (1.*running_size)/(running_size+current_size)
+def mega_moments(x, n_train, chunk_size=1000, axis=0):
+    """Compute moments of very large matrix"""
+    print('\tComputing moments of massive matrix')
+    n_chunks = int(np.ceil((n_train*1.)/chunk_size))
 
-		chunk = x[i*chunk_size:i*chunk_size+current_size,...]
-		this_mean = np.mean(chunk, axis=axis, keepdims=True)
-		this_var = np.var(chunk, axis=axis, keepdims=True)
-		mean = rescale*mean + (1.-rescale)*this_mean
-		var = rescale*var + (1.-rescale)*this_var
+    sum_x = 0
+    sum_x2 = 0
 
-		running_size  += current_size
-	return (mean, np.sqrt(var))
+    for i in xrange(n_chunks):
+        sys.stdout.write('\tChunk progress: %d/%d\r' % (i+1,n_chunks))
+        sys.stdout.flush()
+
+        current_size = np.minimum((i+1)*chunk_size,n_train) - i*chunk_size
+        chunk = x[i*chunk_size:i*chunk_size+current_size,...]
+
+        sum_x  += 1.*np.sum(chunk, axis=axis)
+        sum_x2 += 1.*np.sum(chunk**2, axis=axis)
+
+    mean = sum_x/n_train
+    var = (sum_x2 - 2*mean*sum_x + n_train*mean**2)/n_train
+
+    return (mean, np.sqrt(var))
 
 

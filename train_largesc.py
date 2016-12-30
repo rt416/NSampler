@@ -202,7 +202,6 @@ def train_cnn(opt):
                     tidx = np.s_[indices[mi * batch_size:(mi + 1) * batch_size], ...]
                     vidx = np.s_[indices[mi * batch_size + n_train:(mi + 1) * batch_size + n_train], ...]
 
-                    # todo: check if the following is bug free
                 xt = pp.dict_whiten(data, 'in', tidx)  # training minbatch
                 yt = pp.dict_whiten(data, 'out', tidx)
                 xv = pp.dict_whiten(data, 'in', vidx)  # validation minbatch

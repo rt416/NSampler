@@ -1,4 +1,4 @@
-"""Training file (Ryu) """
+"""Training file """
 
 import os
 import sys
