@@ -8,7 +8,7 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_tanh'
+opt['method'] = 'cnn_simple'
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
@@ -30,8 +30,8 @@ opt['shuffle'] = True
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
 opt['subsampling_rate'] = 1372
-opt['upsampling_rate'] = 2
-opt['input_radius'] = 5
+opt['upsampling_rate'] = 5
+opt['input_radius'] = 8
 opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius

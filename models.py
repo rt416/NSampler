@@ -44,7 +44,6 @@ def inference(method, x, opt):
 			h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], '1_2a')
 			h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], '1_2b')
 			h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], '1_2c')
-			
 
 		y_pred = conv3d(tf.nn.relu(h1_2),
 						[3,3,3,n_h2,no_channels*(upsampling_rate**3)],
