@@ -4,8 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-choose = input("Press 1 for training or 2 for reconstruction: ")
-
 import reconstruct
 
 # Options
@@ -33,7 +31,7 @@ opt['shuffle'] = True
 # Training data/task:
 opt['cohort'] = 'Diverse'
 opt['no_subjects'] = 8
-opt['subsampling_rate'] = 32
+opt['subsampling_rate'] = 1372
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
 opt['receptive_field_radius'] = 2

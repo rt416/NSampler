@@ -49,6 +49,25 @@ def inference(method, x, opt):
 		y_pred = conv3d(tf.nn.relu(h1_2),
 						[3,3,3,n_h2,no_channels*(upsampling_rate**3)],
 						[no_channels*(upsampling_rate**3)], '2_1')
+	elif method == 'cnn_tanh':
+		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], '1_1')
+
+		if opt['receptive_field_radius'] == 2:
+			h1_2 = conv3d(tf.nn.tanh(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], '1_2')
+		elif opt['receptive_field_radius'] == 3:
+			h1_2 = conv3d(tf.nn.tanh(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], '1_2')
+		elif opt['receptive_field_radius'] == 4:
+			h1_2 = conv3d(tf.nn.tanh(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], '1_2a')
+			h1_2 = conv3d(tf.nn.tanh(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2], '1_2b')
+		elif opt['receptive_field_radius'] == 5:
+			h1_2 = conv3d(tf.nn.tanh(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], '1_2a')
+			h1_2 = conv3d(tf.nn.tanh(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2], '1_2b')
+			h1_2 = conv3d(tf.nn.tanh(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2], '1_2c')
+
+		y_pred = conv3d(tf.nn.tanh(h1_2),
+						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+						[no_channels * (upsampling_rate ** 3)], '2_1')
+
 	elif method == 'cnn_residual':
 		h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
 		# Residual blocks

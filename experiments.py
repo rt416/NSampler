@@ -13,7 +13,7 @@ if choose == 1:
     opt = {}
 
     # Network:
-    opt['method'] = 'cnn_simple'
+    opt['method'] = 'cnn_tanh'
     opt['n_h1'] = 50
     opt['n_h2'] = 2*opt['n_h1']
     opt['n_h3'] = 10
