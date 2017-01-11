@@ -253,9 +253,11 @@ def sr_reconstruct(opt):
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir, subject, nn_dir),
                                   gt_dir=os.path.join(gt_dir, subject, subpath),
-                                  mask_choose=False,
+                                  mask_choose=True,
                                   mask_dir=os.path.join(recon_dir, subject, 'masks'),
                                   mask_file=mask_file)
 
     print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
+
+    return rmse, rmse_volume
 
