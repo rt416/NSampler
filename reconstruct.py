@@ -248,7 +248,9 @@ def sr_reconstruct(opt):
 
     # Compute the reconstruction error:
     mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
-                '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
+                '_rec=' + str(5) + '.nii'
+    # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
+    #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
     rmse, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir, subject, nn_dir),
