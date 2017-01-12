@@ -80,7 +80,7 @@ def inference(method, x, opt):
 							[no_channels*(upsampling_rate**3)], '7')
 	else:
 		raise ValueError('The chosen method not available ...')
-	
+
 	return y_pred
 
 def residual_block(x, n_in, n_out, name):

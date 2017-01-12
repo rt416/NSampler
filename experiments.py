@@ -29,10 +29,10 @@ opt['shuffle'] = True
 # Data/task:
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['subsampling_rate'] = 1372
+opt['subsampling_rate'] = 343
 opt['upsampling_rate'] = 2
-opt['input_radius'] = 8
-opt['receptive_field_radius'] = 5
+opt['input_radius'] = 5
+opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius
 opt['no_channels'] = 6
@@ -70,7 +70,7 @@ if choose == 1:
             rmse, _ = reconstruct.sr_reconstruct(opt)
             rmse_average += rmse
 
-        print('\n Average RMSE on Diverse dataset is %f.'
+        print('\n Average RMSE on Diverse dataset is %.15f.'
               % (rmse_average / len(subjects_list),))
 
 elif choose==2:
@@ -79,12 +79,11 @@ elif choose==2:
     subjects_list = ['904044', '165840', '889579', '713239',
                      '899885', '117324', '214423', '857263']
     rmse_average = 0
-    choose_rec = input("Press 1 to proceed to reconstruction. ")
 
     for subject in subjects_list:
         opt['subject'] = subject
         rmse, _ = reconstruct.sr_reconstruct(opt)
         rmse_average += rmse
 
-    print('\n Average RMSE on Diverse dataset is %f.'
+    print('\n Average RMSE on Diverse dataset is %.15f'
           % (rmse_average / len(subjects_list),))
