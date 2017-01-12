@@ -29,7 +29,7 @@ opt['shuffle'] = True
 # Data/task:
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['subsampling_rate'] = 343
+opt['subsampling_rate'] = 1372
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
 opt['receptive_field_radius'] = 2
@@ -41,6 +41,7 @@ opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
 opt['save_dir'] = '../models'
+opt['log_dir'] = '../log'
 opt['recon_dir'] = '../recon'
 
 opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
