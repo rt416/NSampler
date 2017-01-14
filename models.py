@@ -30,11 +30,10 @@ def inference(method, x, opt):
 	no_channels = opt['no_channels']
 
 	if method == 'cnn_simple':
-
-		h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1_1')
+		h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1_1', 'conv_1')
 
 		if opt['receptive_field_radius'] == 2:
-			h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2')
+			h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], '1_2', 'conv_2')
 		elif opt['receptive_field_radius'] == 3:
 			h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], '1_2')
 		elif opt['receptive_field_radius'] == 4:
@@ -47,7 +46,7 @@ def inference(method, x, opt):
 
 		y_pred = conv3d(tf.nn.relu(h1_2),
 						[3,3,3,n_h2,no_channels*(upsampling_rate**3)],
-						[no_channels*(upsampling_rate**3)], '2_1')
+						[no_channels*(upsampling_rate**3)], '2_1', 'conv_last')
 	elif method == 'cnn_tanh':
 		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], '1_1')
 
@@ -103,16 +102,24 @@ def get_weights(filter_shape, W_init=None, name=''):
 		W_init = tf.random_normal(filter_shape, stddev=stddev)
 	return tf.Variable(W_init, name=name)
 
-def conv3d(x, w_shape, b_shape=None, name=''):
+def conv3d(x, w_shape, b_shape=None, name='', layer_name=''):
 	"""Return the 3D convolution"""
 	w_name = name + '_w'
 	b_name = name + '_b'
-	w = get_weights(w_shape, name=w_name)
-	z = tf.nn.conv3d(x, w, strides=(1,1,1,1,1), padding='VALID')
-	if b_shape is not None:
-		b = tf.get_variable(b_name, dtype=tf.float32, shape=b_shape,
-							initializer=tf.constant_initializer(1e-2))
-		z = tf.nn.bias_add(z, b)
+	with tf.name_scope(layer_name):
+		with tf.name_scope('weights'):
+			w = get_weights(w_shape, name=w_name)
+
+		if b_shape is not None:
+			with tf.name_scope('biases'):
+				b = tf.get_variable(b_name, dtype=tf.float32, shape=b_shape,
+									initializer=tf.constant_initializer(1e-2))
+			with tf.name_scope('Wx_plus_b'):
+				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
+				z = tf.nn.bias_add(z, b)
+		else:
+			with tf.name_scope('Wx'):
+				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
 	return z
 
 def scaled_prediction(method, x, transform, opt):

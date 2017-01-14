@@ -122,33 +122,43 @@ def train_cnn(opt):
 
     # --------------------------- Define the model--------------------------:
     #  define input and output:
-    x = tf.placeholder(tf.float32, [None,
-                                    2*input_radius+1,
-                                    2*input_radius+1,
-                                    2*input_radius+1,
-                                    no_channels],
-                                    name='lo_res')
-    y = tf.placeholder(tf.float32, [None,
-                                    2*output_radius+1,
-                                    2*output_radius+1,
-                                    2*output_radius+1,
-                                    no_channels*(upsampling_rate**3)],
-                                    name='hi_res')
-    lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+    with tf.name_scope('input'):
+        x = tf.placeholder(tf.float32, [None,
+                                        2*input_radius+1,
+                                        2*input_radius+1,
+                                        2*input_radius+1,
+                                        no_channels],
+                                        name='lo_res')
+        y = tf.placeholder(tf.float32, [None,
+                                        2*output_radius+1,
+                                        2*output_radius+1,
+                                        2*output_radius+1,
+                                        no_channels*(upsampling_rate**3)],
+                                        name='hi_res')
+    with tf.name_scope('learning_rate'):
+        lr = tf.placeholder(tf.float32, [], name='learning_rate')
+
+    with tf.name_scope('dropout'):
+        keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    y_pred = models.inference(method, x, opt)
-    cost = tf.reduce_mean(tf.square(y - y_pred))
+    with tf.name_scope('inference'):
+        y_pred = models.inference(method, x, opt)
+
+    with tf.name_scope('loss'):
+        cost = tf.reduce_mean(tf.square(y - y_pred))
 
     # Define gradient descent op
-    optim = opt['optimizer'](learning_rate=lr)
-    train_step = optim.minimize(cost, global_step=global_step)
-    mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
+    with tf.name_scope('train'):
+        optim = opt['optimizer'](learning_rate=lr)
+        train_step = optim.minimize(cost, global_step=global_step)
 
-    # Summary:
-    tf.summary.scalar('mse', mse)
+    with tf.name_scope('accuracy'):
+        with tf.name_scope('mse_itr'):
+            mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
+            tf.summary.scalar('mse', mse)
 
     # -------------------------- Start training -----------------------------:
     saver = tf.train.Saver()
