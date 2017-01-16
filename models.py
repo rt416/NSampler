@@ -103,28 +103,28 @@ def get_weights(filter_shape, W_init=None, name=None):
 		W_init = tf.random_normal(filter_shape, stddev=stddev)
 	return tf.Variable(W_init, name=name)
 
-def conv3d(x, w_shape, b_shape=None, layer_name=''):
+def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
 	"""Return the 3D convolution"""
 	with tf.name_scope(layer_name):
 		with tf.name_scope('weights'):
 			w = get_weights(w_shape)
-			variable_summaries(w)
+			variable_summaries(w, summary)
 
 		if b_shape is not None:
 			with tf.name_scope('biases'):
 				b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=b_shape))
-				variable_summaries(b)
+				variable_summaries(b, summary)
 
 			# b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
 			#                    initializer=tf.constant_initializer(1e-2))
 			with tf.name_scope('wxplusb'):
 				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
 				z = tf.nn.bias_add(z, b)
-				variable_summaries(z)
+				variable_summaries(z, summary)
 		else:
 			with tf.name_scope('wx'):
 				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
-				variable_summaries(z)
+				variable_summaries(z, summary)
 	return z
 
 def scaled_prediction(method, x, transform, opt):
@@ -139,14 +139,15 @@ def scaled_prediction(method, x, transform, opt):
 	return y_pred
 
 
-def variable_summaries(var):
+def variable_summaries(var, default=True):
 	"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-	with tf.name_scope('summaries'):
-		mean = tf.reduce_mean(var)
-		tf.summary.scalar('mean', mean)
-		with tf.name_scope('stddev'):
-			stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-		tf.summary.scalar('stddev', stddev)
-		tf.summary.scalar('max', tf.reduce_max(var))
-		tf.summary.scalar('min', tf.reduce_min(var))
-		tf.summary.histogram('histogram', var)
+	if default:
+		with tf.name_scope('summaries'):
+			mean = tf.reduce_mean(var)
+			tf.summary.scalar('mean', mean)
+			with tf.name_scope('stddev'):
+				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+			tf.summary.scalar('stddev', stddev)
+			tf.summary.scalar('max', tf.reduce_max(var))
+			tf.summary.scalar('min', tf.reduce_min(var))
+			tf.summary.histogram('histogram', var)
