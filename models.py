@@ -117,12 +117,12 @@ def conv3d(x, w_shape, b_shape=None, layer_name=''):
 
 			# b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
 			#                    initializer=tf.constant_initializer(1e-2))
-			with tf.name_scope('Wx+b'):
+			with tf.name_scope('wxplusb'):
 				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
 				z = tf.nn.bias_add(z, b)
 				variable_summaries(z)
 		else:
-			with tf.name_scope('Wx'):
+			with tf.name_scope('wx'):
 				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
 				variable_summaries(z)
 	return z
