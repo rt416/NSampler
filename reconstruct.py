@@ -112,20 +112,26 @@ def super_resolve(dt_lowres, opt):
     # --------------------------- Define the model--------------------------:
 
     print('... defining the network model %s .' % method)
-    x = tf.placeholder(tf.float32, [None,
-                                    2*input_radius+1,
-                                    2*input_radius+1,
-                                    2*input_radius+1,
-                                    no_channels],
-                                    name='lo_res')
-    y = tf.placeholder(tf.float32, [None,
-                                    2*output_radius+1,
-                                    2*output_radius+1,
-                                    2*output_radius+1,
-                                    no_channels*(upsampling_rate**3)],
-                                    name='hi_res')
-    lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+    with tf.name_scope('input'):
+        x = tf.placeholder(tf.float32, [None,
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        2 * input_radius + 1,
+                                        no_channels],
+                           name='lo_res')
+        y = tf.placeholder(tf.float32, [None,
+                                        2 * output_radius + 1,
+                                        2 * output_radius + 1,
+                                        2 * output_radius + 1,
+                                        no_channels * (upsampling_rate ** 3)],
+                           name='hi_res')
+
+    with tf.name_scope('learning_rate'):
+        lr = tf.placeholder(tf.float32, [], name='learning_rate')
+
+    with tf.name_scope('dropout'):
+        keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Load normalisation parameters and define prediction:

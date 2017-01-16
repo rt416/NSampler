@@ -5,7 +5,7 @@ import tensorflow as tf
 choose = input("Press 1 for training or 2 for reconstruction: ")
 
 if choose == 1:
-    from train_largesc import train_cnn
+    from train import train_cnn
 
     # Options
     opt = {}
@@ -23,7 +23,7 @@ if choose == 1:
     opt['L1_reg'] = 0.00
     opt['L2_reg'] = 1e-5
     opt['n_epochs'] = 200
-    opt['batch_size'] = 25
+    opt['batch_size'] = 12
     opt['validation_fraction'] = 0.5
     opt['shuffle'] = True
     opt['validation_fraction'] = 0.5
@@ -44,6 +44,7 @@ if choose == 1:
     # Dir:
     opt['data_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/Training/IPMI/' # '../data/'
     opt['save_dir'] = '../models'
+    opt['log_dir'] = '../log'
 
     train_cnn(opt)
 elif choose==2:

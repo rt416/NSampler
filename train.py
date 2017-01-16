@@ -144,8 +144,7 @@ def train_cnn(opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    with tf.name_scope('inference'):
-        y_pred = models.inference(method, x, opt)
+    y_pred = models.inference(method, x, opt)
 
     with tf.name_scope('loss'):
         cost = tf.reduce_mean(tf.square(y - y_pred))
@@ -156,9 +155,8 @@ def train_cnn(opt):
         train_step = optim.minimize(cost, global_step=global_step)
 
     with tf.name_scope('accuracy'):
-        with tf.name_scope('mse_itr'):
-            mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
-            tf.summary.scalar('mse', mse)
+        mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
+        tf.summary.scalar('mse', mse)
 
     # -------------------------- Start training -----------------------------:
     saver = tf.train.Saver()
