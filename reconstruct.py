@@ -268,12 +268,16 @@ def sr_reconstruct(opt):
     print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
 
     # Save the RMSE on the chosen test subject:
+    print('Save it to settings.skl')
     network_dir = define_checkpoint(opt)
     model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
     if not('subject_rmse' in model_details):
         model_details['subject_rmse'] = {opt['subject']:rmse}
     else:
         model_details['subject_rmse'].update({opt['subject']:rmse})
+
+    with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
+        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
 
     return rmse, rmse_volume
 
