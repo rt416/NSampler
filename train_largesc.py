@@ -187,6 +187,8 @@ def train_cnn(opt):
 
         model_details = opt.copy()
         model_details.update(bests)
+        model_details['epoch_tr_loss'] = []
+        model_details['epoch_val_loss'] = []
 
         while (epoch < n_epochs) and (not done_looping):
             epoch += 1
@@ -249,6 +251,9 @@ def train_cnn(opt):
                     this_val_loss = total_val_loss_epoch/iter_valid
                     this_tr_loss = total_tr_loss_epoch/iter_valid
                     end_time_epoch = timeit.default_timer()
+
+                    model_details['epoch_val_loss'].append(this_val_loss)
+                    model_details['epoch_tr_loss'].append(this_tr_loss)
 
                     print('\nEpoch %i, minibatch %i/%i:\n' \
                           '\ttraining error (rmse) %f times 1E-5\n' \

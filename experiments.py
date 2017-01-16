@@ -54,7 +54,12 @@ opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 choose = input("Press 1 for training or 2 for reconstruction: ")
 
 if choose == 1:
-    from train import train_cnn
+
+    choose_2 = input("Press 1 for standard or 2 for scalable training: ")
+    if choose_2==1:
+        from train import train_cnn
+    elif choose_2==2:
+        from train_largesc import train_cnn
 
     # Train:
     train_cnn(opt)
