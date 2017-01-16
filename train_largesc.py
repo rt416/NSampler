@@ -138,7 +138,7 @@ def train_cnn(opt):
 
     # Build model and loss function
     with tf.name_scope('inference'):
-        y_pred = models.inference(method, x, opt)
+        y_pred = models.inference(method, x, keep_prob, opt)
 
     with tf.name_scope('loss'):
         cost = tf.reduce_mean(tf.square(y - y_pred))

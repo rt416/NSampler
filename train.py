@@ -144,7 +144,7 @@ def train_cnn(opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    y_pred = models.inference(method, x, opt)
+    y_pred = models.inference(method, x, keep_prob, opt)
 
     with tf.name_scope('loss'):
         cost = tf.reduce_mean(tf.square(y - y_pred))
