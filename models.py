@@ -131,14 +131,14 @@ def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
 				variable_summaries(z, summary)
 	return z
 
-def scaled_prediction(method, x, transform, opt):
+def scaled_prediction(method, x, keep_prob, transform, opt):
 	x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
 	x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
 	y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
 	y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
 	# x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
 	x_scaled = tf.div(tf.sub(x, x_mean), x_std)
-	y = inference(method, x_scaled, opt)
+	y = inference(method, x_scaled, keep_prob, opt)
 	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 	return y_pred
 

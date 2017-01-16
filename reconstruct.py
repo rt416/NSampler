@@ -136,7 +136,7 @@ def super_resolve(dt_lowres, opt):
 
     # Load normalisation parameters and define prediction:
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
-    y_pred = models.scaled_prediction(method, x, transform, opt)
+    y_pred = models.scaled_prediction(method, x, keep_prob, transform, opt)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
@@ -190,7 +190,8 @@ def super_resolve(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
+            # fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
+            fd = {x: ipatch, keep_prob: 1.0}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
             # print("shape of opatch before shuffling is :%s" % (opatch_shuffled.shape, ))
             opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
