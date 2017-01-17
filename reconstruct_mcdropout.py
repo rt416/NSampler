@@ -59,7 +59,6 @@ def dt_pad(dt_volume, opt):
 
     return dt_volume, pd
 
-
 # Trim the volume:
 def dt_trim(dt_volume, pd):
     """ Trim the dt volume back to the original size
@@ -76,8 +75,26 @@ def dt_trim(dt_volume, pd):
     return dt_volume
 
 
+def mc_inference(fn, fd, opt):
+    """ Compute the mean and std of samples drawn from stochastic function"""
+    no_samples = opt['mc_no_samples']
+    if opt['method']=='cnn_dropout':
+        sum_out = 0.0
+        sum_out2 = 0.0
+        for i in xrange(no_samples):
+            sum_out += 1.*fn.eval(feed_dict=fd)
+            sum_out2 += 1.*fn.eval(feed_dict=fd)**2
+
+        mean = sum_out/no_samples
+        std = np.sqrt((sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
+    else:
+        mean = fn.eval(feed_dict=fd)
+        std = None
+    return mean, std
+
+
 # Reconstruct using the specified NN:
-def super_resolve(dt_lowres, opt):
+def super_resolve_mcdropout(dt_lowres, opt):
 
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
@@ -86,7 +103,7 @@ def super_resolve(dt_lowres, opt):
     Returns:
         the estimated high-res volume
     """
-    # ------------------ Load in the parameters ------------------:
+    # -------------------------- Load in the parameters ----------------------:
 
     # Network details:
     method = opt['method']
@@ -153,17 +170,16 @@ def super_resolve(dt_lowres, opt):
         print("Model restored.")
 
         # Apply padding:
-        print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
+        # print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
-
-        print("Size of dt_lowres after padding: %s", (dt_lowres.shape,))
 
         # Prepare high-res skeleton:
         dt_hires = np.zeros(dt_lowres.shape)
         dt_hires[:, :, :, 0] = dt_lowres[:, :, :, 0]  # same brain mask as input
-        print("Size of dt_hires after padding: %s", (dt_hires.shape,))
+        dt_hires_std = np.zeros(dt_lowres.shape)
+        dt_hires_std[:, :, :, 0] = dt_lowres[:, :, :, 0]
 
-        # Downsample:
+        # Down-sample:
         dt_lowres = dt_lowres[::upsampling_rate,
                               ::upsampling_rate,
                               ::upsampling_rate, :]
@@ -191,10 +207,10 @@ def super_resolve(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            fd = {x: ipatch, keep_prob: 1.0}
-            opatch_shuffled = y_pred.eval(feed_dict=fd)
+            fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
+            opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, fd, opt)
 
-            opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
+            opatch = forward_periodic_shuffle(opatch_mean_ps, upsampling_rate)
 
             dt_hires[upsampling_rate * (i - output_radius - 1):
                      upsampling_rate * (i + output_radius),
@@ -205,14 +221,25 @@ def super_resolve(dt_lowres, opt):
                      2:] \
             = opatch
 
+            opatch_std = forward_periodic_shuffle(opatch_std_ps, upsampling_rate)
+            dt_hires_std[upsampling_rate * (i - output_radius - 1):
+                         upsampling_rate * (i + output_radius),
+                         upsampling_rate * (j - output_radius - 1):
+                         upsampling_rate * (j + output_radius),
+                         upsampling_rate * (k - output_radius - 1):
+                         upsampling_rate * (k + output_radius),
+                         2:] \
+            = opatch_std
+
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
+        dt_hires_std = dt_trim(dt_hires_std, padding)
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
-    return dt_hires
+    return dt_hires, dt_hires_std
 
 
 # Main reconstruction code:
-def sr_reconstruct(opt):
+def sr_reconstruct_mcdropout(opt):
 
     # load parameters:
     recon_dir = opt['recon_dir']
@@ -233,21 +260,30 @@ def sr_reconstruct(opt):
     start_time = timeit.default_timer()
     nn_dir = name_network(opt)
     print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
-    dt_hr = super_resolve(dt_lowres, opt)
+    dt_hr, dt_std = super_resolve_mcdropout(dt_lowres, opt)
 
     # Save:
     output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
-    print('... saving as %s' % output_file)
+    uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
+
+    print('... saving predicted hi-res as %s' % output_file)
     if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
         os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)
+    np.save(uncertainty_file, dt_std)
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
-    # Save each estimated dti separately as a nifti file for visualisation:
+    # Save each estimated dti/std separately as a nifti file for visualisation:
     __, recon_file = os.path.split(output_file)
     print('\nSave each estimated dti separately as a nii file ...')
     sr_utility.save_as_nifti(recon_file,
+                             os.path.join(recon_dir, subject, nn_dir),
+                             os.path.join(gt_dir, subject, subpath))
+
+    __, std_file = os.path.split(uncertainty_file)
+    print('\nSave the associated uncertainty separately as a nii file ...')
+    sr_utility.save_as_nifti(std_file,
                              os.path.join(recon_dir, subject, nn_dir),
                              os.path.join(gt_dir, subject, subpath))
 
@@ -270,10 +306,10 @@ def sr_reconstruct(opt):
     print('Save it to settings.skl')
     network_dir = define_checkpoint(opt)
     model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
-    if not('subject_rmse' in model_details):
-        model_details['subject_rmse'] = {opt['subject']:rmse}
+    if not('subject_rmse_mc' in model_details):
+        model_details['subject_rmse_mc'] = {opt['subject']:rmse}
     else:
-        model_details['subject_rmse'].update({opt['subject']:rmse})
+        model_details['subject_rmse_mc'].update({opt['subject']:rmse})
 
     with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
         pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)

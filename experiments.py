@@ -49,8 +49,8 @@ opt['subpath'] = 'T1w/Diffusion'
 
 opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
-# Inference:
-opt['mc_no_samples']=15
+# Others:
+opt['mc_no_samples'] = 15
 
 # Choose the experiment option:
 choose = input("Press 1 for training or 2 for reconstruction: ")
