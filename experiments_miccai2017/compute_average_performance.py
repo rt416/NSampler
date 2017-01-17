@@ -54,27 +54,28 @@ opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 from train import train_cnn
 import reconstruct
 
-opt['method'] = 'cnn_simple'
-
-for subsample in [5500, 1372, 343, 85]:
-    # Train:
-    opt['subsampling_rate'] = subsample
-    train_cnn(opt)
-
-    # Reconstruct (optional):
-    subjects_list = ['904044', '165840', '889579', '713239',
-                     '899885', '117324', '214423', '857263']
-    rmse_average = 0
-    for subject in subjects_list:
-        opt['subject'] = subject
-        rmse, _ = reconstruct.sr_reconstruct(opt)
-        rmse_average += rmse
-
-    print('\n Average RMSE on Diverse dataset is %.15f.'
-              % (rmse_average / len(subjects_list),))
+# opt['method'] = 'cnn_simple'
+#
+# for subsample in [5500, 1372, 343, 85]:
+#     # Train:
+#     opt['subsampling_rate'] = subsample
+#     train_cnn(opt)
+#
+#     # Reconstruct (optional):
+#     subjects_list = ['904044', '165840', '889579', '713239',
+#                      '899885', '117324', '214423', '857263']
+#     rmse_average = 0
+#     for subject in subjects_list:
+#         opt['subject'] = subject
+#         rmse, _ = reconstruct.sr_reconstruct(opt)
+#         rmse_average += rmse
+#
+#     print('\n Average RMSE on Diverse dataset is %.15f.'
+#               % (rmse_average / len(subjects_list),))
 
 
 # Train dropout network
+print('Train dropout networks!')
 opt['method'] = 'cnn_dropout'
 opt['subsampling_rate'] = 1372
 

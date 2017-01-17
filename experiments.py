@@ -29,7 +29,7 @@ opt['shuffle'] = True
 # Data/task:
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
-opt['subsampling_rate'] = 1372
+opt['subsampling_rate'] = 85
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
 opt['receptive_field_radius'] = 2
