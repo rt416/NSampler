@@ -164,8 +164,8 @@ def super_resolve(dt_lowres, opt):
 
         # Downsample:
         dt_lowres = dt_lowres[::upsampling_rate,
-                    ::upsampling_rate,
-                    ::upsampling_rate, :]
+                              ::upsampling_rate,
+                              ::upsampling_rate, :]
 
         # Reconstruct:
         (xsize, ysize, zsize, comp) = dt_lowres.shape
@@ -190,13 +190,10 @@ def super_resolve(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            # fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
-            fd = {x: ipatch, keep_prob: 1.0}
+            fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
-            # print("shape of opatch before shuffling is :%s" % (opatch_shuffled.shape, ))
+
             opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
-            # print("shape of opatch is :%s" % (opatch.shape, ))
-            # print("output_radius, %i" %output_radius)
 
             dt_hires[upsampling_rate * (i - output_radius - 1):
                      upsampling_rate * (i + output_radius),
@@ -211,6 +208,24 @@ def super_resolve(dt_lowres, opt):
         dt_hires = dt_trim(dt_hires, padding)
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
     return dt_hires
+
+
+def mc_inference(fn, fd, opt):
+    """ Compute the mean and std of samples drawn from stochastic function"""
+    no_samples = opt['mc_no_samples']
+    if opt['method']=='cnn_dropout':
+        sum_out = 0.0
+        sum_out2 = 0.0
+        for i in xrange(no_samples):
+            sum_out += 1.*fn.eval(feed_dict=fd)
+            sum_out2 += 1.*fn.eval(feed_dict=fd)**2
+
+        mean = sum_out/no_samples
+        std = np.sqrt((sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
+    else:
+        mean = fn.eval(feed_dict=fd)
+        std = None
+    return mean, std
 
 
 # Main reconstruction code:
