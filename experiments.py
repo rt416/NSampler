@@ -24,11 +24,15 @@ opt['batch_size'] = 12
 opt['validation_fraction'] = 0.5
 opt['shuffle'] = True
 opt['validation_fraction'] = 0.5
-opt['shuffle'] = True
 
 # Data/task:
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
+opt['b_value'] = 1000
+opt['no_randomisation'] = 1
+opt['shuffle_data'] = True
+opt['chunks'] = True  # set True if you want to chunk the HDF5 file.
+
 opt['subsampling_rate'] = 85
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
@@ -43,6 +47,9 @@ opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
 opt['save_dir'] = '../models'
 opt['log_dir'] = '../log'
 opt['recon_dir'] = '../recon'
+
+opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
+opt['save_train_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/'
 
 opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
 opt['subpath'] = 'T1w/Diffusion'

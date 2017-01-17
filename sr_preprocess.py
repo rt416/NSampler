@@ -6,6 +6,7 @@ import sys
 import cPickle as pkl
 import h5py
 import numpy as np
+import sr_datageneration
 import tensorflow as tf
 
 def load_hdf5(opt):
@@ -29,6 +30,9 @@ def load_hdf5(opt):
 
     if not(os.path.exists(filename)):
         print('The specified training set does not exist. Create ...')
+        sr_datageneration.create_training_data(opt)
+        print('Done!')
+        f = h5py.File(filename, 'r')
     else:
         f = h5py.File(filename, 'r')
 

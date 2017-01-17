@@ -35,10 +35,10 @@ import timeit
 def create_training_data(opt):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
-    data_parent_dir = opt['data_parent_dir']
-    save_parent_dir = opt['save_parent_dir']  # this is where you save your temporary chunks
-    data_subpath = opt['data_subpath']
-    save_dir = opt['save_dir']
+    data_parent_dir = opt['gt_dir']
+    save_parent_dir = opt['save_train_dir_tmp']  # this is where you save your temporary chunks
+    data_subpath = opt['subpath']
+    save_dir = opt['save_train_dir']
     cohort = opt['cohort']
     no_randomisation = opt['no_randomisation']
     subsampling_rate = opt['subsampling_rate']
@@ -49,7 +49,7 @@ def create_training_data(opt):
     input_radius = opt['input_radius']
     no_channels = opt['no_channels']
 
-    shuffle = opt['shuffle']
+    shuffle = opt['shuffle_data']
     chunks = opt['chunks']
 
     # Fetch subjects list.

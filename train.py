@@ -116,6 +116,7 @@ def train_cnn(opt):
     opt["checkpoint_dir"] = checkpoint_dir
 
     # -------------------------load data------------------------------------:
+
     data = pp.load_hdf5(opt)
     in_shape = data['in']['train'].shape[1:]
     out_shape = data['out']['train'].shape[1:]
