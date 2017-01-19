@@ -145,10 +145,14 @@ def train_cnn(opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    y_pred = models.inference(method, x, keep_prob, opt)
+    y_pred, y_std = models.inference(method, x, keep_prob, opt)
 
     with tf.name_scope('loss'):
-        cost = tf.reduce_mean(tf.square(y - y_pred))
+        if opt['method'] == 'cnn_heteroscedastic':
+            cost = tf.reduce_mean(tf.square(tf.mul(y_std,(y - y_pred))))\
+                   -tf.reduce_mean(tf.log(y_std))
+        else:
+            cost = tf.reduce_mean(tf.square(y - y_pred))
 
     # Define gradient descent op
     with tf.name_scope('train'):

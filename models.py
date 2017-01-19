@@ -28,6 +28,7 @@ def inference(method, x, keep_prob, opt):
 	n_h3 = opt['n_h3']
 	upsampling_rate = opt['upsampling_rate']
 	no_channels = opt['no_channels']
+	y_std = None
 
 	if method == 'cnn_simple':
 		h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], 'conv_1')
@@ -71,6 +72,53 @@ def inference(method, x, keep_prob, opt):
 						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 						[no_channels * (upsampling_rate ** 3)], 'conv_last')
 
+	elif method == 'cnn_heteroscedastic':
+		with tf.name_scope('mean_network'):
+			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+
+			if opt['receptive_field_radius'] == 2:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+			elif opt['receptive_field_radius'] == 3:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			elif opt['receptive_field_radius'] == 4:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+			elif opt['receptive_field_radius'] == 5:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+
+			y_pred = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+							[no_channels * (upsampling_rate ** 3)], 'conv_last')
+
+		with tf.name_scope('covariance_network'):  # diagonality assumed
+			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+
+			if opt['receptive_field_radius'] == 2:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+			elif opt['receptive_field_radius'] == 3:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			elif opt['receptive_field_radius'] == 4:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+			elif opt['receptive_field_radius'] == 5:
+				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+
+			h_last = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+							[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+							[no_channels * (upsampling_rate ** 3)], 'conv_last')
+			y_std = tf.add(tf.nn.softplus(h_last), tf.constant(1e-6,'stability_const'),
+						   name='predictive_cov')
+
 	elif method == 'cnn_residual':
 		h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
 		# Residual blocks:
@@ -83,10 +131,44 @@ def inference(method, x, keep_prob, opt):
 		h6 = residual_block(h5, n_h2, n_h2, 'res6')
 		y_pred = conv3d(h6, [1,1,1,n_h2,no_channels*(upsampling_rate**3)],
 							[no_channels*(upsampling_rate**3)], '7')
+	elif method == 'mlp_h=1_kingma':
+		n_in = 100
+		n_out = 150
+		# MLP with one hidden layer:
+		rho1 = get_weights([n_in, ], name='rho1')
+		sigma1 = tf.nn.softplus(rho1)
+		x_drop = x * (1. + sigma1 * tf.random_normal(tf.shape(x)))
+		aff1, W1, b1 = affine_layer(x_drop, n_in, n_h1, name='aff1')
+		h1 = tf.nn.relu(aff1)
+
+		rho2 = get_weights([n_h1, ], name='rho2')
+		sigma2 = tf.nn.softplus(rho2)
+		h1_drop = h1 * (1. + sigma2 * tf.random_normal(tf.shape(h1)))
+		y_pred, W2, b2 = affine_layer(h1_drop, n_h1, n_out, name='aff2')
+
+		L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2)
+		L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2))
+		KL1 = kl_log_uniform_prior(tf.pow(sigma1, 2.))
+		KL2 = kl_log_uniform_prior(tf.pow(sigma2, 2.))
+		KL_list = [KL1, KL2]
+
 	else:
 		raise ValueError('The chosen method not available ...')
 
-	return y_pred
+	return y_pred, y_std
+
+def affine_layer(x, n_in, n_out, name='aff'):
+	W = get_weights([n_in, n_out], name=name+'_W')
+	b = get_weights([n_out], name=name+'_b')
+	return tf.matmul(x, W) + b, W, b
+
+def kl_log_uniform_prior(varQ):
+	"""Compute the gaussian-log uniform KL-div from VDLRT"""
+	c1 = 1.16145124
+	c2 = -1.50204118
+	c3 = 0.58629921
+	KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+	return tf.reduce_mean(KL)
 
 def residual_block(x, n_in, n_out, name):
 	"""A residual block of constant spatial dimensions and 1x1 convs only"""
@@ -138,9 +220,12 @@ def scaled_prediction(method, x, keep_prob, transform, opt):
 	y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
 	# x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
 	x_scaled = tf.div(tf.sub(x, x_mean), x_std)
-	y = inference(method, x_scaled, keep_prob, opt)
+	y, y_uncertainty = inference(method, x_scaled, keep_prob, opt)
 	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
-	return y_pred
+
+	if opt['method']=='cnn_heteroscedastic':
+		y_pred_std = tf.add(tf.mul(y_std, y_uncertainty), y_mean, name='y_pred')
+	return y_pred, y_pred_std
 
 
 def variable_summaries(var, default=True):
