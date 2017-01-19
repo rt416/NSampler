@@ -33,7 +33,7 @@ opt['no_randomisation'] = 1
 opt['shuffle_data'] = True
 opt['chunks'] = True  # set True if you want to chunk the HDF5 file.
 
-opt['subsampling_rate'] = 85
+opt['subsampling_rate'] = 1372
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
 opt['receptive_field_radius'] = 2
