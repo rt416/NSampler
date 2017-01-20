@@ -86,6 +86,18 @@ def kl_log_uniform_prior(varQ, name=None):
 	return tf.reduce_mean(KL, name=name)
 
 
+def residual_block(x, n_in, n_out, name):
+	"""A residual block of constant spatial dimensions and 1x1 convs only"""
+	b = tf.get_variable(name+'_2b', dtype=tf.float32, shape=[n_out],
+						initializer=tf.constant_initializer(1e-2))
+	assert n_out >= n_in
+
+	h1 = conv3d(x, [1,1,1,n_in,n_out], [n_out], name+'1')
+	h2 = conv3d(tf.nn.relu(h1), [1,1,1,n_out,n_out], None, name+'2')
+	h3 = tf.pad(x, [[0,0],[0,0],[0,0],[0,0],[0,n_out-n_in]]) + h2
+	return tf.nn.relu(tf.nn.bias_add(h3, b))
+
+
 def inference(method, x, y, keep_prob, opt):
 	""" Define the model up to where it may be used for inference.
 	Args:
@@ -222,15 +234,19 @@ def inference(method, x, y, keep_prob, opt):
 		with tf.name_scope('mean_network'):
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 			if opt['receptive_field_radius'] == 2:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 3:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 4:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 			elif opt['receptive_field_radius'] == 5:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
@@ -243,15 +259,19 @@ def inference(method, x, y, keep_prob, opt):
 		with tf.name_scope('covariance_network'):  # diagonality assumed
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 			if opt['receptive_field_radius'] == 2:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 3:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 4:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 			elif opt['receptive_field_radius'] == 5:
-				h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+							  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
@@ -283,20 +303,6 @@ def inference(method, x, y, keep_prob, opt):
 		raise ValueError('The chosen method not available ...')
 
 	return y_pred, y_std, cost
-
-
-
-def residual_block(x, n_in, n_out, name):
-	"""A residual block of constant spatial dimensions and 1x1 convs only"""
-	b = tf.get_variable(name+'_2b', dtype=tf.float32, shape=[n_out],
-						initializer=tf.constant_initializer(1e-2))
-	assert n_out >= n_in
-	
-	h1 = conv3d(x, [1,1,1,n_in,n_out], [n_out], name+'1')
-	h2 = conv3d(tf.nn.relu(h1), [1,1,1,n_out,n_out], None, name+'2')
-	h3 = tf.pad(x, [[0,0],[0,0],[0,0],[0,0],[0,n_out-n_in]]) + h2
-	return tf.nn.relu(tf.nn.bias_add(h3, b))
-
 
 
 def scaled_prediction(method, x, keep_prob, transform, opt):
