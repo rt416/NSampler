@@ -49,7 +49,7 @@ def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
 	return z
 
 
-def normal_mult_noise(a, keep_prob, opt, name):
+def normal_mult_noise(a, keep_prob, opt, name, summary=False):
 	"""Gaussian dropout, Srivastava 2014 JMLR"""
 	with tf.name_scope(name):
 		if opt['method'] == 'cnn_dropout':
@@ -65,11 +65,15 @@ def normal_mult_noise(a, keep_prob, opt, name):
 			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
+			variable_summaries(a_drop, summary)
+			variable_summaries(kl, summary)
 		elif opt['method'] == 'cnn_variational_dropout_layerwise':
 			rho = get_weights([1,], W_init=tf.constant(1e-2), name='rho')
 			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
+			variable_summaries(a_drop, summary)
+			variable_summaries(kl, summary)
 	return a_drop, kl
 
 
@@ -82,7 +86,7 @@ def kl_log_uniform_prior(varQ, name=None):
 	return tf.reduce_mean(KL, name=name)
 
 
-def inference(method, x, keep_prob, opt):
+def inference(method, x, y, keep_prob, opt):
 	""" Define the model up to where it may be used for inference.
 	Args:
 		method (str): model type
@@ -117,6 +121,9 @@ def inference(method, x, keep_prob, opt):
 						[no_channels*(upsampling_rate**3)],
                         'conv_last')
 
+		with tf.name_scope('loss'):
+			cost = tf.reduce_mean(tf.square(y - y_pred))
+
 	elif method == 'cnn_dropout':
 		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
@@ -142,6 +149,9 @@ def inference(method, x, keep_prob, opt):
 		y_pred = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 						[no_channels * (upsampling_rate ** 3)], 'conv_last')
+
+		with tf.name_scope('loss'):
+			cost = tf.reduce_mean(tf.square(y - y_pred))
 
 	if method == 'cnn_gaussian_dropout':
 		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
@@ -170,6 +180,9 @@ def inference(method, x, keep_prob, opt):
 						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 						[no_channels * (upsampling_rate ** 3)],
 						'conv_last')
+
+		with tf.name_scope('loss'):
+			cost = tf.reduce_mean(tf.square(y - y_pred))
 
 	elif method == 'cnn_variational_dropout' or \
 		 method == 'cnn_variational_dropout_layerwise':
@@ -201,6 +214,10 @@ def inference(method, x, keep_prob, opt):
 						[no_channels * (upsampling_rate ** 3)],
 						'conv_last')
 		kl_obj = kl + kl_last
+
+		with tf.name_scope('loss'):
+			cost = tf.reduce_mean(tf.square(y - y_pred)) + kl_obj
+
 	elif method == 'cnn_heteroscedastic':
 		with tf.name_scope('mean_network'):
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
@@ -246,6 +263,10 @@ def inference(method, x, keep_prob, opt):
 			y_std = tf.add(tf.nn.softplus(h_last), tf.constant(1e-6,'stability_const'),
 						   name='predictive_cov')
 
+		with tf.name_scope('loss'):
+			cost = tf.reduce_mean(tf.square(tf.mul(y_std, (y - y_pred))))\
+				   -tf.reduce_mean(tf.log(y_std))
+
 	elif method == 'cnn_residual':
 		h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
 		# Residual blocks:
@@ -261,13 +282,8 @@ def inference(method, x, keep_prob, opt):
 	else:
 		raise ValueError('The chosen method not available ...')
 
-	return y_pred, y_std
+	return y_pred, y_std, cost
 
-
-def affine_layer(x, n_in, n_out, name='aff'):
-	W = get_weights([n_in, n_out], name=name+'_W')
-	b = get_weights([n_out], name=name+'_b')
-	return tf.matmul(x, W) + b, W, b
 
 
 def residual_block(x, n_in, n_out, name):
@@ -291,7 +307,7 @@ def scaled_prediction(method, x, keep_prob, transform, opt):
 	y_pred_std = None
 	# x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
 	x_scaled = tf.div(tf.sub(x, x_mean), x_std)
-	y, y_uncertainty = inference(method, x_scaled, keep_prob, opt)
+	y, y_uncertainty, cost = inference(method, x_scaled, keep_prob, opt)
 	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
 	if opt['method']=='cnn_heteroscedastic':

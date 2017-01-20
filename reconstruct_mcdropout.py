@@ -75,10 +75,13 @@ def dt_trim(dt_volume, pd):
     return dt_volume
 
 
-def mc_inference(fn, fd, opt):
+def mc_inference(fn, fn_std, fd, opt):
     """ Compute the mean and std of samples drawn from stochastic function"""
     no_samples = opt['mc_no_samples']
-    if opt['method']=='cnn_dropout':
+    if opt['method']=='cnn_dropout' or \
+       opt['method']=='cnn_gaussian_dropout' or \
+       opt['method']=='cnn_variational_dropout' or \
+       opt['method']=='cnn_variational_dropout_layerwise':
         sum_out = 0.0
         sum_out2 = 0.0
         for i in xrange(no_samples):
@@ -87,7 +90,18 @@ def mc_inference(fn, fd, opt):
 
         mean = sum_out/no_samples
         std = np.sqrt((sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
+    elif opt['method']=='cnn_heteroscedastic':
+        sum_out = 0.0
+        sum_out2 = 0.0
+        for i in xrange(no_samples):
+            sum_out += 1. * fn.eval(feed_dict=fd)
+            sum_out2 += 1. * fn.eval(feed_dict=fd) ** 2
+
+        mean = sum_out / no_samples
+        std = np.sqrt((sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
+        std += 1. * fn_std.eval(feed_dict=fd)
     else:
+        raise Exception('The specified method does not support MC inference.')
         mean = fn.eval(feed_dict=fd)
         std = None
     return mean, std
@@ -154,7 +168,7 @@ def super_resolve_mcdropout(dt_lowres, opt):
 
     # Load normalisation parameters and define prediction:
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
-    y_pred, __ = models.scaled_prediction(method, x, keep_prob, transform, opt)
+    y_pred, y_pred_std = models.scaled_prediction(method, x, keep_prob, transform, opt)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
@@ -208,7 +222,7 @@ def super_resolve_mcdropout(dt_lowres, opt):
 
             # Predict high-res patch:
             fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
-            opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, fd, opt)
+            opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, y_pred_std, fd, opt)
 
             opatch = forward_periodic_shuffle(opatch_mean_ps, upsampling_rate)
 
