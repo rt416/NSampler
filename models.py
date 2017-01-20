@@ -15,6 +15,73 @@ import numpy as np
 import tensorflow as tf
 
 
+def get_weights(filter_shape, W_init=None, name=None):
+	if W_init == None:
+		# He/Xavier
+		prod_length = len(filter_shape) - 1
+		stddev = np.sqrt(2.0 / np.prod(filter_shape[:prod_length]))
+		W_init = tf.random_normal(filter_shape, stddev=stddev)
+	return tf.Variable(W_init, name=name)
+
+
+def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
+	"""Return the 3D convolution"""
+	with tf.name_scope(layer_name):
+		with tf.name_scope('weights'):
+			w = get_weights(w_shape)
+			variable_summaries(w, summary)
+
+		if b_shape is not None:
+			with tf.name_scope('biases'):
+				b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=b_shape))
+				variable_summaries(b, summary)
+
+			# b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
+			#                    initializer=tf.constant_initializer(1e-2))
+			with tf.name_scope('wxplusb'):
+				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
+				z = tf.nn.bias_add(z, b)
+				variable_summaries(z, summary)
+		else:
+			with tf.name_scope('wx'):
+				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
+				variable_summaries(z, summary)
+	return z
+
+
+def normal_mult_noise(a, keep_prob, opt, name):
+	"""Gaussian dropout, Srivastava 2014 JMLR"""
+	with tf.name_scope(name):
+		if opt['method'] == 'cnn_dropout':
+			a_drop = tf.nn.dropout(a, keep_prob)
+			kl = None
+		elif opt['method'] == 'cnn_gaussian_dropout':
+			sigma = keep_prob/(1.-keep_prob)
+			a_drop = a * (1. + sigma * tf.random_normal(tf.shape(a)))
+			kl = None
+		elif opt['method'] == 'cnn_variational_dropout':
+			W_init = tf.constant(1e-2, shape=tf.shape(a)[1:])
+			rho = get_weights(tf.shape(a)[1:], W_init=W_init, name='rho')
+			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
+			kl = kl_log_uniform_prior(sigma, name='kl')
+		elif opt['method'] == 'cnn_variational_dropout_layerwise':
+			rho = get_weights([1,], W_init=tf.constant(1e-2), name='rho')
+			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
+			kl = kl_log_uniform_prior(sigma, name='kl')
+	return a_drop, kl
+
+
+def kl_log_uniform_prior(varQ, name=None):
+	"""Compute the gaussian-log uniform KL-div from VDLRT"""
+	c1 = 1.16145124
+	c2 = -1.50204118
+	c3 = 0.58629921
+	KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+	return tf.reduce_mean(KL, name=name)
+
+
 def inference(method, x, keep_prob, opt):
 	""" Define the model up to where it may be used for inference.
 	Args:
@@ -54,15 +121,19 @@ def inference(method, x, keep_prob, opt):
 		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
 		if opt['receptive_field_radius'] == 2:
-			h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+						  [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
 		elif opt['receptive_field_radius'] == 3:
-			h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+						  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 		elif opt['receptive_field_radius'] == 4:
-			h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+						  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 						  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 		elif opt['receptive_field_radius'] == 5:
-			h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+						  [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
 			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 						  [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
 			h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
@@ -72,10 +143,67 @@ def inference(method, x, keep_prob, opt):
 						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 						[no_channels * (upsampling_rate ** 3)], 'conv_last')
 
+	if method == 'cnn_gaussian_dropout':
+		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+
+		if opt['receptive_field_radius'] == 2:
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+		elif opt['receptive_field_radius'] == 3:
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+		elif opt['receptive_field_radius'] == 4:
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_2')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+		elif opt['receptive_field_radius'] == 5:
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_2')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+			a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_3')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+
+		a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_last')
+		y_pred = conv3d(a1_2_drop,
+						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+						[no_channels * (upsampling_rate ** 3)],
+						'conv_last')
+
+	elif method == 'cnn_variational_dropout' or \
+		 method == 'cnn_variational_dropout_layerwise':
+		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+
+		if opt['receptive_field_radius'] == 2:
+			a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+		elif opt['receptive_field_radius'] == 3:
+			a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+		elif opt['receptive_field_radius'] == 4:
+			a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_2')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+			kl = kl_1 + kl_2
+		elif opt['receptive_field_radius'] == 5:
+			a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, opt, 'mulnoise_1')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+			a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_2')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+			a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_3')
+			h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+			kl = kl_1 + kl_2 + kl_3
+		a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, opt, 'mulnoise_last')
+		y_pred = conv3d(a1_2_drop,
+						[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+						[no_channels * (upsampling_rate ** 3)],
+						'conv_last')
+		kl_obj = kl + kl_last
 	elif method == 'cnn_heteroscedastic':
 		with tf.name_scope('mean_network'):
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
-
 			if opt['receptive_field_radius'] == 2:
 				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 3:
@@ -97,7 +225,6 @@ def inference(method, x, keep_prob, opt):
 
 		with tf.name_scope('covariance_network'):  # diagonality assumed
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
-
 			if opt['receptive_field_radius'] == 2:
 				h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
 			elif opt['receptive_field_radius'] == 3:
@@ -131,44 +258,17 @@ def inference(method, x, keep_prob, opt):
 		h6 = residual_block(h5, n_h2, n_h2, 'res6')
 		y_pred = conv3d(h6, [1,1,1,n_h2,no_channels*(upsampling_rate**3)],
 							[no_channels*(upsampling_rate**3)], '7')
-	elif method == 'mlp_h=1_kingma':
-		n_in = 100
-		n_out = 150
-		# MLP with one hidden layer:
-		rho1 = get_weights([n_in, ], name='rho1')
-		sigma1 = tf.nn.softplus(rho1)
-		x_drop = x * (1. + sigma1 * tf.random_normal(tf.shape(x)))
-		aff1, W1, b1 = affine_layer(x_drop, n_in, n_h1, name='aff1')
-		h1 = tf.nn.relu(aff1)
-
-		rho2 = get_weights([n_h1, ], name='rho2')
-		sigma2 = tf.nn.softplus(rho2)
-		h1_drop = h1 * (1. + sigma2 * tf.random_normal(tf.shape(h1)))
-		y_pred, W2, b2 = affine_layer(h1_drop, n_h1, n_out, name='aff2')
-
-		L2_sqr = tf.reduce_sum(W1 ** 2) + tf.reduce_sum(W2 ** 2)
-		L1 = tf.reduce_sum(tf.abs(W1)) + tf.reduce_sum(tf.abs(W2))
-		KL1 = kl_log_uniform_prior(tf.pow(sigma1, 2.))
-		KL2 = kl_log_uniform_prior(tf.pow(sigma2, 2.))
-		KL_list = [KL1, KL2]
-
 	else:
 		raise ValueError('The chosen method not available ...')
 
 	return y_pred, y_std
+
 
 def affine_layer(x, n_in, n_out, name='aff'):
 	W = get_weights([n_in, n_out], name=name+'_W')
 	b = get_weights([n_out], name=name+'_b')
 	return tf.matmul(x, W) + b, W, b
 
-def kl_log_uniform_prior(varQ):
-	"""Compute the gaussian-log uniform KL-div from VDLRT"""
-	c1 = 1.16145124
-	c2 = -1.50204118
-	c3 = 0.58629921
-	KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
-	return tf.reduce_mean(KL)
 
 def residual_block(x, n_in, n_out, name):
 	"""A residual block of constant spatial dimensions and 1x1 convs only"""
@@ -181,37 +281,7 @@ def residual_block(x, n_in, n_out, name):
 	h3 = tf.pad(x, [[0,0],[0,0],[0,0],[0,0],[0,n_out-n_in]]) + h2
 	return tf.nn.relu(tf.nn.bias_add(h3, b))
 
-def get_weights(filter_shape, W_init=None, name=None):
-	if W_init == None:
-		# He/Xavier
-		prod_length = len(filter_shape) - 1
-		stddev = np.sqrt(2.0 / np.prod(filter_shape[:prod_length])) 
-		W_init = tf.random_normal(filter_shape, stddev=stddev)
-	return tf.Variable(W_init, name=name)
 
-def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
-	"""Return the 3D convolution"""
-	with tf.name_scope(layer_name):
-		with tf.name_scope('weights'):
-			w = get_weights(w_shape)
-			variable_summaries(w, summary)
-
-		if b_shape is not None:
-			with tf.name_scope('biases'):
-				b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=b_shape))
-				variable_summaries(b, summary)
-
-			# b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
-			#                    initializer=tf.constant_initializer(1e-2))
-			with tf.name_scope('wxplusb'):
-				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
-				z = tf.nn.bias_add(z, b)
-				variable_summaries(z, summary)
-		else:
-			with tf.name_scope('wx'):
-				z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
-				variable_summaries(z, summary)
-	return z
 
 def scaled_prediction(method, x, keep_prob, transform, opt):
 	x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
