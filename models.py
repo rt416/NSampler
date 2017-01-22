@@ -305,7 +305,7 @@ def inference(method, x, y, keep_prob, opt):
 	return y_pred, y_std, cost
 
 
-def scaled_prediction(method, x, keep_prob, transform, opt):
+def scaled_prediction(method, x, y, keep_prob, transform, opt):
 	x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
 	x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
 	y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
@@ -313,7 +313,7 @@ def scaled_prediction(method, x, keep_prob, transform, opt):
 	y_pred_std = None
 	# x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
 	x_scaled = tf.div(tf.sub(x, x_mean), x_std)
-	y, y_uncertainty, cost = inference(method, x_scaled, keep_prob, opt)
+	y, y_uncertainty, cost = inference(method, x_scaled, y, keep_prob, opt)
 	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
 	if opt['method']=='cnn_heteroscedastic':

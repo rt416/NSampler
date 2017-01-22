@@ -168,7 +168,8 @@ def super_resolve_mcdropout(dt_lowres, opt):
 
     # Load normalisation parameters and define prediction:
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
-    y_pred, y_pred_std = models.scaled_prediction(method, x, keep_prob, transform, opt)
+    y_pred, y_pred_std = models.scaled_prediction(method, x, y,
+                                                  keep_prob, transform, opt)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
