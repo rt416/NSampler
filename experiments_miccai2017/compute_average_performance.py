@@ -83,9 +83,9 @@ import reconstruct
 # Train dropout network
 print('Train dropout networks!')
 opt['method'] = 'cnn_dropout'
-opt['subsampling_rate'] = 1372
+opt['subsampling_rate'] = 686
 
-for dropout_rate in [0.0, 0.1, 0.3, 0.5, 0.6]:
+for dropout_rate in [0.0, 0.1, 0.2, 0.3, 0.5]:
     # Train:
     opt['dropout_rate'] = dropout_rate
     train_cnn(opt)
@@ -104,24 +104,24 @@ for dropout_rate in [0.0, 0.1, 0.3, 0.5, 0.6]:
 
 
 # MC dropout reconstruct:
-# import reconstruct_mcdropout
-# print('Train dropout networks!')
-# opt['method'] = 'cnn_dropout'
-# opt['subsampling_rate'] = 1372
-# opt['mc_no_samples'] = 100
-#
-#
-# for dropout_rate in [0.0, 0.1, 0.3, 0.5, 0.6]:
-#     # Train:
-#     opt['dropout_rate'] = dropout_rate
-#     # Reconstruct (optional):
-#     subjects_list = ['904044', '165840', '889579', '713239',
-#                      '899885', '117324', '214423', '857263']
-#     rmse_average = 0
-#     for subject in subjects_list:
-#         opt['subject'] = subject
-#         rmse, _ = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
-#         rmse_average += rmse
-#
-#     print('\n Average RMSE on Diverse dataset is %.15f.'
-#           % (rmse_average / len(subjects_list),))
+import reconstruct_mcdropout
+print('Train dropout networks!')
+opt['method'] = 'cnn_dropout'
+opt['subsampling_rate'] = 686
+opt['mc_no_samples'] = 100
+
+
+for dropout_rate in [0.1, 0.2, 0.3, 0.5]:
+    # Train:
+    opt['dropout_rate'] = dropout_rate
+    # Reconstruct (optional):
+    subjects_list = ['904044', '165840', '889579', '713239',
+                     '899885', '117324', '214423', '857263']
+    rmse_average = 0
+    for subject in subjects_list:
+        opt['subject'] = subject
+        rmse, _ = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
+        rmse_average += rmse
+
+    print('\n Average RMSE on Diverse dataset is %.15f.'
+          % (rmse_average / len(subjects_list),))
