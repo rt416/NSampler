@@ -165,7 +165,7 @@ def inference(method, x, y, keep_prob, opt):
 		with tf.name_scope('loss'):
 			cost = tf.reduce_mean(tf.square(y - y_pred))
 
-	if method == 'cnn_gaussian_dropout':
+	elif method == 'cnn_gaussian_dropout':
 		h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
 		if opt['receptive_field_radius'] == 2:
