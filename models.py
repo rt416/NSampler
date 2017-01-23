@@ -280,8 +280,7 @@ def inference(method, x, y, keep_prob, opt):
 			h_last = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 							[no_channels * (upsampling_rate ** 3)], 'conv_last')
-			y_std = tf.add(tf.nn.softplus(h_last), tf.constant(1e-6,'stability_const'),
-						   name='predictive_cov')
+			y_std = tf.nn.softplus(h_last) + 1e-6
 
 		with tf.name_scope('loss'):
 			cost = tf.reduce_mean(tf.square(tf.mul(y_std, (y - y_pred))))\
