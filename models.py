@@ -256,7 +256,7 @@ def inference(method, x, y, keep_prob, opt):
 							[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 							[no_channels * (upsampling_rate ** 3)], 'conv_last')
 
-		with tf.name_scope('covariance_network'):  # diagonality assumed
+		with tf.name_scope('precision_network'):  # diagonality assumed
 			h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 			if opt['receptive_field_radius'] == 2:
 				h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
@@ -280,11 +280,12 @@ def inference(method, x, y, keep_prob, opt):
 			h_last = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
 							[3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
 							[no_channels * (upsampling_rate ** 3)], 'conv_last')
-			y_std = tf.nn.softplus(h_last) + 1e-6
+			y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
+			y_std = tf.sqrt(1./y_prec, name='y_std')
 
 		with tf.name_scope('loss'):
-			cost = tf.reduce_mean(tf.square(tf.mul(y_std, (y - y_pred))))\
-				   -tf.reduce_mean(tf.log(y_std))
+			cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred))))\
+				   -tf.reduce_mean(tf.log(y_prec))
 
 	elif method == 'cnn_residual':
 		h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
