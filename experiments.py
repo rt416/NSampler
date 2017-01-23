@@ -8,7 +8,7 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_simple'
+opt['method'] = 'cnn_heteroscedastic'
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
@@ -78,12 +78,23 @@ if choose == 1:
     subjects_list = ['904044', '165840', '889579', '713239',
                      '899885', '117324', '214423', '857263']
     rmse_average = 0
-    choose_rec = input("Press 1 to proceed to reconstruction. ")
+    choose_rec = input("1 for standard reconstruction, 2 for MC reconstruction ")
     if choose_rec==1:
         import reconstruct
         for subject in subjects_list:
             opt['subject'] = subject
             rmse, _ = reconstruct.sr_reconstruct(opt)
+            rmse_average += rmse
+
+        print('\n Average RMSE on Diverse dataset is %.15f.'
+              % (rmse_average / len(subjects_list),))
+    elif choose_rec==2:
+        opt['mc_no_samples'] = input("number of MC samples: ")
+        import reconstruct_mcdropout
+        rmse_average = 0
+        for subject in subjects_list:
+            opt['subject'] = subject
+            rmse, _ = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
             rmse_average += rmse
 
         print('\n Average RMSE on Diverse dataset is %.15f.'
