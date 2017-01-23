@@ -61,7 +61,7 @@ opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 opt['mc_no_samples'] = 15
 
 # Choose the experiment option:
-choose = input("Press 1 for training or 2 for reconstruction: ")
+choose = input("Press 1 for training or 2 or 3 for normal/MC-based reconstruction ")
 
 if choose == 1:
 
@@ -113,4 +113,19 @@ elif choose==2:
         rmse_average += rmse
 
     print('\n Average RMSE on Diverse dataset is %.15f'
+          % (rmse_average / len(subjects_list),))
+elif choose==3:
+    opt['mc_no_samples'] = input("number of MC samples: ")
+    import reconstruct_mcdropout
+
+    subjects_list = ['904044', '165840', '889579', '713239',
+                     '899885', '117324', '214423', '857263']
+
+    rmse_average = 0
+    for subject in subjects_list:
+        opt['subject'] = subject
+        rmse, _ = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
+        rmse_average += rmse
+
+    print('\n Average RMSE on Diverse dataset is %.15f.'
           % (rmse_average / len(subjects_list),))
