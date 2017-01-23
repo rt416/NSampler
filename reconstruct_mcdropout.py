@@ -88,8 +88,9 @@ def mc_inference(fn, fn_std, fd, opt):
             sum_out += 1.*fn.eval(feed_dict=fd)
             sum_out2 += 1.*fn.eval(feed_dict=fd)**2
 
-        mean = sum_out/no_samples
+        mean = sum_out / (1.*no_samples)
         std = np.sqrt((sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
+        print(std)
     elif opt['method']=='cnn_heteroscedastic':
         sum_out = 0.0
         sum_out2 = 0.0

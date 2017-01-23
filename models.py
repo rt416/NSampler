@@ -317,7 +317,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt):
 	y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
 	if opt['method']=='cnn_heteroscedastic':
-		y_pred_std = tf.add(tf.mul(y_std, y_uncertainty), y_mean, name='y_pred')
+		y_pred_std = tf.mul(y_std, y_uncertainty, name='y_pred_std')
 	return y_pred, y_pred_std
 
 
