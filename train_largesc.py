@@ -108,6 +108,11 @@ def train_cnn(opt):
     checkpoint_dir = define_checkpoint(opt)
     opt["checkpoint_dir"] = checkpoint_dir
 
+    # exit if the network has already been trained:
+    if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
+        print('Network already trained. Move on to next.')
+        return
+
     # -------------------------load data------------------------------------:
     data, n_train, n_valid = pp.load_hdf5(opt)
     in_shape = data['in']['X'].shape[1:]

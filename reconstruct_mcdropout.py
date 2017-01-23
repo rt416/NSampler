@@ -274,14 +274,14 @@ def sr_reconstruct_mcdropout(opt):
     # Reconstruct:
     start_time = timeit.default_timer()
     nn_dir = name_network(opt)
-    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
+    print('\nPerformn MC-reconstruction of high-res dti with the network: \n%s.' % nn_dir)
     dt_hr, dt_std = super_resolve_mcdropout(dt_lowres, opt)
 
     # Save:
-    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
+    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_mcrecon_b1000.npy')
     uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
 
-    print('... saving predicted hi-res as %s' % output_file)
+    print('... saving MC-predicted hi-res as %s' % output_file)
     if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
         os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)

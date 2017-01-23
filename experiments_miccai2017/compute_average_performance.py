@@ -44,9 +44,9 @@ opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
-opt['save_dir'] = '../../models'
-opt['log_dir'] = '../../log'
-opt['recon_dir'] = '../../recon'
+opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/models'
+opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/log'
+opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
 
 opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
 opt['save_train_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/'
