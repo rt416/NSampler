@@ -239,6 +239,7 @@ def sr_reconstruct(opt):
     output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
     print('... saving as %s' % output_file)
     if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+        os.mkdir(os.path.join(recon_dir, subject))
         os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)
     end_time = timeit.default_timer()
