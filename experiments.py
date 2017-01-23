@@ -8,14 +8,14 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_heteroscedastic'
+opt['method'] = 'cnn_dropout'
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 
 # Training
 opt['optimizer'] = tf.train.AdamOptimizer
-opt['dropout_rate'] = 0.0
+opt['dropout_rate'] = 0.1
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
