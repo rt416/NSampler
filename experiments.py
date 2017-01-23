@@ -118,8 +118,10 @@ elif choose==3:
     opt['mc_no_samples'] = input("number of MC samples: ")
     import reconstruct_mcdropout
 
-    subjects_list = ['904044', '165840', '889579', '713239',
-                     '899885', '117324', '214423', '857263']
+    subjects_list = ['904044']
+
+    # subjects_list = ['904044', '165840', '889579', '713239',
+    #                  '899885', '117324', '214423', '857263']
 
     rmse_average = 0
     for subject in subjects_list:
