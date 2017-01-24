@@ -15,7 +15,7 @@ opt['n_h3'] = 10
 
 # Training
 opt['optimizer'] = tf.train.AdamOptimizer
-opt['dropout_rate'] = 0.1
+opt['dropout_rate'] = 0.2
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
@@ -33,7 +33,7 @@ opt['no_randomisation'] = 1
 opt['shuffle_data'] = True
 opt['chunks'] = True  # set True if you want to chunk the HDF5 file.
 
-opt['subsampling_rate'] = 1372
+opt['subsampling_rate'] = 343
 opt['upsampling_rate'] = 2
 opt['input_radius'] = 5
 opt['receptive_field_radius'] = 2
