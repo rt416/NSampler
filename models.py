@@ -60,15 +60,27 @@ def normal_mult_noise(a, keep_prob, opt, name, summary=False):
 			a_drop = a * (1. + sigma * tf.random_normal(tf.shape(a)))
 			kl = None
 		elif opt['method'] == 'cnn_variational_dropout':
-			W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
-			rho = get_weights(tf.shape(a)[1:], W_init=W_init, name='rho')
+			# W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
+			W_init = tf.constant(np.float32(1e-4*np.ones(get_tensor_shape(a)[1:])))
+			rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
 			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
 			variable_summaries(a_drop, summary)
 			variable_summaries(kl, summary)
+
+		elif opt['method'] == 'cnn_variational_dropout_channelwise':
+			# W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
+			W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[4])))
+			rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
+			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
+			kl = kl_log_uniform_prior(sigma, name='kl')
+			variable_summaries(a_drop, summary)
+			variable_summaries(kl, summary)
+
 		elif opt['method'] == 'cnn_variational_dropout_layerwise':
-			rho = get_weights([1,], W_init=tf.constant(1e-2), name='rho')
+			rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
 			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
@@ -333,3 +345,9 @@ def variable_summaries(var, default=True):
 			tf.summary.scalar('max', tf.reduce_max(var))
 			tf.summary.scalar('min', tf.reduce_min(var))
 			tf.summary.histogram('histogram', var)
+
+
+def get_tensor_shape(tensor):
+	"""Return the shape of a tensor as a tuple"""
+	s = tensor.get_shape()
+	return tuple([s[i].value for i in range(0, len(s))])
