@@ -63,7 +63,7 @@ def normal_mult_noise(a, keep_prob, opt, name, summary=False):
 			# W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
 			W_init = tf.constant(np.float32(1e-4*np.ones(get_tensor_shape(a)[1:])))
 			rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
-			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
 			variable_summaries(a_drop, summary)
@@ -73,7 +73,7 @@ def normal_mult_noise(a, keep_prob, opt, name, summary=False):
 			# W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
 			W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[4])))
 			rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
-			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
 			variable_summaries(a_drop, summary)
@@ -81,7 +81,7 @@ def normal_mult_noise(a, keep_prob, opt, name, summary=False):
 
 		elif opt['method'] == 'cnn_variational_dropout_layerwise':
 			rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
-			sigma = tf.min(tf.nn.softplus(rho), 1., name='std')
+			sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
 			a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
 			kl = kl_log_uniform_prior(sigma, name='kl')
 			variable_summaries(a_drop, summary)
