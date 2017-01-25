@@ -49,14 +49,14 @@ def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
     return z
 
 
-def normal_mult_noise(a, keep_prob, optimize, name, summary=False):
+def normal_mult_noise(a, keep_prob, params, name, opt, summary=False):
     """Gaussian dropout, Srivastava 2014 JMLR"""
     with tf.name_scope(name):
-        if optimize==None:
+        if params==None:
             sigma = (1.-keep_prob) / keep_prob
             a_drop = a * (1. + sigma * tf.random_normal(tf.shape(a)))
             kl = None
-        elif optimize=='weight':
+        elif params=='weight':
             # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
             W_init = tf.constant(np.float32(1e-4*np.ones(get_tensor_shape(a)[1:])))
             rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
@@ -65,7 +65,7 @@ def normal_mult_noise(a, keep_prob, optimize, name, summary=False):
             kl = kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
-        elif optimize=='channel':
+        elif params=='channel':
             # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
             W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[4])))
             rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
@@ -74,14 +74,14 @@ def normal_mult_noise(a, keep_prob, optimize, name, summary=False):
             kl = kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
-        elif optimize=='layer':
+        elif params=='layer':
             rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
             sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
             a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
             kl = kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
-        elif optimize=='no_noise': # do nothing
+        elif params=='no_noise': # do nothing
             a_drop = a
             kl = None
     return a_drop, kl
@@ -234,27 +234,27 @@ def inference(method, x, y, keep_prob, opt):
 
     elif method == 'cnn_gaussian_dropout':
         h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
-        optimize=None
+        params=None
         if opt['receptive_field_radius'] == 2:
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
         elif opt['receptive_field_radius'] == 3:
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
         elif opt['receptive_field_radius'] == 4:
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
         elif opt['receptive_field_radius'] == 5:
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
-            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_3')
+            a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_3')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
 
-        a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_last')
+        a1_2_drop, _ = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_last')
         y_pred = conv3d(a1_2_drop,
                         [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
                         [no_channels * (upsampling_rate ** 3)],
@@ -268,37 +268,37 @@ def inference(method, x, y, keep_prob, opt):
          method == 'cnn_variational_dropout_channelwise':
 
         if method == 'cnn_variational_dropout':
-            optimize='weight'
+            params='weight'
         elif method == 'cnn_variational_dropout_layerwise':
-            optimize='layer'
+            params='layer'
         elif method == 'cnn_variational_dropout_channelwise':
-            optimize='channel'
+            params='channel'
         else:
             raise ValueError('no variational parameters specified!')
 
         h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
         if opt['receptive_field_radius'] == 2:
-            a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
         elif opt['receptive_field_radius'] == 3:
-            a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
         elif opt['receptive_field_radius'] == 4:
-            a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-            a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+            a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
             kl = kl_1 + kl_2
         elif opt['receptive_field_radius'] == 5:
-            a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+            a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-            a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+            a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
-            a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_3')
+            a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_3')
             h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
             kl = kl_1 + kl_2 + kl_3
-        a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_last')
+        a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_last')
         y_pred = conv3d(a1_2_drop,
                         [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
                         [no_channels * (upsampling_rate ** 3)],
@@ -310,11 +310,11 @@ def inference(method, x, y, keep_prob, opt):
 
     elif method == 'cnn_heteroscedastic_variational':
         if method == 'cnn_heteroscedastic_variational':
-            optimize = 'weight'
+            params = 'weight'
         elif method == 'cnn_heteroscedastic_variational_layerwise':
-            optimize = 'layer'
+            params = 'layer'
         elif method == 'cnn_heteroscedastic_variational_channelwise':
-            optimize = 'channel'
+            params = 'channel'
         else:
             raise ValueError('no variational parameters specified!')
 
@@ -322,26 +322,26 @@ def inference(method, x, y, keep_prob, opt):
             h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
             if opt['receptive_field_radius'] == 2:
-                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
                 h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
             elif opt['receptive_field_radius'] == 3:
-                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt,'mulnoise_1')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
             elif opt['receptive_field_radius'] == 4:
-                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
                 kl = kl_1 + kl_2
             elif opt['receptive_field_radius'] == 5:
-                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, optimize, 'mulnoise_1')
+                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
-                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_2')
+                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
-                a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_3')
+                a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_3')
                 h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
                 kl = kl_1 + kl_2 + kl_3
-            a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, optimize, 'mulnoise_last')
+            a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_last')
             y_pred = conv3d(a1_2_drop,
                             [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
                             [no_channels * (upsampling_rate ** 3)],

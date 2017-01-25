@@ -123,6 +123,8 @@ def train_cnn(opt):
     # -------------------------load data------------------------------------:
 
     data = pp.load_hdf5(opt)
+    opt['train_noexamples'] = data['in']['train'].shape[0]
+    opt['valid_noexamples'] = data['in']['valid'].shape[0]
     in_shape = data['in']['train'].shape[1:]
     out_shape = data['out']['train'].shape[1:]
 
