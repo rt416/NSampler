@@ -49,7 +49,7 @@ def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
     return z
 
 
-def normal_mult_noise(a, keep_prob, params, name, opt, summary=False):
+def normal_mult_noise(a, keep_prob, params, opt, name, summary=False):
     """Gaussian dropout, Srivastava 2014 JMLR"""
     with tf.name_scope(name):
         if params==None:
