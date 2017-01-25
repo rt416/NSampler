@@ -311,6 +311,7 @@ def sr_reconstruct_mcdropout(opt):
     # Compute the reconstruction error:
     mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
                 '_rec=' + str(5) + '.nii'
+    mask_dir = opt['mask_dir']
     # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
     #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
     rmse, rmse_volume \
@@ -318,7 +319,7 @@ def sr_reconstruct_mcdropout(opt):
                                   recon_dir=os.path.join(recon_dir, subject, nn_dir),
                                   gt_dir=os.path.join(gt_dir, subject, subpath),
                                   mask_choose=True,
-                                  mask_dir=os.path.join(recon_dir, subject, 'masks'),
+                                  mask_dir=os.path.join(mask_dir, subject, 'masks'),
                                   mask_file=mask_file)
 
     print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
