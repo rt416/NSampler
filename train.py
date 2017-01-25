@@ -227,14 +227,13 @@ def train_cnn(opt):
                 current_step = tf.train.global_step(sess, global_step)
 
                 # train op and loss
-                fd={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
-                __, tr_loss, summary_t = sess.run([train_step, mse, merged],
-                                                  feed_dict=fd)
+                fd_t={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
+                __, tr_loss = sess.run([train_step, mse],feed_dict=fd_t)
                 total_tr_loss_epoch += tr_loss
 
                 # valid loss
-                fd = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
-                va_loss, summary_v = sess.run([mse, merged], feed_dict=fd)
+                fd_v = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
+                va_loss = sess.run(mse, feed_dict=fd_v)
                 total_val_loss_epoch += va_loss
 
                 # iteration number
@@ -243,6 +242,8 @@ def train_cnn(opt):
 
                 # Print out current progress
                 if (iter_ + 1) % (validation_frequency/10) == 0:
+                    summary_t = sess.run(merged, feed_dict=fd_t)
+                    summary_v = sess.run(merged, feed_dict=fd_v)
                     train_writer.add_summary(summary_t, iter_+1)
                     valid_writer.add_summary(summary_v, iter_+1)
                     vl = np.sqrt(va_loss*10**10)

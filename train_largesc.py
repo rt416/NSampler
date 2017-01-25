@@ -21,6 +21,12 @@ def define_checkpoint(opt):
         os.makedirs(checkpoint_dir)
     return checkpoint_dir
 
+def define_logdir(opt):
+    nn_file = name_network(opt)
+    checkpoint_dir = os.path.join(opt['log_dir'], nn_file)
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    return checkpoint_dir
 
 def name_network(opt):
     """given inputs, return the model name."""
@@ -106,6 +112,7 @@ def train_cnn(opt):
 
     # Set the directory for saving checkpoints:
     checkpoint_dir = define_checkpoint(opt)
+    log_dir = define_logdir(opt)
     opt["checkpoint_dir"] = checkpoint_dir
 
     # exit if the network has already been trained:
@@ -162,6 +169,11 @@ def train_cnn(opt):
         # Run the Op to initialize the variables.
         init = tf.initialize_all_variables()
         sess.run(init)
+
+        # Merge all the summaries and write them out to ../network_name/log
+        merged = tf.summary.merge_all()
+        train_writer = tf.train.SummaryWriter(log_dir + '/train', sess.graph)
+        valid_writer = tf.train.SummaryWriter(log_dir + '/valid')
 
         # Compute number of minibatches for training, validation and testing
         n_train_batches = n_train // batch_size
@@ -230,13 +242,13 @@ def train_cnn(opt):
                 # print("Shape of xt, yt, xv, yv:%s, %s, %s, %s" % (xt.shape, yt.shape, xv.shape, yv.shape))
 
                 # train op and loss
-                fd={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
-                __, tr_loss = sess.run([train_step, mse], feed_dict=fd)
+                fd_t={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
+                __, tr_loss = sess.run([train_step, mse], feed_dict=fd_t)
                 total_tr_loss_epoch += tr_loss
 
                 # valid loss
-                fd = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
-                va_loss = sess.run(mse, feed_dict=fd)
+                fd_v = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
+                va_loss = sess.run(mse, feed_dict=fd_v)
                 total_val_loss_epoch += va_loss
 
                 # iteration number
@@ -245,6 +257,10 @@ def train_cnn(opt):
 
                 # Print out current progress
                 if (iter_ + 1) % (validation_frequency/10) == 0:
+                    summary_t = sess.run(merged, feed_dict=fd_t)
+                    summary_v = sess.run(merged, feed_dict=fd_v)
+                    train_writer.add_summary(summary_t, iter_ + 1)
+                    valid_writer.add_summary(summary_v, iter_ + 1)
                     vl = np.sqrt(va_loss*10**10)
                     sys.stdout.flush()
                     sys.stdout.write('\tvalidation error: %.2f\r' % (vl,))
@@ -280,6 +296,10 @@ def train_cnn(opt):
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     model_details.update(bests)
                     save_model(opt, sess, saver, global_step, model_details)
+
+        # close the summary writers:
+        train_writer.close()
+        valid_writer.close()
 
         # Display the best results:
         print(('\nOptimization complete. Best validation score of %f  '

@@ -414,6 +414,10 @@ def inference(method, x, y, keep_prob, opt):
         with tf.name_scope('expected_loglikelihood'):
             e_loglike = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
                         - tf.reduce_mean(tf.log(y_prec))
+
+            # e_loglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1,2,3,4]), 0) \
+            #           - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1,2,3,4]), 0)
+
             if not (method == 'cnn_variational_dropout_average'):
                 e_loglike = opt['train_noexamples'] * e_loglike
             tf.summary.scalar('e_loglike', e_loglike)
