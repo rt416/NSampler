@@ -83,9 +83,11 @@ def mc_inference(fn, fn_std, fd, opt):
        opt['method']=='cnn_variational_dropout' or \
        opt['method']=='cnn_variational_dropout_layerwise' or \
        opt['method']=='cnn_variational_dropout_channelwise' or \
+       opt['method']=='cnn_variational_dropout_average' or \
        opt['method']=='cnn_heteroscedastic_variational' or \
        opt['method']=='cnn_heteroscedastic_variational_layerwise' or \
-       opt['method']=='cnn_heteroscedastic_variational_channelwise':
+       opt['method']=='cnn_heteroscedastic_variational_channelwise' or \
+       opt['method']=='cnn_heteroscedastic_variational_average' :
         sum_out = 0.0
         sum_out2 = 0.0
         for i in xrange(no_samples):
@@ -149,6 +151,11 @@ def super_resolve_mcdropout(dt_lowres, opt):
 
     # --------------------------- Define the model--------------------------:
 
+    # Specify the network parameters to be restored:
+    model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
+    nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
+    opt.update(model_details)
+
     print('... defining the network model %s .' % method)
     with tf.name_scope('input'):
         x = tf.placeholder(tf.float32, [None,
@@ -176,10 +183,6 @@ def super_resolve_mcdropout(dt_lowres, opt):
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
     y_pred, y_pred_std = models.scaled_prediction(method, x, y,
                                                   keep_prob, transform, opt)
-
-    # Specify the network parameters to be restored:
-    model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
-    nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
 
     # -------------------------- Reconstruct --------------------------------:
     # Restore all the variables and perform reconstruction:

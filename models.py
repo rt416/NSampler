@@ -49,7 +49,7 @@ def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
     return z
 
 
-def normal_mult_noise(a, keep_prob, params, opt, name, summary=False):
+def normal_mult_noise(a, keep_prob, params, opt, name, summary=True):
     """Gaussian dropout, Srivastava 2014 JMLR"""
     with tf.name_scope(name):
         if params==None:
@@ -64,7 +64,7 @@ def normal_mult_noise(a, keep_prob, params, opt, name, summary=False):
             a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
             kl = kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
-            variable_summaries(kl, summary)
+            # variable_summaries(kl, summary)
         elif params=='channel':
             # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
             W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[4])))
@@ -83,19 +83,32 @@ def normal_mult_noise(a, keep_prob, params, opt, name, summary=False):
             kl = np.prod(get_tensor_shape(a)[1:]) * kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
+        elif params=='weight_average':  # use average KL across the weights instead.
+            # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
+            W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[1:])))
+            rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
+            sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+            a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
+            kl = kl_log_uniform_prior(sigma, name='kl_mean', average=True)
+            variable_summaries(a_drop, summary)
+            # variable_summaries(kl, summary)
         elif params=='no_noise': # do nothing
             a_drop = a
             kl = None
     return a_drop, kl
 
 
-def kl_log_uniform_prior(varQ, name=None):
+def kl_log_uniform_prior(varQ, name=None, average=False):
     """Compute the gaussian-log uniform KL-div from VDLRT"""
     c1 = 1.16145124
     c2 = -1.50204118
     c3 = 0.58629921
-    KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
-    return tf.reduce_sum(KL, name=name)
+    kl_mtx = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+    if average:
+        kl_div = tf.reduce_mean(kl_mtx, name=name)
+    else:
+        kl_div = tf.reduce_sum(kl_mtx, name=name)
+    return kl_div
 
 
 def residual_block(x, n_in, n_out, name):
@@ -275,6 +288,8 @@ def inference(method, x, y, keep_prob, opt):
             params='layer'
         elif method == 'cnn_variational_dropout_channelwise':
             params='channel'
+        elif method == 'cnn_variational_dropout_average':
+            params = 'weight_average'
         else:
             raise ValueError('no variational parameters specified!')
 
@@ -308,17 +323,22 @@ def inference(method, x, y, keep_prob, opt):
 
         with tf.name_scope('kl_div'):
             kl_div = kl + kl_last
+            tf.summary.scalar('kl_div_average', kl_div)
 
         with tf.name_scope('expected_loglikelihood'):
             e_loglike = tf.reduce_mean(tf.square(y - y_pred))
-            e_loglike = opt['train_noexamples'] * e_loglike
-
+            if not(method == 'cnn_variational_dropout_average'):
+                e_loglike = opt['train_noexamples'] * e_loglike
+            tf.summary.scalar('e_loglike', e_loglike)
         with tf.name_scope('loss'):
             cost = tf.add(e_loglike, kl_div, name='ELBO')
+            tf.summary.scalar('average_ELBO', cost)
 
     elif method == 'cnn_heteroscedastic_variational':
         if method == 'cnn_heteroscedastic_variational':
             params = 'weight'
+        elif method == 'cnn_heteroscedastic_variational_average':
+            params = 'weight_average'
         elif method == 'cnn_heteroscedastic_variational_layerwise':
             params = 'layer'
         elif method == 'cnn_heteroscedastic_variational_channelwise':
@@ -357,6 +377,7 @@ def inference(method, x, y, keep_prob, opt):
 
         with tf.name_scope('kl_div'):
             kl_div = kl + kl_last
+            tf.summary.scalar('kl_div', kl_div)
 
         with tf.name_scope('precision_network'):  # diagonality assumed
             h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
@@ -388,9 +409,12 @@ def inference(method, x, y, keep_prob, opt):
         with tf.name_scope('expected_loglikelihood'):
             e_loglike = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
                         - tf.reduce_mean(tf.log(y_prec))
-            e_loglike = opt['train_noexamples']*e_loglike
+            if not (method == 'cnn_variational_dropout_average'):
+                e_loglike = opt['train_noexamples'] * e_loglike
+            tf.summary.scalar('e_loglike', e_loglike)
         with tf.name_scope('loss'):
             cost = tf.add(e_loglike, kl_div, name='ELBO')
+            tf.summary.scalar('cost', cost)
 
     elif method == 'cnn_residual':
         h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
