@@ -71,14 +71,16 @@ def normal_mult_noise(a, keep_prob, params, name, opt, summary=False):
             rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
             sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
             a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            kl = kl_log_uniform_prior(sigma, name='kl')
+            # kl = kl_log_uniform_prior(sigma, name='kl')
+            kl = np.prod(get_tensor_shape(a)[1:4]) * kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
         elif params=='layer':
             rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
             sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
             a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            kl = kl_log_uniform_prior(sigma, name='kl')
+            # kl = kl_log_uniform_prior(sigma, name='kl')
+            kl = np.prod(get_tensor_shape(a)[1:]) * kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
             variable_summaries(kl, summary)
         elif params=='no_noise': # do nothing
@@ -93,7 +95,7 @@ def kl_log_uniform_prior(varQ, name=None):
     c2 = -1.50204118
     c3 = 0.58629921
     KL = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
-    return tf.reduce_mean(KL, name=name)
+    return tf.reduce_sum(KL, name=name)
 
 
 def residual_block(x, n_in, n_out, name):
@@ -303,10 +305,16 @@ def inference(method, x, y, keep_prob, opt):
                         [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
                         [no_channels * (upsampling_rate ** 3)],
                         'conv_last')
-        kl_obj = kl + kl_last
+
+        with tf.name_scope('kl_div'):
+            kl_div = kl + kl_last
+
+        with tf.name_scope('expected_loglikelihood'):
+            e_loglike = tf.reduce_mean(tf.square(y - y_pred))
+            e_loglike = opt['train_noexamples'] * e_loglike
 
         with tf.name_scope('loss'):
-            cost = tf.reduce_mean(tf.square(y - y_pred)) + kl_obj
+            cost = tf.add(e_loglike, kl_div, name='ELBO')
 
     elif method == 'cnn_heteroscedastic_variational':
         if method == 'cnn_heteroscedastic_variational':
@@ -380,6 +388,7 @@ def inference(method, x, y, keep_prob, opt):
         with tf.name_scope('expected_loglikelihood'):
             e_loglike = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
                         - tf.reduce_mean(tf.log(y_prec))
+            e_loglike = opt['train_noexamples']*e_loglike
         with tf.name_scope('loss'):
             cost = tf.add(e_loglike, kl_div, name='ELBO')
 
