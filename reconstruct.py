@@ -241,7 +241,7 @@ def sr_reconstruct(opt):
     if not (os.path.exists(os.path.join(recon_dir, subject))):
         os.mkdir(os.path.join(recon_dir, subject))
     if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
-        os.mkdir(os.path.join(recon_dir, subject, nn_dir))
+        os.mkdir(os.path.join(recon_dir, subjecnn_dir))
     np.save(output_file, dt_hr)
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
