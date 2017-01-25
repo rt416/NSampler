@@ -81,7 +81,11 @@ def mc_inference(fn, fn_std, fd, opt):
     if opt['method']=='cnn_dropout' or \
        opt['method']=='cnn_gaussian_dropout' or \
        opt['method']=='cnn_variational_dropout' or \
-       opt['method']=='cnn_variational_dropout_layerwise':
+       opt['method']=='cnn_variational_dropout_layerwise' or \
+       opt['method']=='cnn_variational_dropout_channelwise' or \
+       opt['method']=='cnn_heteroscedastic_variational' or \
+       opt['method']=='cnn_heteroscedastic_variational_layerwise' or \
+       opt['method']=='cnn_heteroscedastic_variational_channelwise':
         sum_out = 0.0
         sum_out2 = 0.0
         for i in xrange(no_samples):
