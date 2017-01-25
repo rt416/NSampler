@@ -280,6 +280,7 @@ def inference(method, x, y, keep_prob, opt):
 
     elif method == 'cnn_variational_dropout' or \
          method == 'cnn_variational_dropout_layerwise' or \
+         method == 'cnn_variational_dropout_average' or \
          method == 'cnn_variational_dropout_channelwise':
 
         if method == 'cnn_variational_dropout':
@@ -334,7 +335,11 @@ def inference(method, x, y, keep_prob, opt):
             cost = tf.add(e_loglike, kl_div, name='ELBO')
             tf.summary.scalar('average_ELBO', cost)
 
-    elif method == 'cnn_heteroscedastic_variational':
+    elif method=='cnn_heteroscedastic_variational' or \
+         method=='cnn_heteroscedastic_variational_layerwise' or \
+         method=='cnn_heteroscedastic_variational_channelwise' or \
+         method=='cnn_heteroscedastic_variational_average' :
+
         if method == 'cnn_heteroscedastic_variational':
             params = 'weight'
         elif method == 'cnn_heteroscedastic_variational_average':
