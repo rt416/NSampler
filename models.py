@@ -24,7 +24,7 @@ def get_weights(filter_shape, W_init=None, name=None):
     return tf.Variable(W_init, name=name)
 
 
-def conv3d(x, w_shape, b_shape=None, layer_name='', summary=False):
+def conv3d(x, w_shape, b_shape=None, layer_name='', summary=True):
     """Return the 3D convolution"""
     with tf.name_scope(layer_name):
         with tf.name_scope('weights'):
@@ -326,15 +326,15 @@ def inference(method, x, y, keep_prob, opt):
             kl_div = kl + kl_last
             tf.summary.scalar('kl_div_average', kl_div)
 
-        with tf.name_scope('expected_loglikelihood'):
-            e_loglike = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred),[1,2,3,4]),0)
+        with tf.name_scope('expected_negloglikelihood'):
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred),[1,2,3,4]),0)
             if not(method == 'cnn_variational_dropout_average'):
-                e_loglike = opt['train_noexamples'] * e_loglike
-            tf.summary.scalar('e_loglike', e_loglike)
+                e_negloglike = opt['train_noexamples'] * e_negloglike
+            tf.summary.scalar('e_negloglike', e_negloglike)
 
-        with tf.name_scope('loss'):
-            cost = tf.add(e_loglike, kl_div, name='ELBO')
-            tf.summary.scalar('average_ELBO', cost)
+        with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
+            cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
+            tf.summary.scalar('neg_ELBO', cost)
 
     elif method=='cnn_heteroscedastic_variational' or \
          method=='cnn_heteroscedastic_variational_layerwise' or \
@@ -412,15 +412,15 @@ def inference(method, x, y, keep_prob, opt):
             y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
-        with tf.name_scope('expected_loglikelihood'):
-            e_loglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1,2,3,4]), 0) \
-                      - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1,2,3,4]), 0)
+        with tf.name_scope('expected_negloglikelihood'):
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1,2,3,4]), 0) \
+                         - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1,2,3,4]), 0)
             if not (method == 'cnn_heteroscedastic_variational_average'):
-                e_loglike = opt['train_noexamples'] * e_loglike
-            tf.summary.scalar('e_loglike', e_loglike)
+                e_negloglike = opt['train_noexamples'] * e_negloglike
+            tf.summary.scalar('e_negloglike', e_negloglike)
 
-        with tf.name_scope('loss'):
-            cost = tf.add(e_loglike, kl_div, name='ELBO')
+        with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
+            cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
             tf.summary.scalar('cost', cost)
 
     elif method == 'cnn_residual':
