@@ -758,7 +758,7 @@ def forward_periodic_shuffle(patch, upsampling_rate=2):
         patch_ps = np.ndarray((dim_i * upsampling_rate,
                                dim_j * upsampling_rate,
                                dim_j * upsampling_rate,
-                               dim_filters / (upsampling_rate ** 3)), dtype='float64')
+                               dim_filters // (upsampling_rate ** 3)), dtype='float64')
 
         shuffle_indices = [(i, j, k) for k in xrange(upsampling_rate)
                                      for j in xrange(upsampling_rate)
@@ -786,7 +786,7 @@ def forward_periodic_shuffle(patch, upsampling_rate=2):
                                dim_i * upsampling_rate,
                                dim_j * upsampling_rate,
                                dim_j * upsampling_rate,
-                               dim_filters / (upsampling_rate ** 3)), dtype='float64')
+                               dim_filters // (upsampling_rate ** 3)), dtype='float64')
 
         no_channels = dim_filters // (upsampling_rate ** 3)
 
