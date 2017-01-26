@@ -291,7 +291,9 @@ def sr_reconstruct_mcdropout(opt):
     uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
 
     print('... saving MC-predicted hi-res as %s' % output_file)
-    if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+    if not (os.path.exists(os.path.join(recon_dir, subject))):
+        os.mkdir(os.path.join(recon_dir, subject))
+    if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
         os.mkdir(os.path.join(recon_dir, subject, nn_dir))
     np.save(output_file, dt_hr)
     np.save(uncertainty_file, dt_std)

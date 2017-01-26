@@ -6,9 +6,12 @@ from __future__ import print_function
 
 import numpy as np
 from sklearn.cross_validation import train_test_split
+from skimage.measure import structural_similarity as ssim
+from skimage.measure import compare_psnr as psnr
 import h5py
 import os
 import nibabel as nib
+
 
 
 # Load in a DT volume .nii:
