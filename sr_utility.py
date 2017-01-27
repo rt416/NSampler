@@ -12,8 +12,6 @@ import h5py
 import os
 import nibabel as nib
 
-
-
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_'):
     for idx in np.arange(1, 9):
@@ -221,8 +219,6 @@ def save_error_as_nifti(error_file, recon_dir, gt_dir):
 
         print('... saving estimated ' + str(k + 1) + ' th dt element')
         nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
-
-
 
 
 
