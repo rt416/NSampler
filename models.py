@@ -323,7 +323,8 @@ def inference(method, x, y, keep_prob, opt):
                         'conv_last')
 
         with tf.name_scope('kl_div'):
-            kl_div = kl + kl_last
+            down_sc = 0.25
+            kl_div = down_sc * (kl + kl_last)
             tf.summary.scalar('kl_div_average', kl_div)
 
         with tf.name_scope('expected_negloglikelihood'):
@@ -382,7 +383,8 @@ def inference(method, x, y, keep_prob, opt):
                             'conv_last')
 
         with tf.name_scope('kl_div'):
-            kl_div = kl + kl_last
+            down_sc = 0.25
+            kl_div = down_sc*(kl + kl_last)
             tf.summary.scalar('kl_div', kl_div)
 
         with tf.name_scope('precision_network'):  # diagonality assumed
