@@ -8,18 +8,23 @@ from skimage.measure import structural_similarity as ssim
 from skimage.measure import compare_psnr as psnr
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats.stats import pearsonr
+from scipy.stats import spearmanr
 
 # Perform correlation analysis of two images:
-def correlation_plot_and_analysze(img1, img2, mask, no_points=1000):
+def correlation_plot_and_analyse(img1, img2, mask, no_points,
+                                 xlabel, ylabel, title, opt):
     """ plot a scatter plot of image 1 and image """
 
     if img1.shape!=img2.shape:
         print("shape of img1 and img2: %s and %s" %(img1.shape,img2.shape))
         raise ValueError("the size of img 1 and img 2 do not match")
+    else:
+        print('image size match up!')
 
-    brain_ind = [(i, j, k) for i in xrange(img1[0])
-                           for j in xrange(img1[1])
-                           for k in xrange(img1[2])
+    brain_ind = [(i, j, k) for i in xrange(img1.shape[0])
+                           for j in xrange(img1.shape[1])
+                           for k in xrange(img1.shape[2])
                            if mask[i, j, k] == True]
 
     ind_sub = random.sample(brain_ind, no_points)
@@ -30,23 +35,33 @@ def correlation_plot_and_analysze(img1, img2, mask, no_points=1000):
     # scatter plot
     scatter_plot_with_correlation_line(img1_samples, img2_samples)
 
-
-def scatter_plot_with_correlation_line(x, y,
-                                       xlabel=None, ylabel=None, title=None,
-                                       graph_filepath=None):
-    # Scatter plot
-    plt.scatter(x, y, color='g', alpha=0.7,marker='^')
-
-    # Add correlation line
-    axes = plt.gca()
-    m, b = np.polyfit(x, y, 1)
-    X_plot = np.linspace(axes.get_xlim()[0],axes.get_xlim()[1],100)
-    plt.plot(X_plot, m*X_plot + b, '-', color='r')
+    # Compute pearson correlation:
+    r, p = pearsonr(img1_samples, img2_samples)
+    s, p2 = spearmanr(img1_samples, img2_samples)
+    pearson_info = 'pearson = %.2f, ' % (r,)
+    spearman_info = 'spear = %.2f' % (s,)
+    print(pearson_info)
+    print(spearman_info)
 
     # labels:
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.title(title)
+    plt.title(title+pearson_info+spearman_info)
+
+
+def scatter_plot_with_correlation_line(x, y, graph_filepath=None):
+    # Scatter plot
+    plt.scatter(x, y, color='g', alpha=0.35, marker='o')
+
+    # Add correlation line
+    axes = plt.gca()
+    axes.set_xlim([0, np.max(x)])
+    axes.set_ylim([0, np.max(y)])
+    m, b = np.polyfit(x, y, 1)
+    X_plot = np.linspace(np.min(x), np.max(x), 100)
+    #X_plot = np.linspace(axes.get_xlim()[0],axes.get_xlim()[1],100)
+    plt.plot(X_plot, m*X_plot + b, '-', color='r')
+
 
     # Save figure
     if not(graph_filepath==None):
@@ -123,10 +138,10 @@ def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err, no_points=10000):
 
 
 def compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points=10000):
-    # subsample on the number of voxels:
-    brain_ind = [(i, j, k) for i in xrange(mask[0])
-                           for j in xrange(mask[1])
-                           for k in xrange(mask[2])
+    # subsample on the number of voxels
+    brain_ind = [(i, j, k) for i in xrange(mask.shape[0])
+                           for j in xrange(mask.shape[1])
+                           for k in xrange(mask.shape[2])
                            if mask[i, j, k] == True]
 
     ind_sub = random.sample(brain_ind, no_points)
