@@ -287,7 +287,7 @@ def sr_reconstruct_mcdropout(opt):
     dt_hr, dt_std = super_resolve_mcdropout(dt_lowres, opt)
 
     # Save:
-    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_mcrecon_b1000.npy')
+    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
     uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
 
     print('... saving MC-predicted hi-res as %s' % output_file)

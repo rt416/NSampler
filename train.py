@@ -40,7 +40,7 @@ def name_network(opt):
     nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_prep=%s_'
     nn_tuple += (opt['cohort'], opt['no_subjects'],
                  opt['subsampling_rate'], opt['patchlib_idx'])
-    nn_str += '%s_TS%i_Subsample%03i_%03'
+    nn_str += '%s_TS%i_Subsample%03i_%03i'
 
     return nn_str % nn_tuple
 
