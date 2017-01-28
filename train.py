@@ -38,8 +38,9 @@ def name_network(opt):
                 (2*opt['output_radius']+1)*opt['upsampling_rate'],
                 optim, str(opt['dropout_rate']), opt['transform_opt'],)
     nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_prep=%s_'
-    nn_tuple += (opt['cohort'], opt['no_subjects'], opt['subsampling_rate'])
-    nn_str += '%s_TS%i_Subsample%03i'
+    nn_tuple += (opt['cohort'], opt['no_subjects'],
+                 opt['subsampling_rate'], opt['patchlib_idx'])
+    nn_str += '%s_TS%i_Subsample%03i_%03'
 
     return nn_str % nn_tuple
 
