@@ -323,7 +323,7 @@ def inference(method, x, y, keep_prob, opt):
                         'conv_last')
 
         with tf.name_scope('kl_div'):
-            down_sc = 0.25
+            down_sc = 1.0
             kl_div = down_sc * (kl + kl_last)
             tf.summary.scalar('kl_div_average', kl_div)
 
@@ -383,7 +383,7 @@ def inference(method, x, y, keep_prob, opt):
                             'conv_last')
 
         with tf.name_scope('kl_div'):
-            down_sc = 0.25
+            down_sc = 1.0
             kl_div = down_sc*(kl + kl_last)
             tf.summary.scalar('kl_div', kl_div)
 
