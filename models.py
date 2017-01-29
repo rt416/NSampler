@@ -425,6 +425,91 @@ def inference(method, x, y, keep_prob, opt):
             cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
             tf.summary.scalar('cost', cost)
 
+    elif method == 'cnn_heteroscedastic_variational_downsc' or \
+         method == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
+         method == 'cnn_heteroscedastic_variational_channelwise_downsc':
+
+        if method == 'cnn_heteroscedastic_variational_downsc':
+            params = 'weight'
+        elif method == 'cnn_heteroscedastic_variational_layerwise_downsc':
+            params = 'layer'
+        elif method == 'cnn_heteroscedastic_variational_channelwise_downsc':
+            params = 'channel'
+        else:
+            raise ValueError('no variational parameters specified!')
+
+        with tf.name_scope('mean_network'):
+            h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+
+            if opt['receptive_field_radius'] == 2:
+                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
+                h1_2 = conv3d(a1_2_drop, [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+            elif opt['receptive_field_radius'] == 3:
+                a1_2_drop, kl = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+            elif opt['receptive_field_radius'] == 4:
+                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+                kl = kl_1 + kl_2
+            elif opt['receptive_field_radius'] == 5:
+                a1_2_drop, kl_1 = normal_mult_noise(tf.nn.relu(h1_1), keep_prob, params, opt, 'mulnoise_1')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+                a1_2_drop, kl_2 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_2')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+                a1_2_drop, kl_3 = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_3')
+                h1_2 = conv3d(a1_2_drop, [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+                kl = kl_1 + kl_2 + kl_3
+            a1_2_drop, kl_last = normal_mult_noise(tf.nn.relu(h1_2), keep_prob, params, opt, 'mulnoise_last')
+            y_pred = conv3d(a1_2_drop,
+                            [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+                            [no_channels * (upsampling_rate ** 3)],
+                            'conv_last')
+
+        with tf.name_scope('kl_div'):
+            down_sc = 0.3
+            kl_div = down_sc * (kl + kl_last)
+            tf.summary.scalar('kl_div', kl_div)
+
+        with tf.name_scope('precision_network'):  # diagonality assumed
+            h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
+            if opt['receptive_field_radius'] == 2:
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+                              [1, 1, 1, n_h1, n_h2], [n_h2], 'conv_2')
+            elif opt['receptive_field_radius'] == 3:
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+                              [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+            elif opt['receptive_field_radius'] == 4:
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+                              [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+                              [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+            elif opt['receptive_field_radius'] == 5:
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_1), keep_prob),
+                              [3, 3, 3, n_h1, n_h2], [n_h2], 'conv_2')
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+                              [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_3')
+                h1_2 = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+                              [3, 3, 3, n_h2, n_h2], [n_h2], 'conv_4')
+
+            h_last = conv3d(tf.nn.dropout(tf.nn.relu(h1_2), keep_prob),
+                            [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+                            [no_channels * (upsampling_rate ** 3)], 'conv_last')
+            y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
+            y_std = tf.sqrt(1. / y_prec, name='y_std')
+
+        with tf.name_scope('expected_negloglikelihood'):
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+                           - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
+            if not (method == 'cnn_heteroscedastic_variational_average'):
+                e_negloglike = opt['train_noexamples'] * e_negloglike
+            tf.summary.scalar('e_negloglike', e_negloglike)
+
+        with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
+            cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
+            tf.summary.scalar('cost', cost)
+
     elif method == 'cnn_residual':
         h1 = tf.nn.relu(conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], '1'))
         # Residual blocks:
