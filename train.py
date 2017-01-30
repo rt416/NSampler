@@ -67,9 +67,7 @@ def save_model(opt, sess, saver, global_step, model_details):
     checkpoint_prefix = os.path.join(checkpoint_dir, "model")
     save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
     print("Model saved in file: %s" % save_path)
-    with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
-        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
-    print('Model details saved')
+
 
 
 def train_cnn(opt):

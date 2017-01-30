@@ -48,15 +48,13 @@ opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
 opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/models'
 opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/log'
 opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/recon'
+opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
 
 opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
 opt['save_train_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/'
 
 opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
 opt['subpath'] = 'T1w/Diffusion'
-
-opt['mask_dir'] ='/Users/ryutarotanno/tmp/recon'
-
 
 opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
@@ -145,9 +143,11 @@ for model_idx in range(1,9):
             }
        }
 
-    # save:
+    # Save:
     experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
     with open(experiment_file, 'wb') as fp:
+        if not os.path.exists(analysis_dir):
+            os.makedirs((analysis_dir))
         pkl.dump(err_compare, fp, protocol=pkl.HIGHEST_PROTOCOL)
     print('Errors details saved as %s' % (experiment_file,))
 

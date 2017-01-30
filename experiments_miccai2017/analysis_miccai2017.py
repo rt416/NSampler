@@ -25,7 +25,7 @@ def plot_rmse_vs_uncertainty(opt):
     nn_dir = name_network(opt)
 
     # Compute the reconstruction errors:
-    recon_file = os.path.join(recon_dir, subject, nn_dir, 'dt_mcrecon_b1000.npy')
+    recon_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
     gt_file = os.path.join(gt_dir, subject, subpath,'dt_b1000_')
     uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
     mask_file = os.path.join(mask_dir, subject, 'masks',
