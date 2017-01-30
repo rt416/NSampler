@@ -75,5 +75,3 @@ elif choose==2:
 
 
 
-
-
