@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import random
 import numpy as np
-from skimage.measure import structural_similarity as ssim
+from skimage.measure import compare_ssim as ssim
 from skimage.measure import compare_psnr as psnr
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -70,11 +70,17 @@ def scatter_plot_with_correlation_line(x, y, graph_filepath=None):
 
 
 def compare_images(img_gt, img_est, mask):
-    """Compute RMSE, PSNR, MSSIM """
+    """Compute RMSE, PSNR, MSSIM:
+     img_gt: (4D numpy array with the last dim being channels)
+     ground truth volume
+     img_est: (4D numpy array) predicted volume
+     mask: (3D array) the mask whose the tissue voxles
+     are labelled as 1 and the rest as 0
+     """
     m = compute_rmse(img_gt,img_est,mask)
     p = compute_psnr(img_gt, img_est, mask)
     s = compute_mssim(img_gt,img_est,mask)
-    print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
+    # print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
     return m,p,s
 
 def compute_rmse(img1, img2, mask):
@@ -93,11 +99,18 @@ def compute_mssim(img1, img2, mask):
     img1=img1*mask[...,np.newaxis]
     img2=img2*mask[...,np.newaxis]
 
-    m = ssim(img1,img2,
-             gaussian_weights=True,
-             sigma=1.5,
-             use_sample_covariance=False)
-    return m
+    m, S = ssim(img1,img2,
+                dynamic_range=np.max(img1)-np.min(img1[mask]),
+                gaussian_weights=True,
+                sigma=1.5,
+                use_sample_covariance=False,
+                full=True,
+                multichannel=True)
+
+    mssim = np.sum(S * mask[..., np.newaxis]) / (mask.sum() * img1.shape[-1])
+
+    return mssim
+
 
 def compute_psnr(img1, img2, mask):
     """ Compute PSNR
@@ -110,9 +123,17 @@ def compute_psnr(img1, img2, mask):
         raise ValueError("the size of img 1 and img 2 do not match")
     img1 = img1 * mask[..., np.newaxis]
     img2 = img2 * mask[..., np.newaxis]
-    p=psnr(img1,img2)
-    return p
 
+    true_min, true_max = np.min(img1[mask]), np.max(img1)
+
+    if true_min >= 0:
+        # most common case (255 for uint8, 1 for float)
+        dynamic_range = true_max
+    else:
+        dynamic_range = true_max - true_min
+
+    rmse = compute_rmse(img1, img2, mask)
+    return 10 * np.log10((dynamic_range ** 2) / (rmse**2))
 
 # Plot receiver operating chracteristics:
 def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err, no_points=10000):

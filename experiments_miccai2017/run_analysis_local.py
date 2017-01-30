@@ -25,6 +25,7 @@ opt['validation_fraction'] = 0.5
 # Data/task:
 opt['cohort'] ='Diverse'
 opt['no_subjects'] = 8
+opt['patchlib_idx'] = 1
 opt['b_value'] = 1000
 opt['no_randomisation'] = 1
 opt['shuffle_data'] = True
@@ -54,9 +55,18 @@ opt['mc_no_samples'] = 100
 
 # Plot rmse
 opt['subject'] = '904044'
-from analysis_miccai2017 import plot_rmse_vs_uncertainty
-plot_rmse_vs_uncertainty(opt)
+choose = input("Press: "
+               "\n1 - plot rmse vs uncertainty "
+               "\n2 - compute rmse, psnr, mssim"
+               "\nselect - ")
 
+import analysis_miccai2017
+
+
+if choose == 1:
+    analysis_miccai2017.plot_rmse_vs_uncertainty(opt)
+elif choose==2:
+    err = analysis_miccai2017.compute_err(opt)
 
 
 
