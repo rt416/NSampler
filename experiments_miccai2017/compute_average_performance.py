@@ -108,7 +108,7 @@ def models_update(idx, opt):
 import analysis_miccai2017
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison/analysis'
-experiment_name = '30jan17_compare_models'
+experiment_name = '31jan17_compare_models'
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 err_compare = dict()
