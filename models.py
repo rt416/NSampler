@@ -426,15 +426,22 @@ def inference(method, x, y, keep_prob, opt):
             tf.summary.scalar('cost', cost)
 
     elif method == 'cnn_heteroscedastic_variational_downsc' or \
+         method == 'cnn_heteroscedastic_variational_upsc' or \
          method == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
          method == 'cnn_heteroscedastic_variational_channelwise_downsc':
 
         if method == 'cnn_heteroscedastic_variational_downsc':
             params = 'weight'
+            sc = 0.3
+        elif method == 'cnn_heteroscedastic_variational_upsc':
+            params = 'weight'
+            sc = 3.0
         elif method == 'cnn_heteroscedastic_variational_layerwise_downsc':
             params = 'layer'
+            sc = 0.3
         elif method == 'cnn_heteroscedastic_variational_channelwise_downsc':
             params = 'channel'
+            sc = 0.3
         else:
             raise ValueError('no variational parameters specified!')
 
@@ -468,8 +475,7 @@ def inference(method, x, y, keep_prob, opt):
                             'conv_last')
 
         with tf.name_scope('kl_div'):
-            down_sc = 0.3
-            kl_div = down_sc * (kl + kl_last)
+            kl_div = sc * (kl + kl_last)
             tf.summary.scalar('kl_div', kl_div)
 
         with tf.name_scope('precision_network'):  # diagonality assumed

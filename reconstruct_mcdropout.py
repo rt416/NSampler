@@ -89,6 +89,7 @@ def mc_inference(fn, fn_std, fd, opt):
        opt['method']=='cnn_heteroscedastic_variational_channelwise' or \
        opt['method']=='cnn_heteroscedastic_variational_average' or \
        opt['method']=='cnn_heteroscedastic_variational_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
        opt['method']=='cnn_heteroscedastic_variational_layerwise_downsc' or \
        opt['method']=='cnn_heteroscedastic_variational_channelwise_downsc':
 
