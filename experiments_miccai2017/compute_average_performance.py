@@ -61,36 +61,41 @@ opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
 # Define model updates:
 def models_update(idx, opt):
+
     if idx == 1:
-        opt['method'] = 'cnn_simple'
+        opt['method'] = 'cnn_heteroscedastic'
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 2:
-        opt['method'] = 'cnn_dropout'
-        opt['dropout_rate'] = 0.1
-        name = opt['method'] + '_0.1'
+        opt['method'] = 'cnn_heteroscedastic_variational'
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
     elif idx == 3:
-        opt['method'] = 'cnn_gaussian_dropout'
-        opt['dropout_rate'] = 0.1
-        name = opt['method'] + '_0.1'
+        opt['method'] = 'cnn_heteroscedastic_variational_downsc'
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
     elif idx == 4:
-        opt['method'] = 'cnn_variational_dropout'
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise'
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 5:
-        opt['method']='cnn_variational_dropout_channelwise'
+        opt['method'] = 'cnn_simple'
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 6:
-        opt['method'] == 'cnn_heteroscedastic'
-        opt['dropout_rate'] = 0.0
-        name = opt['method']
+        opt['method'] = 'cnn_dropout'
+        opt['dropout_rate'] = 0.1
+        name = opt['method'] + '_0.1'
     elif idx == 7:
-        opt['method'] == 'cnn_heteroscedastic_downsc'
+        opt['method'] = 'cnn_gaussian_dropout'
+        opt['dropout_rate'] = 0.1
+        name = opt['method'] + '_0.1'
+    elif idx == 8:
+        opt['method'] = 'cnn_variational_dropout'
         opt['dropout_rate'] = 0.0
         name = opt['method']
-    elif idx == 8:
-        opt['method'] == 'cnn_heteroscedastic_channelwise'
+    elif idx == 9:
+        opt['method'] = 'cnn_variational_dropout_channelwise'
         opt['dropout_rate'] = 0.0
         name = opt['method']
     else:
@@ -108,7 +113,7 @@ subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 err_compare = dict()
 
-for model_idx in range(1,9):
+for model_idx in range(1,10):
     err_mtx = np.zeros((len(subjects_list),8,6))
     name, opt=models_update(model_idx,opt)
     print("Compute average errors ...")

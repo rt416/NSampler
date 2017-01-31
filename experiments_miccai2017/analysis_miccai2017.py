@@ -9,6 +9,7 @@ from train import define_checkpoint, name_network
 from sr_analysis import correlation_plot_and_analyse
 from sr_utility import read_dt_volume
 from sr_analysis import compare_images
+from sr_analysis import plot_ROC
 
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -104,8 +105,43 @@ def compute_err(opt):
     return err
 
 
-# Received Operating Characteristics:
+# Receiver Operating Characteristics:
+def get_ROC(opt):
+    print(opt['method'])
+    recon_dir = opt['recon_dir']
+    gt_dir = opt['gt_dir']
+    mask_dir = opt['mask_dir']
+    subpath = opt['subpath']
+    subject = opt['subject']
+    nn_dir = name_network(opt)
 
+    # Compute the reconstruction errors:
+    recon_file = os.path.join(recon_dir, subject, nn_dir, 'dt_mcrecon_b1000.npy')
+    gt_file = os.path.join(gt_dir, subject, subpath, 'dt_b1000_')
+    uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
+    mask_file = os.path.join(mask_dir, subject, 'masks',
+                             'mask_us=' + str(opt['upsampling_rate']) + \
+                             '_rec=' + str(5) + '.nii')
+
+    dt_gt = read_dt_volume(nameroot=gt_file)
+    dt_est = np.load(recon_file)
+    dt_std = np.load(uncertainty_file)
+    mask = dt_est[:, :, :, 0] == 0
+
+    # Plot uncertainty against error:
+    dti_list = range(2, 8)
+
+    for idx, dti_idx in enumerate(dti_list):
+        start_time = timeit.default_timer()
+        plt.subplot(2, 3, idx + 1)
+        title = '%i:' % (idx + 1,)
+        plot_ROC(dt_gt[:, :, :, dti_idx], dt_est[:, :, :, dti_idx], dt_std[:, :, :, dti_idx],
+                 mask, no_points=10000)
+        plt.title(title)
+        end_time = timeit.default_timer()
+        print('component %i: took %f secs' % (idx + 1, (end_time - start_time)))
+
+    plt.show()
 
 
 

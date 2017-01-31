@@ -58,6 +58,7 @@ opt['subject'] = '904044'
 choose = input("Press: "
                "\n1 - plot rmse vs uncertainty "
                "\n2 - compute rmse, psnr, mssim"
+               "\n3 - plot ROC curves"
                "\nselect - ")
 
 import analysis_miccai2017
@@ -67,6 +68,7 @@ if choose == 1:
     analysis_miccai2017.plot_rmse_vs_uncertainty(opt)
 elif choose==2:
     err = analysis_miccai2017.compute_err(opt)
-
+elif choose == 3:
+    analysis_miccai2017.get_ROC(opt)
 
 

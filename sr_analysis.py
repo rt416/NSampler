@@ -136,7 +136,10 @@ def compute_psnr(img1, img2, mask):
     return 10 * np.log10((dynamic_range ** 2) / (rmse**2))
 
 # Plot receiver operating chracteristics:
-def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err, no_points=10000):
+def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err=1e-6, no_points=10000):
+    """ Plot ROC with AUC computed.
+    Args:
+    """
     if img_gt.shape != img_est.shape:
         print("shape of img_gt and img_est: %s and %s" % (img_gt.shape, img_est.shape))
 
@@ -146,7 +149,6 @@ def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err, no_points=10000):
     tp, fp = compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points)
 
     # plot
-    plt.title('Receiver Operating Characteristic')
     auc = np.trapz(tp, fp)
     plt.plot(fp, tp, 'b', label='AUC = %0.3f' % auc)
     plt.legend(loc='lower right')
@@ -155,7 +157,6 @@ def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err, no_points=10000):
     plt.ylim([0, 1])
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
-    plt.show()
 
 
 def compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points=10000):
