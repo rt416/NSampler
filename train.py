@@ -157,7 +157,7 @@ def train_cnn(opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    y_pred, y_std, cost = models.inference(method, x, y, keep_prob, opt)
+    y_pred, y_std, cost = models.inference(method, x, y, keep_prob, opt, trade_off)
 
     # Define gradient descent op
     with tf.name_scope('train'):

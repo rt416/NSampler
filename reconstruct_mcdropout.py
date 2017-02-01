@@ -186,12 +186,16 @@ def super_resolve_mcdropout(dt_lowres, opt):
     with tf.name_scope('dropout'):
         keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 
+    with tf.name_scope('tradeoff'):
+        trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
+
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Load normalisation parameters and define prediction:
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
     y_pred, y_pred_std = models.scaled_prediction(method, x, y,
-                                                  keep_prob, transform, opt)
+                                                  keep_prob, transform,
+                                                  opt, trade_off)
 
     # -------------------------- Reconstruct --------------------------------:
     # Restore all the variables and perform reconstruction:
@@ -240,7 +244,7 @@ def super_resolve_mcdropout(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            fd = {x: ipatch, keep_prob: (1.0 - dropout_rate)}
+            fd = {x: ipatch, keep_prob: (1.0 - dropout_rate), trade_off: 0.0}
             opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, y_pred_std, fd, opt)
 
             opatch = forward_periodic_shuffle(opatch_mean_ps, upsampling_rate)

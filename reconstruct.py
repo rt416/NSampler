@@ -133,11 +133,14 @@ def super_resolve(dt_lowres, opt):
     with tf.name_scope('dropout'):
         keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
 
+    with tf.name_scope('tradeoff'):
+        trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
+
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Load normalisation parameters and define prediction:
     transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
-    y_pred, y_pred_std = models.scaled_prediction(method, x, y, keep_prob, transform, opt)
+    y_pred, y_pred_std = models.scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
@@ -191,7 +194,7 @@ def super_resolve(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            fd = {x: ipatch, keep_prob: 1.0}
+            fd = {x: ipatch, keep_prob: 1.0, trade_off: 0.0}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
 
             opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
