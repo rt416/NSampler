@@ -637,7 +637,18 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     y, y_uncertainty, cost = inference(method, x_scaled, y, keep_prob, opt, trade_off)
     y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
-    if opt['method']=='cnn_heteroscedastic':
+    if opt['method']=='cnn_heteroscedastic' or \
+       opt['method'] == 'cnn_heteroscedastic_variational' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_layerwise' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_average' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_downsc_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_upsc_control':
         y_pred_std = tf.mul(y_std, y_uncertainty, name='y_pred_std')
     return y_pred, y_pred_std
 
