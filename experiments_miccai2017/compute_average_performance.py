@@ -98,6 +98,10 @@ def models_update(idx, opt):
         opt['method'] = 'cnn_variational_dropout_channelwise'
         opt['dropout_rate'] = 0.0
         name = opt['method']
+    elif idx == 10:
+        opt['method'] = 'cnn_heteroscedastic_variational_upsc'
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
     else:
         raise ValueError('no network for the given idx.')
 
@@ -109,11 +113,18 @@ import analysis_miccai2017
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison/analysis'
 experiment_name = '31jan17_compare_models'
+model_list = range(10)  # index corresponding to different models in model_update()
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
-err_compare = dict()
+experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
 
-for model_idx in range(1,10):
+if os.path.exists(experiment_file):
+    err_compare = pkl.load(open(experiment_file, 'wb'))
+else:
+    err_compare = dict()
+
+
+for model_idx in model_list:
     err_mtx = np.zeros((len(subjects_list),8,6))
     name, opt=models_update(model_idx,opt)
     print("Compute average errors ...")

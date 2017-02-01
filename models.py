@@ -123,7 +123,7 @@ def residual_block(x, n_in, n_out, name):
     return tf.nn.relu(tf.nn.bias_add(h3, b))
 
 
-def inference(method, x, y, keep_prob, opt):
+def inference(method, x, y, keep_prob, opt, trade_off=None):
     """ Define the model up to where it may be used for inference.
     Args:
         method (str): model type
