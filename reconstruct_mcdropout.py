@@ -83,15 +83,7 @@ def mc_inference(fn, fn_std, fd, opt):
        opt['method']=='cnn_variational_dropout' or \
        opt['method']=='cnn_variational_dropout_layerwise' or \
        opt['method']=='cnn_variational_dropout_channelwise' or \
-       opt['method']=='cnn_variational_dropout_average' or \
-       opt['method']=='cnn_heteroscedastic_variational' or \
-       opt['method']=='cnn_heteroscedastic_variational_layerwise' or \
-       opt['method']=='cnn_heteroscedastic_variational_channelwise' or \
-       opt['method']=='cnn_heteroscedastic_variational_average' or \
-       opt['method']=='cnn_heteroscedastic_variational_downsc' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
-       opt['method']=='cnn_heteroscedastic_variational_layerwise_downsc' or \
-       opt['method']=='cnn_heteroscedastic_variational_channelwise_downsc':
+       opt['method']=='cnn_variational_dropout_average':
 
         sum_out = 0.0
         sum_out2 = 0.0
@@ -102,15 +94,24 @@ def mc_inference(fn, fn_std, fd, opt):
 
         mean = sum_out / (1.*no_samples)
         std = np.sqrt(np.abs(sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
-    elif opt['method']=='cnn_heteroscedastic':
+
+    elif opt['method']=='cnn_heteroscedastic' or \
+         opt['method'] == 'cnn_heteroscedastic_variational' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_layerwise' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_average' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_downsc' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc':
+
         sum_out = 0.0
         sum_out2 = 0.0
         for i in xrange(no_samples):
             current = 1. * fn.eval(feed_dict=fd)
             sum_out += current
             sum_out2 += current ** 2
-
-        mean = sum_out / no_samples
+        mean = sum_out / (1. * no_samples)
         std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
         std += 1. * fn_std.eval(feed_dict=fd)
     else:
@@ -324,15 +325,15 @@ def sr_reconstruct_mcdropout(opt):
     mask_dir = opt['mask_dir']
     # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
     #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
-    rmse, rmse_volume \
+    rmse, rmse_whole, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir, subject, nn_dir),
                                   gt_dir=os.path.join(gt_dir, subject, subpath),
                                   mask_choose=True,
                                   mask_dir=os.path.join(mask_dir, subject, 'masks'),
                                   mask_file=mask_file)
-
-    print('\nAverage reconsturction error (RMSE) is %f.' % rmse)
+    print('\nRMSE (no edge) is %f.' % rmse)
+    print('\nRMSE (whole) is %f.' % rmse_whole)
 
     # Save the RMSE on the chosen test subject:
     print('Save it to settings.skl')

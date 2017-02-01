@@ -157,13 +157,16 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     if mask_choose:
         img = nib.load(os.path.join(mask_dir, mask_file))
         mask = img.get_data() == 0
-    else:
-        mask = dt_est[:, :, :, 0] == 0  # mask out the background voxels
+
+    mask_with_edge = dt_est[:, :, :, 0] == 0
 
     rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
            * mask[..., np.newaxis]) / (mask.sum() * 6.0))
+
+    rmse_whole = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
+                          * mask[..., np.newaxis]) / (mask_with_edge.sum() * 6.0))
+
     rmse_volume = dt_est.copy()
-    mask_with_edge = dt_est[:, :, :, 0] == 0
     rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
                                * mask_with_edge[..., np.newaxis] / 6.0
     # rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
@@ -182,7 +185,7 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
         nib.save(img, os.path.join(recon_dir,
                                    'error_' + base + '_' + str(k + 3) + '.nii'))
 
-    return rmse, rmse_volume
+    return rmse, rmse_whole, rmse_volume
 
 
 def name_network(opt):
