@@ -103,7 +103,10 @@ def mc_inference(fn, fn_std, fd, opt):
          opt['method'] == 'cnn_heteroscedastic_variational_downsc' or \
          opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
          opt['method'] == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
-         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc':
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_downsc_control' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_upsc_control':
 
         sum_out = 0.0
         sum_out2 = 0.0
