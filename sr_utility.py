@@ -164,7 +164,7 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
            * mask[..., np.newaxis]) / (mask.sum() * 6.0))
 
     rmse_whole = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
-                          * mask[..., np.newaxis]) / (mask_with_edge.sum() * 6.0))
+                          * mask_with_edge[..., np.newaxis]) / (mask_with_edge.sum() * 6.0))
 
     rmse_volume = dt_est.copy()
     rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
