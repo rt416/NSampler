@@ -354,5 +354,5 @@ def sr_reconstruct_mcdropout(opt):
     with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
         pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
 
-    return rmse, rmse_volume
+    return rmse, rmse_whole, rmse_volume
 
