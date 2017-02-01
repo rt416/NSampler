@@ -144,11 +144,15 @@ def train_cnn(opt):
                                         2*output_radius+1,
                                         no_channels*(upsampling_rate**3)],
                                         name='hi_res')
+
     with tf.name_scope('learning_rate'):
         lr = tf.placeholder(tf.float32, [], name='learning_rate')
 
     with tf.name_scope('dropout'):
         keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+
+    with tf.name_scope('tradeoff'):
+        trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
 
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
@@ -181,6 +185,9 @@ def train_cnn(opt):
         n_train_batches = data['in']['train'].shape[0] // batch_size
         n_valid_batches = data['in']['valid'].shape[0] // batch_size
 
+        # Compute the trade-off values:
+        tradeoff_list = models.get_tradeoff_values(opt)
+
         # Define some counters
         test_score = 0
         start_time = timeit.default_timer()
@@ -201,6 +208,7 @@ def train_cnn(opt):
         bests['counter_thresh'] = 10
         validation_frequency = n_train_batches
         save_frequency = 1
+
 
         model_details = opt.copy()
         model_details.update(bests)
@@ -228,12 +236,14 @@ def train_cnn(opt):
                 current_step = tf.train.global_step(sess, global_step)
 
                 # train op and loss
-                fd_t={x: xt, y: yt, lr: lr_, keep_prob: 1.-dropout_rate}
+                fd_t={x: xt, y: yt, lr: lr_,
+                      keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
                 __, tr_loss = sess.run([train_step, mse],feed_dict=fd_t)
                 total_tr_loss_epoch += tr_loss
 
                 # valid loss
-                fd_v = {x: xv, y: yv, keep_prob: 1.-dropout_rate}
+                fd_v = {x: xv, y: yv,
+                        keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
                 va_loss = sess.run(mse, feed_dict=fd_v)
                 total_val_loss_epoch += va_loss
 
