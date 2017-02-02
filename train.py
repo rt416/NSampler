@@ -301,8 +301,8 @@ def train_cnn(opt):
                           % (epoch, mi + 1, n_train_batches,
                             np.sqrt(this_tr_mse*10**10),
                             np.sqrt(this_val_mse*10**10),
-                            this_tr_cost*10**10,
-                            this_val_cost*10**10,
+                            this_tr_cost,
+                            this_val_cost,
                             end_time_epoch - start_time_epoch))
 
                     if opt['valid']:
