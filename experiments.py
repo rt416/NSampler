@@ -9,6 +9,7 @@ opt = {}
 
 # Network:
 opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
+opt['valid'] = True  # pick the best model with the minimal cost (instead of RMSE).
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
@@ -94,24 +95,24 @@ if choose == 1:
                   % (rmse_average / len(subjects_list),))
 
         elif choose_rec==2:
-	    if opt['method'] == 'cnn_heteroscedastic':
-          	opt['mc_no_samples'] = 1
-	    else:
-		opt['mc_no_samples'] = 100  # input("number of MC samples: ")
-           
-	    import reconstruct_mcdropout
+            if opt['method'] == 'cnn_heteroscedastic':
+                opt['mc_no_samples'] = 1
+            else:
+                opt['mc_no_samples'] = 100  # input("number of MC samples: ")
+
+            import reconstruct_mcdropout
             rmse_noedge = 0
-	    rmse_whole = 0
+            rmse_whole = 0
 
             for subject in subjects_list:
                 opt['subject'] = subject
                 rmse, rmse2 = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
-            	rmse_noedge += rmse
-		rmse_whole +=rmse2
+                rmse_noedge += rmse
+                rmse_whole +=rmse2
 
             print('\n Average RMSE (no edge): %.15f.'
                   % (rmse_noedge / len(subjects_list),))
-	    print('\n Average RMSE (whole): %.15f.'
+            print('\n Average RMSE (whole): %.15f.'
                   % (rmse_whole / len(subjects_list),))
 elif choose==2:
     import reconstruct

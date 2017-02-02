@@ -21,12 +21,14 @@ def define_checkpoint(opt):
         os.makedirs(checkpoint_dir)
     return checkpoint_dir
 
+
 def define_logdir(opt):
     nn_file = name_network(opt)
     checkpoint_dir = os.path.join(opt['log_dir'], nn_file)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     return checkpoint_dir
+
 
 def name_network(opt):
     """given inputs, return the model name."""
@@ -42,7 +44,11 @@ def name_network(opt):
                  opt['subsampling_rate'], opt['patchlib_idx'])
     nn_str += '%s_TS%i_Subsample%03i_%03i'
 
-    return nn_str % nn_tuple
+    nn_name = nn_str % nn_tuple
+    if opt['valid']:
+        # Validate on the cost:
+        nn_name += '_valid_cost'
+    return nn_name
 
 
 def update_best_loss(this_loss, bests, iter_, current_step):
@@ -194,8 +200,11 @@ def train_cnn(opt):
         epoch = 0
         done_looping = False
         iter_valid = 0
-        total_val_loss_epoch = 0
-        total_tr_loss_epoch = 0
+        total_val_mse_epoch = 0
+        total_tr_mse_epoch = 0
+        total_tr_cost_epoch = 0
+        total_val_cost_epoch = 0
+
         lr_ = opt['learning_rate']
 
         bests = {}
@@ -212,8 +221,10 @@ def train_cnn(opt):
 
         model_details = opt.copy()
         model_details.update(bests)
-        model_details['epoch_tr_loss'] = []
-        model_details['epoch_val_loss'] = []
+        model_details['epoch_tr_mse'] = []
+        model_details['epoch_val_mse'] = []
+        model_details['epoch_tr_cost'] = []
+        model_details['epoch_val_cost'] = []
 
         while (epoch < n_epochs) and (not done_looping):
             epoch += 1
@@ -238,14 +249,16 @@ def train_cnn(opt):
                 # train op and loss
                 fd_t={x: xt, y: yt, lr: lr_,
                       keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
-                __, tr_loss = sess.run([train_step, mse],feed_dict=fd_t)
-                total_tr_loss_epoch += tr_loss
+                __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
+                total_tr_mse_epoch += tr_mse
+                total_tr_cost_epoch += tr_cost
 
                 # valid loss
                 fd_v = {x: xv, y: yv,
                         keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
-                va_loss = sess.run(mse, feed_dict=fd_v)
-                total_val_loss_epoch += va_loss
+                va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
+                total_val_mse_epoch += va_mse
+                total_val_cost_epoch += va_cost
 
                 # iteration number
                 iter_ = (epoch - 1) * n_train_batches + mi
@@ -257,26 +270,46 @@ def train_cnn(opt):
                     summary_v = sess.run(merged, feed_dict=fd_v)
                     train_writer.add_summary(summary_t, iter_+1)
                     valid_writer.add_summary(summary_v, iter_+1)
-                    vl = np.sqrt(va_loss*10**10)
+
+                    vl = np.sqrt(va_mse*10**10)
+                    vc = va_cost*10**10
+
                     sys.stdout.flush()
-                    sys.stdout.write('\tvalidation error: %.2f\r' % (vl,))
+                    sys.stdout.write('\tvalid mse: %.2f\n'
+                                     'valid cost: %.2f \r' % (vl,vc))
 
                 if (iter_ + 1) % validation_frequency == 0:
                     # Print out the errors for each epoch:
-                    this_val_loss = total_val_loss_epoch/iter_valid
-                    this_tr_loss = total_tr_loss_epoch/iter_valid
+                    this_val_mse = total_val_mse_epoch/iter_valid
+                    this_tr_mse = total_tr_mse_epoch/iter_valid
+                    this_val_cost = total_val_cost_epoch/iter_valid
+                    this_tr_cost = total_tr_cost_epoch/iter_valid
+
                     end_time_epoch = timeit.default_timer()
 
-                    model_details['epoch_val_loss'].append(this_val_loss)
-                    model_details['epoch_tr_loss'].append(this_tr_loss)
+                    model_details['epoch_val_mse'].append(this_val_mse)
+                    model_details['epoch_tr_mse'].append(this_tr_mse)
+
+                    model_details['epoch_val_cost'].append(this_val_cost)
+                    model_details['epoch_tr_cost'].append(this_tr_cost)
 
                     print('\nEpoch %i, minibatch %i/%i:\n' \
-                          '\ttraining error (rmse) %f times 1E-5\n' \
-                          '\tvalidation error (rmse) %f times 1E-5\n' \
-                          '\ttook %f secs' % (epoch, mi + 1, n_train_batches,
-                        np.sqrt(this_tr_loss*10**10),
-                        np.sqrt(this_val_loss*10**10),
-                        end_time_epoch - start_time_epoch))
+                          '\ttraining error (rmse) : %f times 1E-5\n' \
+                          '\tvalidation error (rmse) : %f times 1E-5\n' \
+                          '\ttraining cost : %f \n'\
+                          '\tvalidation cost : %f \n'\
+                          '\ttook %f secs'
+                          % (epoch, mi + 1, n_train_batches,
+                            np.sqrt(this_tr_mse*10**10),
+                            np.sqrt(this_val_mse*10**10),
+                            this_tr_cost*10**10,
+                            this_val_cost*10**10,
+                            end_time_epoch - start_time_epoch))
+
+                    if opt['valid']:
+                        this_val_loss = this_val_cost
+                    else:
+                        this_val_loss = this_val_mse
 
                     bests = update_best_loss(this_val_loss, bests, iter_,
                                              current_step)
@@ -288,6 +321,11 @@ def train_cnn(opt):
                     start_time_epoch = timeit.default_timer()
 
             if epoch % save_frequency == 0:
+                if opt['valid']:
+                    this_val_loss=this_val_cost
+                else:
+                    this_val_loss=this_val_mse
+
                 if this_val_loss < bests['val_loss_save']:
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     model_details.update(bests)
