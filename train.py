@@ -275,7 +275,7 @@ def train_cnn(opt):
                     vc = va_cost
 
                     sys.stdout.flush()
-                    sys.stdout.write('\tvalid mse: %.2f,  valid cost: %.2f \r' % (vl,vc))
+                    sys.stdout.write('\tvalid mse: %.2f,  valid cost: %.3f \r' % (vl,vc))
 
                 if (iter_ + 1) % validation_frequency == 0:
                     # Print out the errors for each epoch:
@@ -314,8 +314,11 @@ def train_cnn(opt):
                                              current_step)
 
                     # Start counting again:
-                    total_val_loss_epoch = 0
-                    total_tr_loss_epoch = 0
+                    total_val_mse_epoch = 0
+                    total_tr_mse_epoch = 0
+                    total_val_cost_epoch = 0
+                    total_tr_cost_epoch = 0
+
                     iter_valid = 0
                     start_time_epoch = timeit.default_timer()
 
