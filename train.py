@@ -295,14 +295,14 @@ def train_cnn(opt):
                     print('\nEpoch %i, minibatch %i/%i:\n' \
                           '\ttraining error (rmse) : %f times 1E-5\n' \
                           '\tvalidation error (rmse) : %f times 1E-5\n' \
-                          '\ttraining cost : %f \n'\
-                          '\tvalidation cost : %f \n'\
+                          '\ttraining cost : %.2f \n'\
+                          '\tvalidation cost : %.2f \n'\
                           '\ttook %f secs'
                           % (epoch, mi + 1, n_train_batches,
                             np.sqrt(this_tr_mse*10**10),
                             np.sqrt(this_val_mse*10**10),
-                            this_tr_cost,
-                            this_val_cost,
+                            this_tr_cost/10**4,
+                            this_val_cost/10**4,
                             end_time_epoch - start_time_epoch))
 
                     if opt['valid']:
