@@ -8,14 +8,14 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_dropout'
+opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 
 # Training
 opt['optimizer'] = tf.train.AdamOptimizer
-opt['dropout_rate'] = 0.1
+opt['dropout_rate'] = 0.0
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
@@ -45,9 +45,9 @@ opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
-opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/models'
-opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/log'
-opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/recon'
+opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/models'
+opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/log'
+opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/recon'
 opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
 
 opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
@@ -73,7 +73,7 @@ if choose == 1:
         from train_largesc import train_cnn
 
     # Train:	
-    for idx in range(1,9):	
+    for idx in range(1,2):	
         tf.reset_default_graph()
         opt['patchlib_idx'] = idx
         train_cnn(opt)
@@ -94,18 +94,25 @@ if choose == 1:
                   % (rmse_average / len(subjects_list),))
 
         elif choose_rec==2:
-            opt['mc_no_samples'] = 100  # input("number of MC samples: ")
-            import reconstruct_mcdropout
-            rmse_average = 0
+	    if opt['method'] == 'cnn_heteroscedastic':
+          	opt['mc_no_samples'] = 1
+	    else:
+		opt['mc_no_samples'] = 100  # input("number of MC samples: ")
+           
+	    import reconstruct_mcdropout
+            rmse_noedge = 0
+	    rmse_whole = 0
 
             for subject in subjects_list:
                 opt['subject'] = subject
-                rmse, _ = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
-            	rmse_average += rmse
+                rmse, rmse2 = reconstruct_mcdropout.sr_reconstruct_mcdropout(opt)
+            	rmse_noedge += rmse
+		rmse_whole +=rmse2
 
-            print('\n Average RMSE on Diverse dataset is %.15f.'
-                  % (rmse_average / len(subjects_list),))
-
+            print('\n Average RMSE (no edge): %.15f.'
+                  % (rmse_noedge / len(subjects_list),))
+	    print('\n Average RMSE (whole): %.15f.'
+                  % (rmse_whole / len(subjects_list),))
 elif choose==2:
     import reconstruct
     # tf.reset_default_graph()

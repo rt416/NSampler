@@ -112,14 +112,16 @@ def models_update(idx, opt):
 import analysis_miccai2017
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison/analysis'
-experiment_name = '31jan17_compare_models'
-model_list = range(10)  # index corresponding to different models in model_update()
+experiment_name = '01feb17_hetero_upsc'
+model_list = [10]  # index corresponding to different models in model_update()
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
+print(experiment_file)
 
 if os.path.exists(experiment_file):
-    err_compare = pkl.load(open(experiment_file, 'wb'))
+    print('the experiment file exists')
+    err_compare = pkl.load(open(experiment_file, 'rb'))
 else:
     err_compare = dict()
 
@@ -165,7 +167,7 @@ for model_idx in model_list:
         if not os.path.exists(analysis_dir):
             os.makedirs((analysis_dir))
         pkl.dump(err_compare, fp, protocol=pkl.HIGHEST_PROTOCOL)
-    print('Errors details saved as %s' % (experiment_file,))
+    print('Recon metrics saved as %s' % (experiment_file,))
 
 
 

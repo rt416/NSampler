@@ -9,7 +9,7 @@ opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
 opt['save_train_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet'
 opt['cohort'] = 'Diverse'
 
-opt['no_randomisation'] = 1
+opt['no_randomisation'] = 8
 opt['subsampling_rate'] = input("Enter subsampling rate: ")
 opt['b_value'] = 1000
 
