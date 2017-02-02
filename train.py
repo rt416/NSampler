@@ -272,11 +272,10 @@ def train_cnn(opt):
                     valid_writer.add_summary(summary_v, iter_+1)
 
                     vl = np.sqrt(va_mse*10**10)
-                    vc = va_cost*10**10
+                    vc = va_cost
 
                     sys.stdout.flush()
-                    sys.stdout.write('\tvalid mse: %.2f\n'
-                                     'valid cost: %.2f \r' % (vl,vc))
+                    sys.stdout.write('\tvalid mse: %.2f,  valid cost: %.2f \r' % (vl,vc))
 
                 if (iter_ + 1) % validation_frequency == 0:
                     # Print out the errors for each epoch:
