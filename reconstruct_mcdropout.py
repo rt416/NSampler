@@ -272,6 +272,9 @@ def super_resolve_mcdropout(dt_lowres, opt):
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
         dt_hires_std = dt_trim(dt_hires_std, padding)
+        mask = dt_hires[:, :, :, 0] != -1
+        dt_hires[..., 2:] = dt_hires[..., 2:] * mask[..., np.newaxis]
+        dt_hires_std[..., 2:] = dt_hires_std[..., 2:] * mask[..., np.newaxis]
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
     return dt_hires, dt_hires_std
 

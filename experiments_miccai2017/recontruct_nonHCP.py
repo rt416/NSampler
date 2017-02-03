@@ -1,14 +1,17 @@
 """ Perform reconstrution on non- HCP dataset (Prisma, MS, Tumour).
 It assumes that DTI is available as nifti files."""
 
+import tensorflow as tf
 import configuration
+import os
+from analysis_miccai2017 import nonhcp_reconstruct
 
 # Options
 opt = configuration.set_default()
 
 # Update parameters:
 opt['method'] = 'cnn_heteroscedastic'
-opt['valid'] = True  # pick the best model with the minimal cost (instead of RMSE).
+opt['valid'] = False  # pick the best model with the minimal cost (instead of RMSE).
 
 # Training
 opt['dropout_rate'] = 0.0
@@ -22,27 +25,36 @@ opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius
 opt['no_channels'] = 6
+if opt['method'] == 'cnn_heteroscedastic':
+    opt['mc_no_samples'] = 1
+else:
+    opt['mc_no_samples'] = 100
 
-# Dir:
-opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
-opt['subpath'] = 'T1w/Diffusion'
-opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/'
-opt['recon_dir'] = '/Users/ryutarotanno/tmp/recon'
-opt['gt_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP/' # ground truth dir
-opt['subpath'] = 'T1w/Diffusion'
-opt['mask_dir'] ='/Users/ryutarotanno/tmp/recon'
 
-base_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
-non_HCP = {'prisma':{'dir':base_dir+'Prisma/Diffusion_2.5mm',
+# base directories:
+base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
+base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/non-HCP/'
+
+non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
-           'tumour':{'dir':base_dir+'Tumour/06_FORI',
+           'tumour':{'subdir':'Tumour/06_FORI',
                      'dt_file':'dt_b700_'},
-           'ms':{'dir':base_dir+'MS/B0410637-2010-00411',
+           'ms':{'subdir':'MS/B0410637-2010-00411',
                  'dt_file':'dt_b1200_'}
-           }
+            }
+
+# non_HCP = {'ms':{'subdir':'MS/B0410637-2010-00411',
+#                 'dt_file':'dt_b1200_'}}
 
 for key in non_HCP:
-    opt['gt_dir'] = '/Users/ryutarotanno/DeepLearning/Test_1/data/HCP/'  # ground truth dir
+    print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
+    opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
+    opt['input_file_name'] = non_HCP[key]['dt_file']
+    opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
+    opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
+    # clear the graph:
+    tf.reset_default_graph()
+    nonhcp_reconstruct(opt)
 
-opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
+
 

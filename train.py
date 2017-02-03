@@ -18,6 +18,7 @@ def define_checkpoint(opt):
     nn_file = name_network(opt)
     checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
     if not os.path.exists(checkpoint_dir):
+        print(checkpoint_dir)
         os.makedirs(checkpoint_dir)
     return checkpoint_dir
 

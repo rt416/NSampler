@@ -210,6 +210,9 @@ def super_resolve(dt_lowres, opt):
 
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
+        mask = dt_hires[:, :, :, 0] !=-1
+        dt_hires[...,2:]=dt_hires[...,2:]*mask[..., np.newaxis]
+
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
     return dt_hires
 

@@ -108,28 +108,30 @@ def standardise_data(X_train, Y_train, option='default'):
 
 
 # Save each estimated dti separately as a nifti file for visualisation
-def save_as_nifti(recon_file='mlp_h=1_highres_dti.npy',
-                  recon_dir='/Users/ryutarotanno/DeepLearning/Test_1/recon/',
-                  gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data/'):
+def save_as_nifti(recon_file, recon_dir, gt_dir,save_as_ijk=False):
     """Save each estimated dti separately as a nifti file for visualisation.
     Args:
         recon_file: file name of estimated DTI volume (4D numpy array)
         recon_dir: directory name that contains recon_file
         gt_dir: directory name that contains the ground truth high-res DTI.
+        save_as_ijk: set true if you just want to save the image in ijk space
+        (no reference neeeded in this case)
     """
     dt_est = np.load(os.path.join(recon_dir, recon_file))  # load the estimated DTI volume
     base, ext = os.path.splitext(recon_file)
 
-    for k in np.arange(6):
+    for k in np.arange(8):
         # Save each DT component separately as a nii file:
-        dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 3) + '.nii'))  # get the GT k+1 th dt component.
-        affine = dt_gt.get_affine()  # fetch its affine transfomation
-        header = dt_gt.get_header()  # fetch its header
-        # img = nib.Nifti1Image(dt_est[:-1, :, :-1, k + 2], affine=affine, header=header)
-        img = nib.Nifti1Image(dt_est[:, :, :, k + 2], affine=affine, header=header)
+        if not(save_as_ijk):
+            dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 1) + '.nii'))  # get the GT k+1 th dt component.
+            affine = dt_gt.get_affine()  # fetch its affine transfomation
+            header = dt_gt.get_header()  # fetch its header
+            img = nib.Nifti1Image(dt_est[:, :, :, k], affine=affine, header=header)
+        else:
+            img = nib.Nifti1Image(dt_est[:, :, :, k], np.eye(4))
 
         print('... saving estimated ' + str(k + 1) + ' th dt element')
-        nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
+        nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 1) + '.nii'))
 
 
 # Compute reconsturction error:
