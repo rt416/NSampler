@@ -624,7 +624,8 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
         with tf.name_scope('expected_negloglikelihood'):
-            if method == 'cnn_heteroscedastic_variational_hybrid_control':
+            if method == 'cnn_heteroscedastic_variational_hybrid_control' or \
+               method == 'cnn_heteroscedastic_variational_channelwise_hybrid_control':
                 mse_sum = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred),[1,2,3,4]),0)
                 mse_sum = opt['train_noexamples'] * mse_sum
                 tf.summary.scalar('mse_sum', mse_sum)
@@ -635,7 +636,8 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             tf.summary.scalar('e_negloglike', e_negloglike)
 
         with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
-            if method == 'cnn_heteroscedastic_variational_hybrid_control':
+            if method == 'cnn_heteroscedastic_variational_hybrid_control' or \
+               method == 'cnn_heteroscedastic_variational_channelwise_hybrid_control':
                 cost = trade_off*(e_negloglike - kl_div) + (1.- trade_off)*(mse_sum- kl_div)
             elif method == 'cnn_heteroscedastic_variational_downsc_control':
                 cost = tf.add(e_negloglike, -trade_off * kl_div, name='neg_ELBO')
