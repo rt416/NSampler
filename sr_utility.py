@@ -157,6 +157,8 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     if mask_choose:
         img = nib.load(os.path.join(mask_dir, mask_file))
         mask = img.get_data() == 0
+    else:
+        mask = dt_est[:, :, :, 0] == 0
 
     mask_with_edge = dt_est[:, :, :, 0] == 0
 

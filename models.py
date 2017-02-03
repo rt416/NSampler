@@ -548,11 +548,14 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             tf.summary.scalar('cost', cost)
 
     elif method == 'cnn_heteroscedastic_variational_hybrid_control' or \
+         method == 'cnn_heteroscedastic_variational_channelwise_hybrid_control' or \
          method == 'cnn_heteroscedastic_variational_downsc_control' or \
          method == 'cnn_heteroscedastic_variational_upsc_control':
 
         if method == 'cnn_heteroscedastic_variational_hybrid_control':
             params = 'weight'
+        elif method == 'cnn_heteroscedastic_variational_channelwise_hybrid_control':
+            params = 'channel'
         elif method == 'cnn_heteroscedastic_variational_downsc_control' or \
              method == 'cnn_heteroscedastic_variational_upsc_control':
             params = 'weight'
@@ -668,18 +671,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     y, y_uncertainty, cost = inference(method, x_scaled, y, keep_prob, opt, trade_off)
     y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
-    if opt['method']=='cnn_heteroscedastic' or \
-       opt['method'] == 'cnn_heteroscedastic_variational' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_layerwise' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_channelwise' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_average' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_downsc' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_downsc_control' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_upsc_control':
+    if not(opt['method']=='cnn_simple'):
         y_pred_std = tf.mul(y_std, y_uncertainty, name='y_pred_std')
     return y_pred, y_pred_std
 
@@ -706,7 +698,8 @@ def get_tensor_shape(tensor):
 def get_tradeoff_values(opt):
     n_epochs = opt['n_epochs']
     tradeoff_list = np.zeros(n_epochs)
-    if opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control':
+    if opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_hybrid_control':
         init_idx = n_epochs//4  # intial stable training with std variational dropout loss
         freq = 1
         counter = 0

@@ -9,7 +9,7 @@ opt = {}
 
 # Network:
 opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
-opt['valid'] = True  # pick the best model with the minimal cost (instead of RMSE).
+opt['valid'] = True
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
