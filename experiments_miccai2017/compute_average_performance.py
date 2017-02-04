@@ -46,9 +46,9 @@ opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
-opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/models'
-opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/log'
-opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison/recon'
+opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/log'
+opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
 opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
 
 opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
@@ -65,44 +65,95 @@ def models_update(idx, opt):
 
     if idx == 1:
         opt['method'] = 'cnn_heteroscedastic'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 2:
         opt['method'] = 'cnn_heteroscedastic_variational'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 3:
         opt['method'] = 'cnn_heteroscedastic_variational_downsc'
         opt['dropout_rate'] = 0.0
+        opt['valid'] = False
         name = opt['method']
     elif idx == 4:
         opt['method'] = 'cnn_heteroscedastic_variational_channelwise'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 5:
         opt['method'] = 'cnn_simple'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 6:
         opt['method'] = 'cnn_dropout'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.1
         name = opt['method'] + '_0.1'
     elif idx == 7:
         opt['method'] = 'cnn_gaussian_dropout'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.1
         name = opt['method'] + '_0.1'
     elif idx == 8:
         opt['method'] = 'cnn_variational_dropout'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 9:
         opt['method'] = 'cnn_variational_dropout_channelwise'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
     elif idx == 10:
         opt['method'] = 'cnn_heteroscedastic_variational_upsc'
+        opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
+    elif idx == 11:
+        opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+
+    elif idx == 12:
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_hybrid_control'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+
+    elif idx == 13:
+        opt['method'] = 'cnn_heteroscedastic'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_cost_'+opt['method']
+    elif idx == 14:
+        opt['method'] = 'cnn_variational_dropout'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_cost_' + opt['method']
+
+    elif idx == 15:
+        opt['method'] = 'cnn_heteroscedastic_variational'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_cost_' + opt['method']
+
+    elif idx == 16:
+        opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_cost_' + opt['method']
+
+    elif idx == 17:
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_hybrid_control'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_cost_' + opt['method']
+
     else:
         raise ValueError('no network for the given idx.')
 
@@ -112,20 +163,20 @@ def models_update(idx, opt):
 # Start the experiment:
 import analysis_miccai2017
 
-analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison/analysis'
-experiment_name = '01feb17_hetero_upsc'
-model_list = [10]  # index corresponding to different models in model_update()
+analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/analysis'
+experiment_name = '04feb17_comparison_correct_std'
+model_list = range(11,18)  # index corresponding to different models in model_update()
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
 print(experiment_file)
 
-if os.path.exists(experiment_file):
-    print('the experiment file exists')
-    err_compare = pkl.load(open(experiment_file, 'rb'))
-else:
-    err_compare = dict()
+# if os.path.exists(experiment_file):
+#     print('the experiment file exists')
+#     err_compare = pkl.load(open(experiment_file, 'rb'))
+# else:
 
+err_compare = dict()
 
 for model_idx in model_list:
     err_mtx = np.zeros((len(subjects_list),8,6))
