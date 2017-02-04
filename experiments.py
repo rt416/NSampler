@@ -8,7 +8,7 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
+opt['method'] = 'cnn_heteroscedastic'
 opt['valid'] = True
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
@@ -46,9 +46,9 @@ opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
 
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
-opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/models'
-opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/log'
-opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/01feb2017/recon'
+opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/log'
+opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
 opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
 
 opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
@@ -74,7 +74,7 @@ if choose == 1:
         from train_largesc import train_cnn
 
     # Train:	
-    for idx in range(1,2):	
+    for idx in range(1,9):	
         tf.reset_default_graph()
         opt['patchlib_idx'] = idx
         train_cnn(opt)
