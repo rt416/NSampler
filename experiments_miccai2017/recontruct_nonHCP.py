@@ -35,13 +35,16 @@ else:
 base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/non-HCP/'
 
-non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
-                     'dt_file':'dt_all_'},
-           'tumour':{'subdir':'Tumour/06_FORI',
-                     'dt_file':'dt_b700_'},
-           'ms':{'subdir':'MS/B0410637-2010-00411',
-                 'dt_file':'dt_b1200_'}
-            }
+# non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
+#                      'dt_file':'dt_all_'},
+#            'tumour':{'subdir':'Tumour/06_FORI',
+#                      'dt_file':'dt_b700_'},
+#            'ms':{'subdir':'MS/B0410637-2010-00411',
+#                  'dt_file':'dt_b1200_lowres2_'}
+#             }
+non_HCP = {'ms': {'subdir': 'MS/B0410637-2010-00411',
+                  'dt_file': 'dt_b1200_lowres2_'}
+           }
 
 # non_HCP = {'ms':{'subdir':'MS/B0410637-2010-00411',
 #                 'dt_file':'dt_b1200_'}}
@@ -54,7 +57,7 @@ for key in non_HCP:
     opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
     # clear the graph:
     tf.reset_default_graph()
-    nonhcp_reconstruct(opt)
+    nonhcp_reconstruct(opt,dataset_type=key)
 
 
 

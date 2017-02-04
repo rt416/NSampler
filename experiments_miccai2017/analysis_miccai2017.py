@@ -132,7 +132,7 @@ def resize_DTI(dti, r):
 
 
 # compute error on non-HCP dataset:
-def nonhcp_reconstruct(opt):
+def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # ------------------------ Reconstruct --------------------------------------:
     print('Method: %s' %
           (opt['method'], ))
@@ -145,8 +145,10 @@ def nonhcp_reconstruct(opt):
     # Load the input low-res DT image:
     print('... loading the low-res input DTI ...')
     dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir,input_file_name))
-    dt_lowres = resize_DTI(dt_lowres,opt['upsampling_rate'])
-
+    if not(dataset_type=='ms'):
+        dt_lowres = resize_DTI(dt_lowres,opt['upsampling_rate'])
+    else:
+        print('MS dataset: no need to resample.')
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
 
