@@ -20,6 +20,7 @@ from sr_analysis import plot_ROC
 import matplotlib.pyplot as plt
 import nibabel as nib
 import cPickle as pkl
+import scipy.io as sio
 
 # Plot RMSE vs uncertainty:
 def plot_rmse_vs_uncertainty(opt):
@@ -108,6 +109,49 @@ def compute_err(opt):
         pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
     print('Errors details saved as %s' %(err_file,))
 
+    return err
+
+def compute_err_matlab(params):
+    """ Compute errors for """
+
+    recon_file = params['recon_file']
+    gt_file = params['gt_file']
+    mask_file = params['mask_file']
+    ref_file = params['ref_file']
+    save_file = params['save_file']
+
+    # Load the ground truth/estimated high-res volumes:
+    dt_gt = read_dt_volume(nameroot=gt_file)
+    mat_contents = sio.loadmat(recon_file)
+    dt_est = mat_contents['img_RFrecon']
+
+    # Get the mask from deep learning reconstruction:
+    ref_est = np.load(ref_file)
+    mask_whole = ref_est[:, :, :, 0] == 0
+    del ref_est
+
+    # Load the masks with no edges:
+    img = nib.load(mask_file)
+    mask_noedge = img.get_data() == 0
+
+    # Compute rmse, psnr, mssim:
+    start_time = timeit.default_timer()
+    err = dict()
+    err['rmse_noedge'], err['psnr_noedge'], err['mssim_noedge'] = \
+        compare_images(dt_gt[...,2:], dt_est[...,2:], mask_noedge)
+    print('\n(No edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['rmse_noedge'],err['psnr_noedge'],err['mssim_noedge']))
+    err['rmse_whole'], err['psnr_whole'], err['mssim_whole'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_whole)
+    print('\n(Whole)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['rmse_whole'],err['psnr_whole'],err['mssim_whole']))
+    end_time = timeit.default_timer()
+    print('Took %f secs' % (end_time - start_time,))
+
+    # Save this as a separate file:
+    with open(save_file, 'wb') as fp:
+        pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Errors details saved as %s' %(save_file,))
     return err
 
 # double the size of non-HCP DTI:
