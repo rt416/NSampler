@@ -4,7 +4,7 @@ It assumes that DTI is available as nifti files."""
 import tensorflow as tf
 import configuration
 import os
-from analysis_miccai2017 import nonhcp_reconstruct
+import analysis_miccai2017
 
 # Options
 opt = configuration.set_default()
@@ -43,7 +43,6 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                  'dt_file':'dt_b1200_lowres2_'}
             }
 
-
 # non_HCP = {'ms':{'subdir':'MS/B0410637-2010-00411',
 #                 'dt_file':'dt_b1200_'}}
 
@@ -55,7 +54,7 @@ for key in non_HCP:
     opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
     # clear the graph:
     tf.reset_default_graph()
-    nonhcp_reconstruct(opt,dataset_type=key)
+    analysis_miccai2017.nonhcp_reconstruct(opt,dataset_type=key)
 
 
 

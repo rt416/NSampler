@@ -8,6 +8,9 @@ import os
 from analysis_miccai2017 import compute_err_matlab
 import numpy as np
 
+
+# todo: for Edge Reconstruction, make sure you take dt_est[:-1,:,:-1]
+
 # Subjects list:
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
@@ -152,6 +155,36 @@ for name, recon_file_list in method_list.iteritems():
             os.makedirs((analysis_dir))
         pkl.dump(err_compare, fp, protocol=pkl.HIGHEST_PROTOCOL)
     print('Recon metrics saved as %s' % (experiment_file,))
+
+
+## local:
+# reconstructed files (IQT/BIQT/Interpolation):
+recon_dir = '/SAN/vision/hcp/Ryu/miccai2017/RF_recon'
+subpath = 'T1w/Diffusion'
+recon_name = dt_est
+params['recon_file'] = os.path.join(recon_dir, subject, subpath, recon_name)
+
+# ground truth file:
+gt_dir = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'
+params['gt_file'] = os.path.join(gt_dir, subject, subpath, 'dt_b1000_')
+
+# mask file (no edge):
+mask_dir = '/SAN/vision/hcp/Ryu/miccai2017/recon'
+params['mask_file'] = os.path.join(mask_dir, subject, 'masks', 'mask_us=2_rec=5.nii')
+
+# reference file:
+ref_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+ref_name = 'cnn_simple_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
+params['ref_file'] = os.path.join(ref_dir, subject, ref_name, 'dt_recon_b1000.npy')
+
+# save dir:
+save_dir = recon_dir
+header, __ = os.path.splitext(recon_name)
+save_name = 'error_' + header + '.pkl'
+params['save_file'] = os.path.join(save_dir, subject, subpath, save_name)
+
+err = compute_err_matlab(params)
+
 
 
 # local dirs:

@@ -11,6 +11,7 @@ from skimage.measure import compare_psnr as psnr
 import h5py
 import os
 import nibabel as nib
+import sys
 
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_'):
@@ -27,7 +28,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
             dti = np.zeros(data.shape + (8,))
             dti[:, :, :, idx-1] = data_array
         else:
-            dti[:, :, :, idx - 1] = data_array
+            dti[:, :, :, idx-1] = data_array
 
         del img, data, data_array
     return dti
@@ -133,7 +134,6 @@ def save_as_nifti(recon_file, recon_dir, gt_dir,save_as_ijk=False):
         print('... saving estimated ' + str(k + 1) + ' th dt element')
         nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 1) + '.nii'))
 
-
 # Compute reconsturction error:
 def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
                  recon_dir='/Users/ryutarotanno/DeepLearning/nsampler/recon',
@@ -228,9 +228,89 @@ def save_error_as_nifti(error_file, recon_dir, gt_dir):
         nib.save(img, os.path.join(recon_dir, base + '_' + str(k + 3) + '.nii'))
 
 
+# Compute MD and FA:
+def compute_MD_and_FA(dti):
+    """ Compute the MD and FA of DTI:
+    Args
+        dti (numpy array): dti (2d or 3d) where the last dimension
+        corresponds to dti.
+    """
+    if dti.shape[-1]!=6:
+        print('dti_shape[-1] is ' + str(dti.shape[-1]))
+        raise ValueError('the last dimension contains more than 6 values!')
+
+    md, fa = np.zeros(dti.shape[:-1]), np.zeros(dti.shape[:-1])
+    md = (dti[...,0]+dti[...,3]+dti[...,5])/3.0
+    fa = np.sqrt((dti[...,0]**2 + dti[...,3]**2 + dti[...,5]**2 +
+                  3*(dti[...,1]**2 + dti[...,2]**2 + dti[...,4]**2) -
+                  (dti[...,0]*dti[...,3] + dti[...,3]*dti[...,5] + dti[...,5]*dti[...,0])
+                  )
+                  /
+                  (dti[...,0]**2 + dti[...,3]**2 + dti[...,5]**2 +
+                   2*(dti[...,1]**2 + dti[...,2]**2 + dti[...,4]**2)
+                  )
+                 )
+    return md, fa
 
 
+# A more general function for nifti conversion:
+def ndarray_to_nifti(array,nifti_file,ref_file=None):
+    """ Save numpy ndarray as .nii
+    Args:
+        array (numpy array): numpy array
+        nifti_file (str): the file name of the converted .nii
+        ref (str): reference .nii file from which header and affine
+        retrieved.
+    """
+    # Save each DT component separately as a nii file:
+    if not (ref_file == None):
+        nii_ref = nib.load(ref_file)
+        affine = nii_ref.get_affine()  # fetch its affine transfomation
+        header = nii_ref.get_header()  # fetch its header
+        img = nib.Nifti1Image(array, affine=affine, header=header)
+    else:
+        img = nib.Nifti1Image(array, np.eye(4))
+    print('Saving as: ' + nifti_file)
+    nib.save(img, nifti_file)
 
+
+# Compute the mean and std over MD and FA:
+def mean_and_std_MD_FA(dti_mean, dti_std, no_samples):
+    """ Estimate the mean and std over MD and FA
+    given that the DTI is normally distributed.
+    Args:
+        dti_mean (np array) : the mean of normally distributed DTI
+        dti_std (np array) : the std of DTI
+    Note:
+        You can only use this method for heteroscedastic model where
+        DTI is modelled as a Gaussian distribution.
+    """
+    md_sum_out = 0.0
+    md_sum_out2 = 0.0
+    fa_sum_out = 0.0
+    fa_sum_out2 = 0.0
+
+    for i in range(no_samples):
+        dti_sample = np.random.normal(dti_mean, dti_std)
+        md_sample, fa_sample = compute_MD_and_FA(dti_sample)
+        md_sum_out += md_sample
+        md_sum_out2 += md_sample**2
+        fa_sum_out += fa_sample
+        fa_sum_out2 += fa_sample**2
+        sys.stdout.flush()
+        sys.stdout.write('\t%i of %i.\r' % (i, no_samples))
+
+    md_mean = md_sum_out / no_samples
+    md_std = np.sqrt(np.abs(md_sum_out2 -
+                            2 * md_mean * md_sum_out +
+                            no_samples * md_mean ** 2) / no_samples)
+
+    fa_mean = fa_sum_out / no_samples
+    fa_std = np.sqrt(np.abs(fa_sum_out2 -
+                            2*fa_mean*fa_sum_out +
+                            no_samples*fa_mean**2) / no_samples)
+
+    return md_mean, md_std, fa_mean, fa_std
 
 
 

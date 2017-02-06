@@ -175,6 +175,37 @@ def resize_DTI(dti, r):
     return dti_new
 
 
+# non-HCP data. Compute the mean and std of FA.
+def _MD_FA(dti_file, std_file=None, no_samples=500):
+    """ Compute the mean MD and FA on non-HCP dataset
+    Args:
+        dti_file (str) : the name of the mean dti nifti files
+        std_file (str) : the name of the corresponding std
+    """
+    dti_mean = sr_utility.read_dt_volume(dti_file)
+    if std_file == None:
+        md, fa =sr_utility.compute_MD_and_FA(dti_mean[...,2:])
+        md_nii = dti_file + 'MD.nii'
+        sr_utility.ndarray_to_nifti(md, md_nii)
+        fa_nii = dti_file + 'FA.nii'
+        sr_utility.ndarray_to_nifti(fa, fa_nii)
+    else:
+        dti_std = sr_utility.read_dt_volume(std_file)
+        md_mean, md_std, fa_mean, fa_std = \
+            sr_utility.mean_and_std_MD_FA(dti_mean[...,2:],
+                                          dti_std[...,2:],
+                                          no_samples=no_samples)
+
+        md_mean_nii = dti_file + 'MD_mean_' + str(no_samples) + '.nii'
+        md_std_nii = dti_file + 'MD_std_' + str(no_samples) + '.nii'
+        fa_mean_nii = dti_file + 'FA_mean_' + str(no_samples) + '.nii'
+        fa_std_nii = dti_file + 'FA_std_' + str(no_samples) + '.nii'
+        sr_utility.ndarray_to_nifti(md_mean, md_mean_nii)
+        sr_utility.ndarray_to_nifti(md_std, md_std_nii)
+        sr_utility.ndarray_to_nifti(fa_mean, fa_mean_nii)
+        sr_utility.ndarray_to_nifti(fa_std, fa_std_nii)
+
+
 # compute error on non-HCP dataset:
 def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # ------------------------ Reconstruct --------------------------------------:
@@ -234,6 +265,10 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
+# non-HCP data. Compute mean and std of FA.
+
+
+
 
 # Receiver Operating Characteristics:
 def get_ROC(opt):
@@ -272,6 +307,8 @@ def get_ROC(opt):
         print('component %i: took %f secs' % (idx + 1, (end_time - start_time)))
 
     plt.show()
+
+#
 
 
 
