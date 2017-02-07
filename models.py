@@ -667,7 +667,6 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
     y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
     y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-    y_pred_std = None
     # x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
     x_scaled = tf.div(tf.sub(x, x_mean), x_std)
     y, y_uncertainty, cost = inference(method, x_scaled, y, keep_prob, opt, trade_off)
@@ -675,6 +674,8 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
 
     if not(opt['method']=='cnn_simple'):
         y_pred_std = tf.mul(y_std, y_uncertainty, name='y_pred_std')
+    else:
+        y_pred_std = 1
     return y_pred, y_pred_std
 
 
