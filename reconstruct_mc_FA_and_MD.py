@@ -76,7 +76,7 @@ def dt_trim(dt_volume, pd):
     return dt_volume
 
 
-def mc_inference_hetero_FA_and_MD(fn, fd, opt):
+def mc_inference_hetero_FA_and_MD(fn, fn_std, fd, opt):
     """ Compute the mean and std of samples drawn from stochastic function"""
     no_samples = opt['mc_no_samples']
     if opt['method']=='cnn_dropout' or \
@@ -128,7 +128,7 @@ def mc_inference_hetero_FA_and_MD(fn, fd, opt):
         fa_sum_out = 0.0
         fa_sum_out2 = 0.0
 
-        like_std = fd.eval(feed_dict=fd)  # add noise from the likelihood model.
+        like_std = fn_std.eval(feed_dict=fd)  # add noise from the likelihood model.
 
         for i in xrange(no_samples):
             dti_sample = np.random.normal(0, like_std)
