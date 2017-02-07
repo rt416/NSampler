@@ -35,26 +35,36 @@ else:
 base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/non-HCP/'
 
-non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
-                     'dt_file':'dt_all_'},
-           'tumour':{'subdir':'Tumour/06_FORI',
-                     'dt_file':'dt_b700_'},
-           'ms':{'subdir':'MS/B0410637-2010-00411',
-                 'dt_file':'dt_b1200_lowres2_'}
-            }
+non_HCP = {'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
+                      'dt_file': 'dt_all_'},
+           'tumour': {'subdir': 'Tumour/06_FORI',
+                      'dt_file': 'dt_b700_'},
+           'ms': {'subdir': 'MS/B0410637-2010-00411',
+                  'dt_file': 'dt_test_b1200_'},
+           'hcp1': {'subdir': 'HCP/117324',
+                    'dt_file': 'dt_b1000_lowres_2_'},
+           'hcp2': {'subdir': 'HCP/904044',
+                    'dt_file': 'dt_b1000_lowres_2_'},
+           }
 
-# non_HCP = {'ms':{'subdir':'MS/B0410637-2010-00411',
-#                 'dt_file':'dt_b1200_'}}
+# non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
+#                      'dt_file':'dt_all_'},
+#            'tumour':{'subdir':'Tumour/06_FORI',
+#                      'dt_file':'dt_b700_'},
+#            'ms':{'subdir':'MS/B0410637-2010-00411',
+#                  'dt_file':'dt_b1200_lowres2_'}
+#             }
 
-for key in non_HCP:
-    print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
-    opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
-    opt['input_file_name'] = non_HCP[key]['dt_file']
-    opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
-    opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
-    # clear the graph:
-    tf.reset_default_graph()
-    analysis_miccai2017.nonhcp_reconstruct(opt,dataset_type=key)
+
+key = 'prisma'
+print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
+opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
+opt['input_file_name'] = non_HCP[key]['dt_file']
+opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
+opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
+# clear the graph:
+tf.reset_default_graph()
+analysis_miccai2017.nonhcp_reconstruct(opt,dataset_type=key)
 
 
 

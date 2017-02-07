@@ -8,7 +8,7 @@ from train import name_network
 
 # Options
 opt = configuration.set_default()
-opt['method'] = 'cnn_heteroscedastic'
+opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
 opt['valid'] = False  # pick the best model with the minimal cost (instead of RMSE).
 
 # Training
@@ -35,8 +35,8 @@ else:
     nn_name=''
 
 non_HCP = {'hcp': {'subdir':'HCP/904044',
-                   'dt_file':'dt_recon_b1000_',
-                   'std_file': 'dt_std_b1000_'},
+                   'dt_file':'dt_recon_',
+                   'std_file': 'dt_std_data_'},
            'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
            'tumour':{'subdir':'Tumour/06_FORI',
@@ -56,6 +56,6 @@ std_file = os.path.join(base_input_dir,
                         non_HCP[dataset_type]['std_file'])
 
 print('Compute MD and FA of' + dti_file)
-analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1)
-# analysis_miccai2017._MD_FA(dti_file)
+analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)
+# analysis_miccai2017._MD_FA(dti_file,no_samples=1)
 

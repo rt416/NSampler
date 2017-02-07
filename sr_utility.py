@@ -192,6 +192,29 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     return rmse, rmse_whole, rmse_volume
 
 
+# Compute errors over:
+def compute_rmse_nii(nii_1, nii_2, save_file, mask=None):
+    nii = nib.load(nii_1)
+    img_1 = nii.get_data()
+    affine = nii.get_affine()  # fetch its affine transfomation
+    header = nii.get_header()
+
+    nii = nib.load(nii_2)
+    img_2 = nii.get_data()
+
+    if not(mask==None):
+        img = nib.load(os.path.join(mask))
+        mask = img.get_data() == 0
+    else:
+        mask = img_1 != 0
+
+    rmse_volume = np.sqrt((img_1-img_2) ** 2)*mask
+    rmse_nii = nib.Nifti1Image(rmse_volume, affine=affine, header=header)
+    print('saving the RMSE as nii at:' + save_file)
+    nib.save(rmse_nii, save_file)
+
+
+
 def name_network(opt):
     """given inputs, return the model name."""
     optim = opt['optimizer'].__name__
