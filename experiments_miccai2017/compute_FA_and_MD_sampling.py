@@ -81,6 +81,6 @@ base_recon_dir = '/SAN/vision/hcp/Ryu/non-HCP/HCP'
 for subject in subjects_list:
     for model_idx in models_list:
         opt['subject'] = subject
-        opt['recon_dir'] = os.path.join(base_recon_dir, os['subject'])
+        opt['recon_dir'] = os.path.join(base_recon_dir, opt['subject'])
         name, opt = models_update(model_idx, opt)
         reconstruct_mc_FA_and_MD.sr_reconstruct_FA_and_MD(opt)
