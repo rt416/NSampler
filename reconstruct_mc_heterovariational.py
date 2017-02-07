@@ -109,7 +109,7 @@ def mc_inference_hetero_variational(fn, fn_std, fd, opt):
 
 
 # Reconstruct using the specified NN:
-def super_resolve_mcdropout(dt_lowres, opt):
+def super_resolve_mcdropout_heterovariational(dt_lowres, opt):
 
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
@@ -301,7 +301,7 @@ def sr_reconstruct_mcdropout(opt):
     start_time = timeit.default_timer()
     nn_dir = name_network(opt)
     print('\nPerformn MC-reconstruction of high-res dti with the network: \n%s.' % nn_dir)
-    dt_hr, dt_std_m, dt_std_d = super_resolve_mcdropout(dt_lowres, opt)
+    dt_hr, dt_std_m, dt_std_d = super_resolve_mcdropout_heterovariational(dt_lowres, opt)
 
     # Save:
     output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')

@@ -9,6 +9,7 @@ import timeit
 
 from train import define_checkpoint, name_network
 from reconstruct_mcdropout import super_resolve_mcdropout
+from reconstruct_mc_heterovariational import super_resolve_mcdropout_heterovariational
 from reconstruct import super_resolve
 
 from sr_analysis import correlation_plot_and_analyse
@@ -220,10 +221,10 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # Load the input low-res DT image:
     print('... loading the low-res input DTI ...')
     dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir,input_file_name))
-    if not(dataset_type=='ms'):
+    if not(dataset_type=='hcp1' or dataset_type=='hcp2'):
         dt_lowres = resize_DTI(dt_lowres,opt['upsampling_rate'])
     else:
-        print('MS dataset: no need to resample.')
+        print('HCP dataset: no need to resample.')
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
 
@@ -240,7 +241,48 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
         os.makedirs(os.path.join(recon_dir, nn_dir))
 
     start_time = timeit.default_timer()
-    if not(opt['method']=='cnn_simple'):
+    if opt['method'] == 'cnn_heteroscedastic_variational' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_layerwise' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_average' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_upsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_layerwise_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_downsc' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_hybrid_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_downsc_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_upsc_control':
+
+        uncertainty_file_d = os.path.join(recon_dir, nn_dir, 'dt_std_data.npy')
+        uncertainty_file_m = os.path.join(recon_dir, nn_dir, 'dt_std_model.npy')
+
+        __, output_header = os.path.split(output_file)
+        __, uncertainty_header_d = os.path.split(uncertainty_file_d)
+        __, uncertainty_header_m = os.path.split(uncertainty_file_m)
+
+        print('... saving as %s' % output_file)
+        dt_hr, dt_std_m, dt_std_d = super_resolve_mcdropout_heterovariational(dt_lowres, opt)
+        np.save(output_file, dt_hr)
+        np.save(uncertainty_file_d, dt_std_d)
+        np.save(uncertainty_file_m, dt_std_m)
+
+        # save as .nii
+        print('\nSave each estimated dti/std separately as a nii file ...')
+        sr_utility.save_as_nifti(output_header, os.path.join(recon_dir, nn_dir),
+                                 gt_dir='', save_as_ijk=True)
+        sr_utility.save_as_nifti(uncertainty_header_d, os.path.join(recon_dir, nn_dir),
+                                 gt_dir='', save_as_ijk=True)
+        sr_utility.save_as_nifti(uncertainty_header_m, os.path.join(recon_dir, nn_dir),
+                                 gt_dir='', save_as_ijk=True)
+    elif opt['method']=='cnn_heteroscedastic' or \
+         opt['method']=='cnn_dropout' or \
+         opt['method']=='cnn_gaussian_dropout' or \
+         opt['method']=='cnn_variational_dropout' or \
+         opt['method']=='cnn_variational_dropout_layerwise' or \
+         opt['method']=='cnn_variational_dropout_channelwise' or \
+         opt['method']=='cnn_variational_dropout_average':
+
         print('... saving as %s' % output_file)
         dt_hr, dt_std = super_resolve_mcdropout(dt_lowres, opt)
         np.save(output_file, dt_hr)
@@ -252,7 +294,7 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
                                  gt_dir='', save_as_ijk=True)
         sr_utility.save_as_nifti(uncertainty_header, os.path.join(recon_dir, nn_dir),
                                  gt_dir='', save_as_ijk=True)
-    else:
+    elif opt['method']=='cnn_simple':
         print('... saving as %s' % output_file)
         dt_hr = super_resolve(dt_lowres, opt)
         np.save(output_file, dt_hr)
@@ -262,6 +304,8 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
         sr_utility.save_as_nifti(output_header, os.path.join(recon_dir, nn_dir),
                                  gt_dir='', save_as_ijk=True)
 
+    else:
+        raise ValueError('specified model not available')
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
