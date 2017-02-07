@@ -45,7 +45,7 @@ for name, dt_est_int in recon_interp.iteritems():
 
         # reference file:
         ref_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
-        ref_name = 'cnn_simple_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
+        ref_name = 'cnn_heteroscedastic_variational_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
         params['ref_file'] = os.path.join(ref_dir,subject,ref_name,'dt_recon_b1000.npy')
 
         # save dir:
@@ -113,7 +113,7 @@ for name, recon_file_list in method_list.iteritems():
 
             # reference file:
             ref_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
-            ref_name = 'cnn_simple_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
+            ref_name = 'cnn_heteroscedastic_variational_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
             params['ref_file'] = os.path.join(ref_dir, subject, ref_name, 'dt_recon_b1000.npy')
 
             # save dir:
