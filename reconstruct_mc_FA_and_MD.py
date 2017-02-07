@@ -245,18 +245,13 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
 
         # Prepare high-res skeleton:
-        dt_md_mean = np.zeros(dt_lowres.shape)  # data uncertainty
-        dt_md_mean[:, :, :, 0] = dt_lowres[:, :, :, 0]
+        dt_md_mean = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
 
-        dt_md_std = np.zeros(dt_lowres.shape)  # data uncertainty
-        dt_md_std[:, :, :, 0] = dt_lowres[:, :, :, 0]
+        dt_md_std = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
 
-        dt_fa_mean = np.zeros(dt_lowres.shape)
-        dt_fa_mean[:, :, :, 0] = dt_lowres[:, :, :, 0]  # same brain mask as input
+        dt_fa_mean = np.zeros(dt_lowres.shape[:-1])
 
-        dt_fa_std = np.zeros(dt_lowres.shape)  # model uncertainty
-        dt_fa_std[:, :, :, 0] = dt_lowres[:, :, :, 0]
-
+        dt_fa_std = np.zeros(dt_lowres.shape[:-1])  # model uncertainty
 
         # Down-sample:
         dt_lowres = dt_lowres[::upsampling_rate,
@@ -279,9 +274,8 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
             sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
 
             ipatch_tmp = dt_lowres[(i - input_radius - 1):(i + input_radius),
-                               (j - input_radius - 1):(j + input_radius),
-                               (k - input_radius - 1):(k + input_radius),
-                               2:comp]
+                                   (j - input_radius - 1):(j + input_radius),
+                                   (k - input_radius - 1):(k + input_radius), 2:comp]
 
             ipatch = ipatch_tmp[np.newaxis, ...]
 
@@ -295,8 +289,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
                        upsampling_rate * (j - output_radius - 1):
                        upsampling_rate * (j + output_radius),
                        upsampling_rate * (k - output_radius - 1):
-                       upsampling_rate * (k + output_radius),
-                       2:] \
+                       upsampling_rate * (k + output_radius)] \
             = md_mean
 
             dt_md_std[upsampling_rate * (i - output_radius - 1):
@@ -304,8 +297,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
             upsampling_rate * (j - output_radius - 1):
             upsampling_rate * (j + output_radius),
             upsampling_rate * (k - output_radius - 1):
-            upsampling_rate * (k + output_radius),
-            2:] \
+            upsampling_rate * (k + output_radius)] \
             = md_std
 
             dt_fa_mean[upsampling_rate * (i - output_radius - 1):
@@ -313,8 +305,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
                        upsampling_rate * (j - output_radius - 1):
                        upsampling_rate * (j + output_radius),
                        upsampling_rate * (k - output_radius - 1):
-                       upsampling_rate * (k + output_radius),
-                       2:] \
+                       upsampling_rate * (k + output_radius)] \
             = fa_mean
 
             dt_fa_std[upsampling_rate * (i - output_radius - 1):
@@ -322,8 +313,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
             upsampling_rate * (j - output_radius - 1):
             upsampling_rate * (j + output_radius),
             upsampling_rate * (k - output_radius - 1):
-            upsampling_rate * (k + output_radius),
-            2:] \
+            upsampling_rate * (k + output_radius)] \
             = fa_std
 
         # Trim unnecessary padding:
