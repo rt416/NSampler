@@ -71,8 +71,7 @@ def dt_trim(dt_volume, pd):
     """
     dt_volume = dt_volume[pd[0][0]:-pd[0][1],
                           pd[1][0]:-pd[1][1],
-                          pd[2][0]:-pd[2][1],
-                          :]
+                          pd[2][0]:-pd[2][1]]
     return dt_volume
 
 
