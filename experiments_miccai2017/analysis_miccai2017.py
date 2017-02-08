@@ -125,8 +125,10 @@ def compute_err_matlab(params):
     dt_gt = read_dt_volume(nameroot=gt_file)
     mat_contents = sio.loadmat(recon_file)
     dt_est = mat_contents['img_RFrecon']
+    print('shape of dt_gt and dt_est are: %s and %s' %(dt_gt.shape, dt_est.shape))
     if params['edge']:
         dt_est = dt_est[:-1,:-1,:-1,:]
+    print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
 
     # Get the mask from deep learning reconstruction:
     ref_est = np.load(ref_file)
