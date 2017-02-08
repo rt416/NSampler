@@ -128,7 +128,7 @@ def compute_err_matlab(params):
     print('shape of dt_gt and dt_est are: %s and %s' %(dt_gt.shape, dt_est.shape))
     if params['edge']:
         print('Edge reconstruction is selected.')
-        dt_est = dt_est[1:,:,1:,:]/7.0
+        dt_est = dt_est[:-1,:,:-1,:]/7.0
     print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
 
     # Get the mask from deep learning reconstruction:
