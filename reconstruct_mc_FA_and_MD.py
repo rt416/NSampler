@@ -336,9 +336,11 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
 
 # Main reconstruction code:
 def sr_reconstruct_FA_and_MD(opt):
+
     # load parameters:
     recon_dir = opt['recon_dir']
     gt_dir = opt['gt_dir']
+    nn_dir = name_network(opt)
     subpath = opt['subpath']
     subject = opt['subject']
     input_file_name = opt['input_file_name']
@@ -351,40 +353,49 @@ def sr_reconstruct_FA_and_MD(opt):
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
 
-    # Reconstruct:
-    start_time = timeit.default_timer()
-    nn_dir = name_network(opt)
-    print('\nPerformn MC-reconstruction of high-res dti with the network: \n%s.' % nn_dir)
-    dt_md_mean, dt_md_std, dt_fa_mean, dt_fa_std = super_resolve_FA_and_MD(dt_lowres, opt)
-
     # Save:
     md_mean_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_MD_mean.npy')
     md_std_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_MD_std.npy')
     fa_mean_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_FA_mean.npy')
     fa_std_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_FA_std.npy')
 
-    print('... saving MC-predicted MD as %s' % md_mean_file)
-    if not (os.path.exists(os.path.join(recon_dir, subject))):
-        os.mkdir(os.path.join(recon_dir, subject))
-    if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
-        os.mkdir(os.path.join(recon_dir, subject, nn_dir))
-    np.save(md_mean_file, dt_md_mean)
-    np.save(md_std_file, dt_md_std)
-    np.save(fa_mean_file, dt_fa_mean)
-    np.save(fa_std_file, dt_fa_std)
-    end_time = timeit.default_timer()
-    print('\nIt took %f secs. \n' % (end_time - start_time))
+    # Reconstruct:
+    if os.path.exists(md_mean_file) and os.path.exists(fa_mean_file):
+        print('MD and FA files already exists. Move on ')
+        mean_md, base = os.path.splitext(md_mean_file)
+        std_md, base = os.path.splitext(md_std_file)
+        mean_fa, base = os.path.splitext(fa_mean_file)
+        std_fa, base = os.path.splitext(fa_std_file)
+        # dt_md_mean = np.load(md_mean_file)
+        # dt_md_std = np.load(md_std_file)
+        # dt_fa_mean = np.load(fa_mean_file)
 
-    # Save each estimated dti/std separately as a nifti file for visualisation:
-    print('\nSave as nii files...')
-    mean_md, base = os.path.splitext(md_mean_file)
-    std_md, base = os.path.splitext(md_std_file)
-    mean_fa, base = os.path.splitext(fa_mean_file)
-    std_fa, base = os.path.splitext(fa_std_file)
-    sr_utility.ndarray_to_nifti(dt_md_mean, mean_md+'.nii')
-    sr_utility.ndarray_to_nifti(dt_md_std, std_md + '.nii')
-    sr_utility.ndarray_to_nifti(dt_fa_mean, mean_fa + '.nii')
-    sr_utility.ndarray_to_nifti(dt_fa_std, std_fa + '.nii')
+    else:
+        start_time = timeit.default_timer()
+        print('\nPerformn MC-reconstruction of high-res dti with the network: \n%s.' % nn_dir)
+        dt_md_mean, dt_md_std, dt_fa_mean, dt_fa_std = super_resolve_FA_and_MD(dt_lowres, opt)
+        print('... saving MC-predicted MD as %s' % md_mean_file)
+        if not (os.path.exists(os.path.join(recon_dir, subject))):
+            os.mkdir(os.path.join(recon_dir, subject))
+        if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+            os.mkdir(os.path.join(recon_dir, subject, nn_dir))
+        np.save(md_mean_file, dt_md_mean)
+        np.save(md_std_file, dt_md_std)
+        np.save(fa_mean_file, dt_fa_mean)
+        np.save(fa_std_file, dt_fa_std)
+        end_time = timeit.default_timer()
+        print('\nIt took %f secs. \n' % (end_time - start_time))
+
+        # Save each estimated dti/std separately as a nifti file for visualisation:
+        print('\nSave as nii files...')
+        mean_md, base = os.path.splitext(md_mean_file)
+        std_md, base = os.path.splitext(md_std_file)
+        mean_fa, base = os.path.splitext(fa_mean_file)
+        std_fa, base = os.path.splitext(fa_std_file)
+        sr_utility.ndarray_to_nifti(dt_md_mean, mean_md+'.nii')
+        sr_utility.ndarray_to_nifti(dt_md_std, std_md + '.nii')
+        sr_utility.ndarray_to_nifti(dt_fa_mean, mean_fa + '.nii')
+        sr_utility.ndarray_to_nifti(dt_fa_std, std_fa + '.nii')
 
     # Compute the reconstruction error:
     mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
@@ -397,10 +408,15 @@ def sr_reconstruct_FA_and_MD(opt):
     save_maps_dir = os.path.join(recon_dir, subject, 'maps')
     if not(os.path.exists(fa_gt_file)) or not(os.path.exists(md_gt_file)):
         print('Ground truth FA or MD does not exist. Compute them ...')
-        dti_gt_root_dir =  os.path.join(gt_dir, subject, subpath)
+        dti_gt_root_dir = os.path.join(gt_dir, subject, subpath)
         dti_gt_file = dti_gt_root_dir + '/dt_b1000_'
         os.makedirs(save_maps_dir)
         analysis_miccai2017._MD_FA(dti_gt_file, save_dir=save_maps_dir)
 
-    sr_utility.compute_rmse_nii(nii_1=md_gt_file, nii_2=mean_md+'.nii')
-    sr_utility.compute_rmse_nii(nii_1=fa_gt_file, nii_2=mean_fa+'.nii')
+    save_error_md = os.path.join(recon_dir, subject, nn_dir, 'error_dt_b1000_MD.nii')
+    save_error_fa = os.path.join(recon_dir, subject, nn_dir, 'error_dt_b1000_FA.nii')
+
+    sr_utility.compute_rmse_nii(nii_1=md_gt_file, nii_2=mean_md+'.nii',
+                                save_file=save_error_md)
+    sr_utility.compute_rmse_nii(nii_1=fa_gt_file, nii_2=mean_fa+'.nii',
+                                save_file=save_error_fa)
