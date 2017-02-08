@@ -63,6 +63,7 @@ def normal_mult_noise(a, keep_prob, params, opt, name, summary=True):
             sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
             a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
             kl = kl_log_uniform_prior(sigma, name='kl')
+            variable_summaries(sigma, summary)
             variable_summaries(a_drop, summary)
             # variable_summaries(kl, summary)
         elif params=='channel':
@@ -74,6 +75,7 @@ def normal_mult_noise(a, keep_prob, params, opt, name, summary=True):
             # kl = kl_log_uniform_prior(sigma, name='kl')
             kl = np.prod(get_tensor_shape(a)[1:4]) * kl_log_uniform_prior(sigma, name='kl')
             variable_summaries(a_drop, summary)
+            variable_summaries(sigma, summary)
             variable_summaries(kl, summary)
         elif params=='layer':
             rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
