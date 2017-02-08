@@ -239,10 +239,13 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
         saver.restore(sess, nn_file)
         print("Model restored.")
 
+        # Obtain the mask:
+        mask = dt_lowres[..., 0] != -1
+
         # Apply padding:
         # print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
-        mask = dt_lowres[...,0]!= -1
+
 
         # Prepare high-res skeleton:
         dt_md_mean = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
