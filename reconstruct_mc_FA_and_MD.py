@@ -242,6 +242,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
         # Apply padding:
         # print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_volume=dt_lowres, opt=opt)
+        mask = dt_lowres[...,0]!= -1
 
         # Prepare high-res skeleton:
         dt_md_mean = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
@@ -321,11 +322,11 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
         dt_fa_mean = dt_trim(dt_fa_mean, padding)
         dt_fa_std = dt_trim(dt_fa_std, padding)
 
-        mask = dt_md_mean[:, :, :, 0] != -1
-        dt_md_mean[..., 2:] = dt_md_mean[..., 2:] * mask[..., np.newaxis]
-        dt_md_std[..., 2:] = dt_md_std[..., 2:] * mask[..., np.newaxis]
-        dt_fa_mean[..., 2:] = dt_fa_mean[..., 2:] * mask[..., np.newaxis]
-        dt_fa_std[..., 2:] = dt_fa_std[..., 2:] * mask[..., np.newaxis]
+
+        dt_md_mean = dt_md_mean * mask
+        dt_md_std = dt_md_std * mask
+        dt_fa_mean = dt_fa_mean * mask
+        dt_fa_std = dt_fa_std * mask
         print("Size of dt_hires after trimming: %s", (dt_md_mean.shape,))
     return dt_md_mean, dt_md_std, dt_fa_mean, dt_fa_std
 
