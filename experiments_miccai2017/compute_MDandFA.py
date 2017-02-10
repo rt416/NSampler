@@ -58,7 +58,7 @@ std_file = os.path.join(base_input_dir,
 
 print('Compute MD and FA of' + dti_file)
 # md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, save_tail='_dir')
-md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, std_file,
+md_nii, fa_nii, __ = analysis_miccai2017._MD_FA(dti_file, std_file,
                                             save_tail='',
                                             compute_md_analytical=True)
 
@@ -72,7 +72,7 @@ fa_gt_nii = os.path.join(base_gt_dir,
                          non_HCP[dataset_type]['subdir'],
                          'dt_b1000_FA.nii')
 
-# Compute errprs:
+# Compute errors:
 analysis_miccai2017._errors_MD_FA(md_nii, md_gt_nii, fa_nii, fa_gt_nii)
 
 #analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)

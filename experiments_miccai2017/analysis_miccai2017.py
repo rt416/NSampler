@@ -207,6 +207,7 @@ def _MD_FA(dti_file, std_file=None, no_samples=500,
         sr_utility.ndarray_to_nifti(md, md_nii)
         fa_nii = save_file + 'FA' + save_tail + '.nii'
         sr_utility.ndarray_to_nifti(fa, fa_nii)
+        return md_nii, fa_nii
     elif compute_md_analytical == True :
         dti_std = sr_utility.read_dt_volume(std_file)
         md, fa = sr_utility.compute_MD_and_FA(dti_mean[..., 2:])
@@ -221,6 +222,7 @@ def _MD_FA(dti_file, std_file=None, no_samples=500,
         sr_utility.ndarray_to_nifti(md_std, md_std_nii)
         fa_nii = save_file + 'FA' + save_tail + '.nii'
         sr_utility.ndarray_to_nifti(fa, fa_nii)
+        return md_nii, fa_nii, md_std_nii
     else:
         dti_std = sr_utility.read_dt_volume(std_file)
         md_mean, md_std, fa_mean, fa_std = \
@@ -236,7 +238,7 @@ def _MD_FA(dti_file, std_file=None, no_samples=500,
         sr_utility.ndarray_to_nifti(md_std, md_std_nii)
         sr_utility.ndarray_to_nifti(fa_mean, fa_nii)
         sr_utility.ndarray_to_nifti(fa_std, fa_std_nii)
-    return md_nii, fa_nii
+        return md_nii, fa_nii
 
 
 

@@ -193,7 +193,7 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
 
 
 # Compute errors over:
-def compute_rmse_nii(nii_1, nii_2, save_file, mask=None):
+def compute_rmse_nii(nii_1, nii_2, save_file=None, mask=None):
     nii = nib.load(nii_1)
     img_1 = nii.get_data()
     affine = nii.get_affine()  # fetch its affine transfomation
