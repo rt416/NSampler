@@ -15,23 +15,47 @@ import sys
 
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_'):
-    for idx in np.arange(1, 9):
-        data_path_new = nameroot + str(idx) + '.nii'
-        print("... loading %s" % data_path_new)
+    file_1 = nameroot + str(1) + '.nii'
+    file_2 = nameroot + str(1) + '.nii'
 
-        img = nib.load(data_path_new)
-        data = img.get_data()
-        data_array = np.zeros(data.shape)
-        data_array[:] = data[:]
+    if not(os.path.exists(file_1)) or not(os.path.exists(file_2)):
+        print(file_1 + ' does not exist ... set it zeros')
+        for idx in np.arange(3, 9):
+            data_path_new = nameroot + str(idx) + '.nii'
+            print("... loading %s" % data_path_new)
 
-        if idx == 1:
-            dti = np.zeros(data.shape + (8,))
-            dti[:, :, :, idx-1] = data_array
-        else:
-            dti[:, :, :, idx-1] = data_array
+            img = nib.load(data_path_new)
+            data = img.get_data()
+            data_array = np.zeros(data.shape)
+            data_array[:] = data[:]
 
-        del img, data, data_array
-    return dti
+            if idx == 3:
+                dti = np.zeros(data.shape + (8,))
+                dti[:, :, :, idx - 1] = data_array
+            else:
+                dti[:, :, :, idx - 1] = data_array
+
+            del img, data, data_array
+        return dti
+
+    else:
+        for idx in np.arange(1, 9):
+            data_path_new = nameroot + str(idx) + '.nii'
+            print("... loading %s" % data_path_new)
+
+            img = nib.load(data_path_new)
+            data = img.get_data()
+            data_array = np.zeros(data.shape)
+            data_array[:] = data[:]
+
+            if idx == 1:
+                dti = np.zeros(data.shape + (8,))
+                dti[:, :, :, idx-1] = data_array
+            else:
+                dti[:, :, :, idx-1] = data_array
+
+            del img, data, data_array
+        return dti
 
 
 # Select the patch-library and load into tensor shared variables:

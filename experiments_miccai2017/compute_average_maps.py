@@ -202,8 +202,8 @@ for subject in subjects_list:
         nib.save(img, os.path.join(save_dir,'average_'+ 'error' + dti_name + 'MD.nii' ))
 
         img = nib.Nifti1Image(std_volume, np.eye(4))
-        print('Saving :  ' + 'average_' + std_name + 'MD.nii' )
-        nib.save(img, os.path.join(save_dir, 'average_' + std_name + 'MD.nii' ))
+        print('Saving :  ' + 'average_' + std_name + 'MD.nii')
+        nib.save(img, os.path.join(save_dir, 'average_' + std_name + 'MD.nii'))
 
 
 
