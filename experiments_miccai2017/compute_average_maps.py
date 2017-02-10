@@ -92,52 +92,52 @@ def models_update(idx, opt):
     return name, opt
 
 
-# # ------------------------- compute the average RMSE/std over DTIs ----------------------:
-# models_list = range(1,6)
-# subjects_list = ['904044', '117324']
-# base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
-# # base_save_dir = '/SAN/vision/hcp/Ryu/non-HCP/HCP'
-#
-#
-# for subject in subjects_list:
-#     for model_idx in models_list:
-#         for dti_idx in range(3,9):
-#             rmse_volume = 0.0
-#             std_volume = 0.0
-#
-#             for patchlib_idx in range(1,9):
-#                 name, opt = models_update(model_idx, opt)
-#                 opt['patchlib_idx'] = patchlib_idx
-#                 opt['subject'] = subject
-#
-#                 print('\nsubject: '+ subject +
-#                       '\nmodel idx: ' + opt['method'] +
-#                       '\ndti component: ' + str(dti_idx-2))
-#
-#                 nn_name = name_network(opt)
-#                 error_name = 'error_dt_recon_b1000_%i.nii' % (dti_idx,)
-#                 std_name = 'dt_std_b1000_%i.nii' % (dti_idx,)
-#
-#                 error_file = os.path.join(opt['recon_dir'], subject, nn_name, error_name)
-#                 std_file = os.path.join(opt['recon_dir'], subject, nn_name, std_name)
-#
-#                 rmse_volume += np.sqrt(nib.load(error_file).get_data())
-#                 std_volume += nib.load(std_file).get_data()
-#
-#             # Save the file:
-#             save_dir = os.path.join(base_save_dir, opt['method'])
-#             if not(os.path.exists(save_dir)):
-#                 os.makedirs(save_dir)
-#             rmse_volume/=8.0
-#             std_volume/=8.0
-#             img = nib.Nifti1Image(rmse_volume, np.eye(4))
-#             print('Saving :  '+'average_'+error_name)
-#             nib.save(img, os.path.join(save_dir,'average_'+error_name))
-#
-#             img = nib.Nifti1Image(std_volume, np.eye(4))
-#             print('Saving :  ' + 'average_' + std_name)
-#             nib.save(img, os.path.join(save_dir, 'average_' + std_name))
-#
+# ------------------------- compute the average RMSE/std over DTIs ----------------------:
+models_list = range(1,6)
+subjects_list = ['904044', '117324']
+base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
+# base_save_dir = '/SAN/vision/hcp/Ryu/non-HCP/HCP'
+
+
+for subject in subjects_list:
+    for model_idx in models_list:
+        for dti_idx in range(3,9):
+            rmse_volume = 0.0
+            std_volume = 0.0
+
+            for patchlib_idx in range(1,9):
+                name, opt = models_update(model_idx, opt)
+                opt['patchlib_idx'] = patchlib_idx
+                opt['subject'] = subject
+
+                print('\nsubject: '+ subject +
+                      '\nmodel idx: ' + opt['method'] +
+                      '\ndti component: ' + str(dti_idx-2))
+
+                nn_name = name_network(opt)
+                error_name = 'error_dt_recon_b1000_%i.nii' % (dti_idx,)
+                std_name = 'dt_std_b1000_%i.nii' % (dti_idx,)
+
+                error_file = os.path.join(opt['recon_dir'], subject, nn_name, error_name)
+                std_file = os.path.join(opt['recon_dir'], subject, nn_name, std_name)
+
+                rmse_volume += np.sqrt(nib.load(error_file).get_data())
+                std_volume += nib.load(std_file).get_data()
+
+            # Save the file:
+            save_dir = os.path.join(base_save_dir, subject, opt['method'])
+            if not(os.path.exists(save_dir)):
+                os.makedirs(save_dir)
+            rmse_volume/=8.0
+            std_volume/=8.0
+            img = nib.Nifti1Image(rmse_volume, np.eye(4))
+            print('Saving :  '+'average_'+error_name)
+            nib.save(img, os.path.join(save_dir,'average_'+error_name))
+
+            img = nib.Nifti1Image(std_volume, np.eye(4))
+            print('Saving :  ' + 'average_' + std_name)
+            nib.save(img, os.path.join(save_dir, 'average_' + std_name))
+
 
 # --------------------- compute the average RMSE/std over MD --------------------------:
 models_list = range(1,6)
@@ -145,9 +145,7 @@ subjects_list = ['904044', '117324']
 base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
 
 
-
 for subject in subjects_list:
-
     # Compute the ground truth FA/MD first:
     md_gt_file = os.path.join(opt['recon_dir'], subject, 'maps', 'dt_b1000_MD.nii')
     fa_gt_file = os.path.join(opt['recon_dir'], subject, 'maps', 'dt_b1000_FA.nii')
@@ -192,7 +190,7 @@ for subject in subjects_list:
             std_volume += nib.load(md_std_nii).get_data()
 
         # Save the file:
-        save_dir = os.path.join(base_save_dir, opt['method'])
+        save_dir = os.path.join(base_save_dir, subject, opt['method'])
         if not(os.path.exists(save_dir)):
             os.makedirs(save_dir)
         rmse_volume/=8.0
