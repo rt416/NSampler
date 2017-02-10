@@ -19,6 +19,8 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
     file_2 = nameroot + str(1) + '.nii'
 
     if not(os.path.exists(file_1)) or not(os.path.exists(file_2)):
+        # previous reconstruction scripts only saved the diffusion tensor components
+        # i.e. dt_recon_3.nii, ..., dt_recon_8.nii, so missing dt_recon_1.nii and 2.nii
         print(file_1 + ' does not exist ... set it zeros')
         for idx in np.arange(3, 9):
             data_path_new = nameroot + str(idx) + '.nii'

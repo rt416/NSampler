@@ -199,7 +199,7 @@ for subject in subjects_list:
         std_volume/=8.0
         img = nib.Nifti1Image(rmse_volume, np.eye(4))
         print('Saving :  '+'average_'+ 'error' + dti_name + 'MD.nii' )
-        nib.save(img, os.path.join(save_dir,'average_'+ 'error' + dti_name + 'MD.nii' ))
+        nib.save(img, os.path.join(save_dir,'average_error_' + dti_name + 'MD.nii' ))
 
         img = nib.Nifti1Image(std_volume, np.eye(4))
         print('Saving :  ' + 'average_' + std_name + 'MD.nii')
