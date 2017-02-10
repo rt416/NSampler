@@ -208,11 +208,15 @@ def compute_rmse_nii(nii_1, nii_2, save_file, mask=None):
     else:
         mask = img_1 != 0
 
-    rmse_volume = np.sqrt((img_1-img_2) ** 2)*mask
-    rmse_nii = nib.Nifti1Image(rmse_volume, affine=affine, header=header)
-    print('saving the RMSE as nii at:' + save_file)
-    nib.save(rmse_nii, save_file)
+    rmse_volume = np.sqrt((img_1 - img_2) ** 2) * mask
 
+    if not(save_file==None):
+        rmse_nii = nib.Nifti1Image(rmse_volume, affine=affine, header=header)
+        print('saving the RMSE as nii at:' + save_file)
+        nib.save(rmse_nii, save_file)
+        return rmse_volume
+    else:
+        return rmse_volume
 
 
 def name_network(opt):
@@ -295,6 +299,25 @@ def ndarray_to_nifti(array,nifti_file,ref_file=None):
         img = nib.Nifti1Image(array, np.eye(4))
     print('Saving as: ' + nifti_file)
     nib.save(img, nifti_file)
+
+
+# Compute the mean and std over MD in analytical forms:
+def propagate_uncertainty_analytical_MD(dti, dti_std):
+
+    print('Compute MD uncertainty analytically ... ')
+    if dti.shape[-1] != 6:
+        print('dti_shape[-1] is ' + str(dti.shape[-1]))
+        raise ValueError('the last dimension contains more than 6 values!')
+    elif dti.shape != dti_std.shape:
+        print ('dti.shape = %s, dti_std.shape = %s' % (dti.shape, dti_std.shape))
+        raise ValueError('the shape of dti and dti_std do not match')
+    print(type(dti_std))
+    md, md_std = np.zeros(dti.shape[:-1]),np.zeros(dti.shape[:-1])
+    md = (dti[..., 0] + dti[..., 3] + dti[..., 5]) / 3.0
+    print(dti_std.shape)
+    dti_std2 = dti_std.copy()
+    md_std = np.sqrt(dti_std2[..., 0]**2 + dti_std2[..., 3]**2 + dti_std2[..., 5]**2)/3.0
+    raise md, md_std
 
 
 # Compute the mean and std over MD and FA:

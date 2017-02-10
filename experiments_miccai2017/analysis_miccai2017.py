@@ -183,7 +183,10 @@ def resize_DTI(dti, r):
 
 
 # non-HCP data. Compute the mean and std of FA.
-def _MD_FA(dti_file, std_file=None, no_samples=500, save_dir=None):
+def _MD_FA(dti_file, std_file=None, no_samples=500,
+           save_dir=None, save_tail='',
+           compute_error=False,
+           compute_md_analytical=False):
     """ Compute the mean MD and FA on non-HCP dataset
     Args:
         dti_file (str) : the name of the mean dti nifti files
@@ -197,13 +200,26 @@ def _MD_FA(dti_file, std_file=None, no_samples=500, save_dir=None):
     else:
         save_file = dti_file
 
-
     dti_mean = sr_utility.read_dt_volume(dti_file)
-    if std_file == None:
+    if std_file == None and compute_md_analytical == False:
         md, fa =sr_utility.compute_MD_and_FA(dti_mean[...,2:])
-        md_nii = save_file + 'MD.nii'
+        md_nii = save_file + 'MD' + save_tail + '.nii'
         sr_utility.ndarray_to_nifti(md, md_nii)
-        fa_nii = save_file + 'FA.nii'
+        fa_nii = save_file + 'FA' + save_tail + '.nii'
+        sr_utility.ndarray_to_nifti(fa, fa_nii)
+    elif compute_md_analytical == True :
+        dti_std = sr_utility.read_dt_volume(std_file)
+        md, fa = sr_utility.compute_MD_and_FA(dti_mean[..., 2:])
+        dti_std2=dti_std[..., 2:]
+        md_std = np.sqrt(dti_std2[..., 0] ** 2 + dti_std2[..., 3] ** 2 + dti_std2[..., 5] ** 2) / 3.0
+        # md, md_std = sr_utility.propagate_uncertainty_analytical_MD(dti_mean[..., 2:],
+        #                                                         dti_std[...,2:])
+        md_nii = save_file + 'MD' + save_tail + '.nii'
+        md_std_nii = save_file + 'MD_std' + save_tail + '_analytical' '.nii'
+
+        sr_utility.ndarray_to_nifti(md, md_nii)
+        sr_utility.ndarray_to_nifti(md_std, md_std_nii)
+        fa_nii = save_file + 'FA' + save_tail + '.nii'
         sr_utility.ndarray_to_nifti(fa, fa_nii)
     else:
         dti_std = sr_utility.read_dt_volume(std_file)
@@ -212,14 +228,31 @@ def _MD_FA(dti_file, std_file=None, no_samples=500, save_dir=None):
                                           dti_std[...,2:],
                                           no_samples=no_samples)
 
-        md_mean_nii = save_file + 'MD_mean_' + str(no_samples) + '.nii'
-        md_std_nii = save_file + 'MD_std_' + str(no_samples) + '.nii'
-        fa_mean_nii = save_file + 'FA_mean_' + str(no_samples) + '.nii'
-        fa_std_nii = save_file + 'FA_std_' + str(no_samples) + '.nii'
-        sr_utility.ndarray_to_nifti(md_mean, md_mean_nii)
+        md_nii = save_file + 'MD_mean' + save_tail + str(no_samples) + '.nii'
+        md_std_nii = save_file + 'MD_std' + save_tail + str(no_samples) + '.nii'
+        fa_nii = save_file + 'FA_mean'+save_tail + str(no_samples) + '.nii'
+        fa_std_nii = save_file + 'FA_std'+save_tail + + str(no_samples) + '.nii'
+        sr_utility.ndarray_to_nifti(md_mean, md_nii)
         sr_utility.ndarray_to_nifti(md_std, md_std_nii)
-        sr_utility.ndarray_to_nifti(fa_mean, fa_mean_nii)
+        sr_utility.ndarray_to_nifti(fa_mean, fa_nii)
         sr_utility.ndarray_to_nifti(fa_std, fa_std_nii)
+    return md_nii, fa_nii
+
+
+
+def _errors_MD_FA(md_nii, md_gt_nii, fa_nii, fa_gt_nii):
+    # compute errors:
+    dir, file = os.path.split(md_nii)
+    error_md_file = os.path.join(dir, 'error_'+file)
+
+    dir, file = os.path.split(fa_nii)
+    error_fa_file = os.path.join(dir, 'error_' + file)
+
+    sr_utility.compute_rmse_nii(nii_1=md_gt_nii, nii_2=md_nii,
+                                save_file=error_md_file)
+
+    sr_utility.compute_rmse_nii(nii_1=fa_gt_nii, nii_2=fa_nii,
+                                save_file=error_fa_file)
 
 
 # compute error on non-HCP dataset:

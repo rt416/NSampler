@@ -5,6 +5,7 @@ from __future__ import print_function
 import random
 import numpy as np
 from skimage.measure import compare_ssim as ssim
+import nibabel as nib
 from skimage.measure import compare_psnr as psnr
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -49,9 +50,30 @@ def correlation_plot_and_analyse(img1, img2, mask, no_points,
     plt.title(title+pearson_info+spearman_info)
 
 
+# Plot one .nii against another .nii:
+def plot_twonii(nii_1,nii_2, mask_file=None, no_points=1000,
+                xlabel='nii1', ylabel='nii2', title='title'):
+    nii = nib.load(nii_1)
+    img_1 = nii.get_data()
+
+    nii = nib.load(nii_2)
+    img_2 = nii.get_data()
+
+    if not(mask_file==None):
+        nii = nib.load(mask_file)
+        mask = nii.get_data()==0
+    else:
+        mask = img_1 != 0  # get the foreground voxels
+
+    opt=[] # just a junk
+    correlation_plot_and_analyse(img_1, img_2, mask, no_points=no_points,
+                                 xlabel=xlabel, ylabel=ylabel, title=title, opt=opt)
+    plt.show()
+
+
 def scatter_plot_with_correlation_line(x, y, graph_filepath=None):
     # Scatter plot
-    plt.scatter(x, y, color='g', alpha=0.35, marker='o')
+    plt.scatter(x, y, color='g', alpha=0.05, marker='o')
 
     # Add correlation line
     axes = plt.gca()

@@ -1,10 +1,10 @@
-# Compute MD and FA:
-
 import tensorflow as tf
 import configuration
 import os
 import analysis_miccai2017
+import sr_analysis
 from train import name_network
+import matplotlib as plt
 
 # Options
 opt = configuration.set_default()
@@ -26,7 +26,7 @@ opt['no_channels'] = 6
 
 # Experiment (local)
 # base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
-base_gt_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
+# base_gt_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017/'
 network = True
 
@@ -37,7 +37,7 @@ else:
 
 non_HCP = {'hcp': {'subdir':'HCP/904044',
                    'dt_file':'dt_recon_',
-                   'std_file': 'dt_std_'},
+                   'std_file': 'dt_std_data_'},
            'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
            'tumour':{'subdir':'Tumour/06_FORI',
@@ -47,34 +47,26 @@ non_HCP = {'hcp': {'subdir':'HCP/904044',
             }
 
 dataset_type = 'hcp'
-dti_file = os.path.join(base_input_dir,
-                        non_HCP[dataset_type]['subdir'],
-                        nn_name,
-                        non_HCP[dataset_type]['dt_file'])
 std_file = os.path.join(base_input_dir,
                         non_HCP[dataset_type]['subdir'],
                         nn_name,
-                        non_HCP[dataset_type]['std_file'])
+                        'dt_recon_MD_std_analytical.nii')
+err_file = os.path.join(base_input_dir,
+                        non_HCP[dataset_type]['subdir'],
+                        nn_name,
+                        'error_dt_recon_MD_dir.nii')
+mask_file =os.path.join(base_input_dir,
+                        non_HCP[dataset_type]['subdir'],
+                        'masks',
+                        'mask_us=2_rec=5.nii')
+print('plotting error vs uncertainty:')
+sr_analysis.plot_twonii(std_file, err_file,
+                        mask_file=mask_file,
+                        no_points=10000,
+                        xlabel='std',
+                        ylabel='rmse',
+                        title='Mean Diffusivity: cnn hetero + variational, ')
 
-print('Compute MD and FA of' + dti_file)
-# md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, save_tail='_dir')
-md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, std_file,
-                                            save_tail='',
-                                            compute_md_analytical=True)
 
-
-# Also compute the errors:
-print('Compute and save the errors:')
-md_gt_nii = os.path.join(base_gt_dir,
-                         non_HCP[dataset_type]['subdir'],
-                         'dt_b1000_MD.nii')
-fa_gt_nii = os.path.join(base_gt_dir,
-                         non_HCP[dataset_type]['subdir'],
-                         'dt_b1000_FA.nii')
-
-# Compute errprs:
-analysis_miccai2017._errors_MD_FA(md_nii, md_gt_nii, fa_nii, fa_gt_nii)
-
-#analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)
+# analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)
 # analysis_miccai2017._MD_FA(dti_file,no_samples=1)
-

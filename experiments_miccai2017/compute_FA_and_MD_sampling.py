@@ -1,5 +1,7 @@
-""" Perform reconstrution on non- HCP dataset (Prisma, MS, Tumour).
-It assumes that DTI is available as nifti files."""
+"""
+Perform reconstrution on both HCP/non-HCP dataset (Prisma, MS, Tumour).
+Approximate the mean and std over FA/MD with MC sampling on the fly during reconstruction.
+"""
 
 import tensorflow as tf
 import configuration
@@ -81,6 +83,6 @@ base_recon_dir = '/SAN/vision/hcp/Ryu/non-HCP/HCP'
 for subject in subjects_list:
     for model_idx in models_list:
         opt['subject'] = subject
-        opt['recon_dir'] = os.path.join(base_recon_dir, opt['subject'])
+        opt['recon_dir'] = base_recon_dir
         name, opt = models_update(model_idx, opt)
         reconstruct_mc_FA_and_MD.sr_reconstruct_FA_and_MD(opt)
