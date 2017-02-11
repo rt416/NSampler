@@ -4,7 +4,7 @@ import os
 import analysis_miccai2017
 import sr_analysis
 from train import name_network
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 # Options
 opt = configuration.set_default()
@@ -47,25 +47,58 @@ non_HCP = {'hcp': {'subdir':'HCP/904044',
             }
 
 dataset_type = 'hcp'
-std_file = os.path.join(base_input_dir,
+
+
+# # -------------- plot std vs rmse ------------------------------------------ :
+#
+# std_file = os.path.join(base_input_dir,
+#                         non_HCP[dataset_type]['subdir'],
+#                         nn_name,
+#                         'dt_recon_MD_std_analytical.nii')
+# err_file = os.path.join(base_input_dir,
+#                         non_HCP[dataset_type]['subdir'],
+#                         nn_name,
+#                         'error_dt_recon_MD_dir.nii')
+# mask_file =os.path.join(base_input_dir,
+#                         non_HCP[dataset_type]['subdir'],
+#                         'masks',
+#                         'mask_us=2_rec=5.nii')
+# print('plotting error vs uncertainty:')
+# sr_analysis.plot_twonii(std_file, err_file,
+#                         mask_file=mask_file,
+#                         no_points=10000,
+#                         xlabel='std',
+#                         ylabel='rmse',
+#                         title='Mean Diffusivity: cnn hetero + variational, ')
+
+# -------------- plot ROC curve ------------------------------------------ :
+nii_gt = os.path.join(base_input_dir,
+                       non_HCP[dataset_type]['subdir'],
+                       'maps',
+                       'dt_b1000_MD.nii')
+
+nii_est = os.path.join(base_input_dir,
+                       non_HCP[dataset_type]['subdir'],
+                       nn_name,
+                       'dt_recon_MD_dir.nii')
+
+nii_std = os.path.join(base_input_dir,
                         non_HCP[dataset_type]['subdir'],
                         nn_name,
                         'dt_recon_MD_std_analytical.nii')
-err_file = os.path.join(base_input_dir,
-                        non_HCP[dataset_type]['subdir'],
-                        nn_name,
-                        'error_dt_recon_MD_dir.nii')
-mask_file =os.path.join(base_input_dir,
-                        non_HCP[dataset_type]['subdir'],
-                        'masks',
-                        'mask_us=2_rec=5.nii')
-print('plotting error vs uncertainty:')
-sr_analysis.plot_twonii(std_file, err_file,
-                        mask_file=mask_file,
-                        no_points=10000,
-                        xlabel='std',
-                        ylabel='rmse',
-                        title='Mean Diffusivity: cnn hetero + variational, ')
+
+
+mask_file = os.path.join(base_input_dir,
+                         non_HCP[dataset_type]['subdir'],
+                         'masks',
+                         'mask_us=2_rec=5.nii')
+sr_analysis.plot_ROC_twonii(nii_gt, nii_est, nii_std,
+                            mask_file=mask_file, no_points=100000, acceptable_err=0.00015)
+
+plt.title('ROC')
+plt.show()
+
+
 
 
 # analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)

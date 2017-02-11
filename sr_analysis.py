@@ -157,6 +157,7 @@ def compute_psnr(img1, img2, mask):
     rmse = compute_rmse(img1, img2, mask)
     return 10 * np.log10((dynamic_range ** 2) / (rmse**2))
 
+
 # Plot receiver operating chracteristics:
 def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err=1e-6, no_points=10000):
     """ Plot ROC with AUC computed.
@@ -168,17 +169,59 @@ def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err=1e-6, no_points=1000
     # Compute true positive and false alarm rates:
     img_err = np.sqrt((img_gt-img_est)**2)*mask
     img_std = img_std*mask
-    tp, fp = compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points)
+    tpr, fpr, f1, thresh = compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points)
 
+    # get the maximum F1 score and the corresponding threshold:
+    idx_max = np.argmax(f1)
+    f1_max = f1[idx_max]
+    th_max = thresh[idx_max]
+    tpr_max, fpr_max = tpr[idx_max], fpr[idx_max]
+    print('Max F1 score:  %0.3f \n'
+          'with TPR = %0.3f \n'
+          'and FPR = %0.3f' % (f1_max, tpr_max,f1_max))
+
+    # plot:
+    for idx, th in enumerate(thresh):
+        print('idx: %i \n'
+              ' th: %0.7f \n'
+              'TPR = %0.3f \n'
+              'FPR = %0.3f' % (idx, th, tpr[idx], fpr[idx]))
     # plot
-    auc = np.trapz(tp, fp)
-    plt.plot(fp, tp, 'b', label='AUC = %0.3f' % auc)
+    auc = np.trapz(tpr, fpr)
+    plt.plot(fpr, tpr, 'b', label='AUC = %0.3f, F1_max=%0.3f, th=%0.7f'
+                                  % (auc, f1_max, th_max))
+    plt.plot([fpr[39]], [tpr[39]], marker='o', markersize=10, color='black')  # , markersize=3, color="black")
+    # plt.plot([fpr_max], [tpr_max], marker='o',markersize=20) #, markersize=3, color="black")
     plt.legend(loc='lower right')
     plt.plot([0, 1], [0, 1], 'r--')
     plt.xlim([0, 1])
     plt.ylim([0, 1])
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
+
+
+
+# Plot ROC from .nii files:
+def plot_ROC_twonii(nii_gt, nii_est, nii_std, mask_file=None,
+                    no_points=1000, acceptable_err=1e-3):
+    nii = nib.load(nii_gt)
+    img_gt = nii.get_data()
+
+    nii = nib.load(nii_est)
+    img_est = nii.get_data()
+
+    nii = nib.load(nii_std)
+    img_std = nii.get_data()
+
+    if not(mask_file==None):
+        nii = nib.load(mask_file)
+        mask = nii.get_data()==0
+    else:
+        mask = img_gt != 0  # get the foreground voxels
+
+    plot_ROC(img_gt, img_est, img_std, mask,
+             acceptable_err=acceptable_err,
+             no_points=no_points)
 
 
 def compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points=10000):
@@ -192,20 +235,34 @@ def compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points=10000):
     err_subset, std_subset = np.zeros((no_points,)), np.zeros((no_points,))
     for idx, (i, j, k) in enumerate(ind_sub):
         err_subset[idx], std_subset[idx] = img_err[i, j, k], img_std[i, j, k]
-
+    # print(err_subset)
+    # print(std_subset)
     # prepare the labels and prediction:
     v_good = err_subset<acceptable_err  # labels = 1 if RMSE < acceptable_err
-    v_bad = -v_good+1
-    thresh = np.linspace(np.min(std_subset),np.max(std_subset),1000)
+    v_bad = v_good==False
+    thresh = np.linspace(np.min(std_subset),np.max(std_subset), 200)
 
     # Compute true positive and false positive rates
-    tp, fp = np.zeros(thresh.shape),np.zeros(thresh.shape)
+    tpr, fpr, f1 = np.zeros(thresh.shape),np.zeros(thresh.shape),np.zeros(thresh.shape)
     for idx,t in enumerate(thresh):
         v_good_guess=std_subset<t
-        v_bad_guess=-v_good_guess+1
-        tp[idx]=np.sum(v_good_guess*v_good)/np.sum(v_good)
-        fp[idx]=np.sum(v_good_guess*v_bad)/np.sum(v_bad)
-    return tp, fp
+        v_bad_guess=v_good_guess==False
+        tp = np.sum(v_good_guess*v_good)
+        fp = np.sum(v_good_guess*v_bad)
+        # tn = np.sum(v_bad_guess*v_bad)
+        fn = np.sum(v_bad_guess*v_good)
+        f1[idx]= 2*tp/(2*tp+fp+fn)
+        tpr[idx] = tp/np.sum(v_good)
+        fpr[idx] = fp/np.sum(v_bad)
+        # tpr[idx]=np.sum(v_good_guess*v_good)/np.sum(v_good)
+        # fpr[idx]=np.sum(v_good_guess*v_bad)/np.sum(v_bad)
+
+
+    # print('the acceptable error is: %f' %(acceptable_err,))
+    # print('the no of bad voxels is: %i' % (np.sum(v_bad),))
+    # print(tp)
+    # print(fp)
+    return tpr, fpr, f1, thresh
 
 
 

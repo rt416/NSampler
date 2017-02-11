@@ -141,7 +141,7 @@ for subject in subjects_list:
 
 # --------------------- compute the average RMSE/std over MD --------------------------:
 models_list = range(1,6)
-subjects_list = ['904044', '117324']
+subjects_list = ['117324']
 base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
 
 
@@ -154,7 +154,8 @@ for subject in subjects_list:
         print('Ground truth FA or MD does not exist. Compute them ...')
         dti_gt_root_dir = os.path.join(opt['gt_dir'], subject, opt['subpath'])
         dti_gt_file = dti_gt_root_dir + '/dt_b1000_'
-        os.makedirs(save_maps_dir)
+        if not(os.path.exists):
+            os.makedirs(save_maps_dir)
         analysis_miccai2017._MD_FA(dti_gt_file, save_dir=save_maps_dir)
 
     # Compute the average RMSE/uncertainty over MD:
