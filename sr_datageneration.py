@@ -32,7 +32,7 @@ import timeit
 
 
 # Extract randomly patches from given list of patients and save as HDF5.
-def create_training_data(opt):
+def create_training_data(opt, highres_name=None, lowres_name=None):
     """ Main function for creating training sets. """
     # ------------------ Specify the config of your training data ----------------------:
     data_parent_dir = opt['gt_dir']
@@ -68,8 +68,10 @@ def create_training_data(opt):
         for subject_id in subjects_list:
             print("\nProcessing subject: %s" % subject_id)
 
-            highres_name = 'dt_b' + str(b_value) + '_'
-            lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
+            if highres_name == None and lowres_name==None:
+                highres_name = 'dt_b' + str(b_value) + '_'
+                lowres_name = highres_name + 'lowres_' + str(upsampling_rate) + '_'
+
             filenames_list += main_extract_patches_and_save(subject_id=subject_id,
                                                             data_dir=data_parent_dir,
                                                             data_subpath=data_subpath,
@@ -410,8 +412,8 @@ def extract_patches_shuffle(data_dir='/Users/ryutarotanno/DeepLearning/Test_1/da
     Returns:
     """
     # --------------------- Load the original and down-sampled DTI volumes ------------------------:
-    dti_highres_orig = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name))
-    dti_lowres_orig = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name))
+    dti_highres_orig = read_dt_volume(nameroot=os.path.join(data_dir, outputfile_name), no_channels=no_channels)
+    dti_lowres_orig = read_dt_volume(nameroot=os.path.join(data_dir, inputfile_name), no_channels=no_channels)
 
     dti_highres_orig[:, :, :, 0] += 1  # adding 1 so brain voxels are valued 1 and background as zero.
     dti_lowres_orig[:, :, :, 0] += 1
@@ -876,10 +878,13 @@ def backward_periodic_shuffle(patch, upsampling_rate=2):
 
 
 # Load in a DT volume .nii:
-def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_lowres_2_'):
-    for idx in np.arange(1, 9):
-        data_path_new = nameroot + str(idx) + '.nii'
-        print("... loading %s" % data_path_new)
+def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_lowres_2_', no_channels=6):
+    for idx in np.arange(1, no_channels+3):
+        if no_channels>7:
+            data_path_new = nameroot + '%02i.nii' % (idx,)
+        else:
+            data_path_new = nameroot + str(idx) + '.nii'
+            print("... loading %s" % data_path_new)
 
         img = nib.load(data_path_new)
         data = img.get_data()
@@ -887,7 +892,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
         data_array[:] = data[:]
 
         if idx == 1:
-            dti = np.zeros(data.shape + (8,))
+            dti = np.zeros(data.shape + (no_channels+2,))
             dti[:, :, :, idx-1] = data_array
         else:
             dti[:, :, :, idx - 1] = data_array
