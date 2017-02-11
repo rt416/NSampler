@@ -86,6 +86,15 @@ def models_update(idx, opt):
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
         opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
+    elif idx == 6:
+        opt['method'] = 'cnn_heteroscedastic'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
+        opt['mc_no_samples'] = 1
+
     else:
         raise ValueError('no network for the given idx.')
 
@@ -93,7 +102,7 @@ def models_update(idx, opt):
 
 
 # ------------------------- compute the average RMSE/std over DTIs ----------------------:
-models_list = range(1,6)
+models_list = range(6)
 subjects_list = ['904044', '117324']
 base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
 # base_save_dir = '/SAN/vision/hcp/Ryu/non-HCP/HCP'
@@ -140,8 +149,8 @@ for subject in subjects_list:
 
 
 # --------------------- compute the average RMSE/std over MD --------------------------:
-models_list = range(1,6)
-subjects_list = ['117324']
+models_list = range(6)
+subjects_list = ['904044', '117324']
 base_save_dir = '/SAN/vision/hcp/Ryu/miccai2017/10feb2017/average_maps'
 
 

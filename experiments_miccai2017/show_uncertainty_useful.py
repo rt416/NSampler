@@ -28,15 +28,12 @@ opt['no_channels'] = 6
 # base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 # base_gt_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017/'
-network = True
-
-if network:
-    nn_name = name_network(opt)
-else:
-    nn_name=''
 
 non_HCP = {'hcp': {'subdir':'HCP/904044',
                    'dt_file':'dt_recon_',
+                   'std_file': 'dt_std_data_'},
+           'hcp_average': {'subdir': 'HCP/904044/average_maps',
+                   'dt_file': 'dt_recon_',
                    'std_file': 'dt_std_data_'},
            'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
@@ -46,60 +43,75 @@ non_HCP = {'hcp': {'subdir':'HCP/904044',
                  'dt_file':'dt_b1200_lowres2_'}
             }
 
-dataset_type = 'hcp'
 
 
-# # -------------- plot std vs rmse ------------------------------------------ :
+
+# -------------- plot std vs rmse ------------------------------------------ :
+dataset_type = 'hcp_average'
+opt['method']='cnn_heteroscedastic_variational_hybrid_control'
+
+network = True
+
+if network:
+    nn_name = name_network(opt)
+else:
+    nn_name=''
+
+std_file = os.path.join(base_input_dir,
+                        non_HCP[dataset_type]['subdir'],
+                        opt['method'],
+                        'average_dt_std_b1000_MD.nii')
+err_file = os.path.join(base_input_dir,
+                        non_HCP[dataset_type]['subdir'],
+                        opt['method'],
+                        'average_error_dt_recon_b1000_MD.nii')
+mask_file =os.path.join(base_input_dir,
+                        non_HCP['hcp']['subdir'],
+                        'masks',
+                        'mask_us=2_rec=5.nii')
+print('plotting error vs uncertainty:')
+sr_analysis.plot_twonii(std_file, err_file,
+                        mask_file=mask_file,
+                        no_points=10000,
+                        xlabel='std',
+                        ylabel='rmse',
+                        title='Mean Diffusivity: cnn hetero + variational, ')
+
+
+# # -------------- plot ROC curve ------------------------------------------ :
+# dataset_type = 'hcp'
+# network = True
 #
-# std_file = os.path.join(base_input_dir,
+# if network:
+#     nn_name = name_network(opt)
+# else:
+#     nn_name=''
+# nii_gt = os.path.join(base_input_dir,
+#                        non_HCP[dataset_type]['subdir'],
+#                        'maps',
+#                        'dt_b1000_MD.nii')
+#
+# nii_est = os.path.join(base_input_dir,
+#                        non_HCP[dataset_type]['subdir'],
+#                        nn_name,
+#                        'dt_recon_MD_dir.nii')
+#
+# nii_std = os.path.join(base_input_dir,
 #                         non_HCP[dataset_type]['subdir'],
 #                         nn_name,
 #                         'dt_recon_MD_std_analytical.nii')
-# err_file = os.path.join(base_input_dir,
-#                         non_HCP[dataset_type]['subdir'],
-#                         nn_name,
-#                         'error_dt_recon_MD_dir.nii')
-# mask_file =os.path.join(base_input_dir,
-#                         non_HCP[dataset_type]['subdir'],
-#                         'masks',
-#                         'mask_us=2_rec=5.nii')
-# print('plotting error vs uncertainty:')
-# sr_analysis.plot_twonii(std_file, err_file,
-#                         mask_file=mask_file,
-#                         no_points=10000,
-#                         xlabel='std',
-#                         ylabel='rmse',
-#                         title='Mean Diffusivity: cnn hetero + variational, ')
+#
+#
+# mask_file = os.path.join(base_input_dir,
+#                          non_HCP[dataset_type]['subdir'],
+#                          'masks',
+#                          'mask_us=2_rec=5.nii')
+# sr_analysis.plot_ROC_twonii(nii_gt, nii_est, nii_std,
+#                             mask_file=mask_file, no_points=100000, acceptable_err=0.00015)
+#
+# plt.title('ROC')
+# plt.show()
+#
+#
+#
 
-# -------------- plot ROC curve ------------------------------------------ :
-nii_gt = os.path.join(base_input_dir,
-                       non_HCP[dataset_type]['subdir'],
-                       'maps',
-                       'dt_b1000_MD.nii')
-
-nii_est = os.path.join(base_input_dir,
-                       non_HCP[dataset_type]['subdir'],
-                       nn_name,
-                       'dt_recon_MD_dir.nii')
-
-nii_std = os.path.join(base_input_dir,
-                        non_HCP[dataset_type]['subdir'],
-                        nn_name,
-                        'dt_recon_MD_std_analytical.nii')
-
-
-mask_file = os.path.join(base_input_dir,
-                         non_HCP[dataset_type]['subdir'],
-                         'masks',
-                         'mask_us=2_rec=5.nii')
-sr_analysis.plot_ROC_twonii(nii_gt, nii_est, nii_std,
-                            mask_file=mask_file, no_points=100000, acceptable_err=0.00015)
-
-plt.title('ROC')
-plt.show()
-
-
-
-
-# analysis_miccai2017._MD_FA(dti_file, std_file, no_samples=1000)
-# analysis_miccai2017._MD_FA(dti_file,no_samples=1)
