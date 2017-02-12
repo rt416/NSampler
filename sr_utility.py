@@ -14,7 +14,8 @@ import nibabel as nib
 import sys
 
 # Load in a DT volume .nii:
-def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_'):
+def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_',
+                   no_channels=6):
     file_1 = nameroot + str(1) + '.nii'
     file_2 = nameroot + str(1) + '.nii'
 
@@ -22,7 +23,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
         # previous reconstruction scripts only saved the diffusion tensor components
         # i.e. dt_recon_3.nii, ..., dt_recon_8.nii, so missing dt_recon_1.nii and 2.nii
         print(file_1 + ' does not exist ... set it zeros')
-        for idx in np.arange(3, 9):
+        for idx in np.arange(3, no_channels+3):
             data_path_new = nameroot + str(idx) + '.nii'
             print("... loading %s" % data_path_new)
 
@@ -32,7 +33,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
             data_array[:] = data[:]
 
             if idx == 3:
-                dti = np.zeros(data.shape + (8,))
+                dti = np.zeros(data.shape + (no_channels+2,))
                 dti[:, :, :, idx - 1] = data_array
             else:
                 dti[:, :, :, idx - 1] = data_array
@@ -41,7 +42,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
         return dti
 
     else:
-        for idx in np.arange(1, 9):
+        for idx in np.arange(1, no_channels+3):
             data_path_new = nameroot + str(idx) + '.nii'
             print("... loading %s" % data_path_new)
 
@@ -51,7 +52,7 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
             data_array[:] = data[:]
 
             if idx == 1:
-                dti = np.zeros(data.shape + (8,))
+                dti = np.zeros(data.shape + (no_channels+2,))
                 dti[:, :, :, idx-1] = data_array
             else:
                 dti[:, :, :, idx-1] = data_array
