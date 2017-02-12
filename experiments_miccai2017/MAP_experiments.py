@@ -74,7 +74,7 @@ if choose == 1:
         from train_largesc import train_cnn
 
     # Train:
-    for idx in range(1,1):
+    for idx in range(1,2):
         tf.reset_default_graph()
         opt['patchlib_idx'] = idx
         train_cnn(opt)
