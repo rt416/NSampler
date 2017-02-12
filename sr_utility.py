@@ -136,7 +136,10 @@ def standardise_data(X_train, Y_train, option='default'):
 
 
 # Save each estimated dti separately as a nifti file for visualisation
-def save_as_nifti(recon_file, recon_dir, gt_dir,save_as_ijk=False):
+def save_as_nifti(recon_file, recon_dir, gt_dir,
+                  save_as_ijk=False,
+                  no_channels=6,
+                  gt_header = 'dt_b1000_'):
     """Save each estimated dti separately as a nifti file for visualisation.
     Args:
         recon_file: file name of estimated DTI volume (4D numpy array)
@@ -148,10 +151,10 @@ def save_as_nifti(recon_file, recon_dir, gt_dir,save_as_ijk=False):
     dt_est = np.load(os.path.join(recon_dir, recon_file))  # load the estimated DTI volume
     base, ext = os.path.splitext(recon_file)
 
-    for k in np.arange(8):
+    for k in np.arange(no_channels+2):
         # Save each DT component separately as a nii file:
         if not(save_as_ijk):
-            dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 1) + '.nii'))  # get the GT k+1 th dt component.
+            dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))  # get the GT k+1 th dt component.
             affine = dt_gt.get_affine()  # fetch its affine transfomation
             header = dt_gt.get_header()  # fetch its header
             img = nib.Nifti1Image(dt_est[:, :, :, k], affine=affine, header=header)
@@ -167,7 +170,9 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
                  gt_dir='/Users/ryutarotanno/DeepLearning/Test_1/data',
                  mask_choose=False,
                  mask_dir = None,
-                 mask_file = None):
+                 mask_file = None,
+                 no_channels = 6,
+                 gt_header='dt_b1000_'):
     """Compute root mean square error wrt the ground truth DTI.
      Args:
         recon_file: file name of estimated DTI volume (4D numpy array)
@@ -178,7 +183,8 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     """
 
     # Compute the reconstruction errors:
-    dt_gt = read_dt_volume(nameroot=os.path.join(gt_dir, 'dt_b1000_'))
+    dt_gt = read_dt_volume(nameroot=os.path.join(gt_dir, gt_header),
+                           no_channels=no_channels)
     dt_est = np.load(os.path.join(recon_dir, recon_file))
     # dt_est_tmp = np.load(os.path.join(recon_dir, recon_file))
     # dt_est = dt_est_tmp[:-1, :, :-1, :]
@@ -192,14 +198,14 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
     mask_with_edge = dt_est[:, :, :, 0] == 0
 
     rmse = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
-           * mask[..., np.newaxis]) / (mask.sum() * 6.0))
+           * mask[..., np.newaxis]) / (mask.sum() * no_channels))
 
     rmse_whole = np.sqrt(np.sum(((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2)
-                          * mask_with_edge[..., np.newaxis]) / (mask_with_edge.sum() * 6.0))
+                          * mask_with_edge[..., np.newaxis]) / (mask_with_edge.sum() * no_channels))
 
     rmse_volume = dt_est.copy()
     rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
-                               * mask_with_edge[..., np.newaxis] / 6.0
+                               * mask_with_edge[..., np.newaxis] / no_channels
     # rmse_volume[:, :, :, 2:] = ((dt_gt[:, :, :, 2:] - dt_est[:, :, :, 2:]) ** 2) \
     #                            * mask[..., np.newaxis] / 6.0
 

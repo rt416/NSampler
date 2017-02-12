@@ -288,6 +288,7 @@ def sr_reconstruct_mcdropout(opt):
     subpath = opt['subpath']
     subject = opt['subject']
     input_file_name = opt['input_file_name']
+    no_channels = opt['no_channels']
 
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
