@@ -59,7 +59,7 @@ opt['subpath'] = 'T1w/Diffusion'
 
 opt['input_file_name'] = 'h4_all_lowres_' + str(opt['upsampling_rate']) + '_'
 opt['output_file_name'] = 'h4_recon.npy'
-opt['gt_header'] = 'h4_recon.npy'
+opt['gt_header'] = 'h4_all_'
 
 # Choose the experiment option:
 choose = input("Press 1 for training or 2 or 3 for normal/MC-based reconstruction ")
