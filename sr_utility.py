@@ -24,7 +24,12 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
         # i.e. dt_recon_3.nii, ..., dt_recon_8.nii, so missing dt_recon_1.nii and 2.nii
         print(file_1 + ' does not exist ... set it zeros')
         for idx in np.arange(3, no_channels+3):
-            data_path_new = nameroot + str(idx) + '.nii'
+
+            if no_channels > 7:
+                data_path_new = nameroot + '%02i.nii' % (idx,)
+            else:
+                data_path_new = nameroot + str(idx) + '.nii'
+
             print("... loading %s" % data_path_new)
 
             img = nib.load(data_path_new)
@@ -43,7 +48,11 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
 
     else:
         for idx in np.arange(1, no_channels+3):
-            data_path_new = nameroot + str(idx) + '.nii'
+            if no_channels > 7:
+                data_path_new = nameroot + '%02i.nii' % (idx,)
+            else:
+                data_path_new = nameroot + str(idx) + '.nii'
+
             print("... loading %s" % data_path_new)
 
             img = nib.load(data_path_new)
@@ -154,7 +163,12 @@ def save_as_nifti(recon_file, recon_dir, gt_dir,
     for k in np.arange(no_channels+2):
         # Save each DT component separately as a nii file:
         if not(save_as_ijk):
-            dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))  # get the GT k+1 th dt component.
+            if no_channels > 7:
+                gt_file= gt_header + '%02i.nii' % (k+1,)
+                dt_gt = nib.load(os.path.join(gt_dir, gt_file))
+            else:
+                dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))
+
             affine = dt_gt.get_affine()  # fetch its affine transfomation
             header = dt_gt.get_header()  # fetch its header
             img = nib.Nifti1Image(dt_est[:, :, :, k], affine=affine, header=header)
@@ -211,9 +225,14 @@ def compute_rmse(recon_file='mlp_h=1_highres_dti.npy',
 
     # Save the error maps:
     base, ext = os.path.splitext(recon_file)
-    for k in np.arange(6):
+    for k in np.arange(no_channels):
         # Save each DT component separately as a nii file:
-        dt_gt = nib.load(os.path.join(gt_dir, 'dt_b1000_' + str(k + 3) + '.nii'))
+        if no_channels > 7:
+            gt_file = gt_header + '%02i.nii' % (k + 3,)
+            dt_gt = nib.load(os.path.join(gt_dir, gt_file))
+        else:
+            dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 3) + '.nii'))
+
         affine = dt_gt.get_affine()  # fetch its affine transfomation
         header = dt_gt.get_header()  # fetch its header
         img = nib.Nifti1Image(rmse_volume[:, :, :, k + 2], affine=affine, header=header)
