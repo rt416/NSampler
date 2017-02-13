@@ -16,8 +16,12 @@ import sys
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_',
                    no_channels=6):
-    file_1 = nameroot + str(1) + '.nii'
-    file_2 = nameroot + str(1) + '.nii'
+    if no_channels > 7:
+        file_1 = nameroot + '01.nii'
+        file_2 = nameroot + '02.nii'
+    else:
+        file_1 = nameroot + str(1) + '.nii'
+        file_2 = nameroot + str(2) + '.nii'
 
     if not(os.path.exists(file_1)) or not(os.path.exists(file_2)):
         # previous reconstruction scripts only saved the diffusion tensor components
