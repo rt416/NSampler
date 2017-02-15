@@ -290,10 +290,15 @@ def sr_reconstruct_mcdropout(opt):
     input_file_name = opt['input_file_name']
     no_channels = opt['no_channels']
 
+    if not('output_file_name' in opt):
+        opt['output_file_name']='dt_recon_b1000.npy'
+    if not('gt_header' in opt):
+        opt['gt_header']='dt_b1000_'
+
     # Load the input low-res DT image:
     print('... loading the test low-res image ...')
-    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject,
-                                                       subpath, input_file_name))
+    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject, subpath, input_file_name),
+                                          no_channels=no_channels)
 
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
@@ -305,8 +310,12 @@ def sr_reconstruct_mcdropout(opt):
     dt_hr, dt_std = super_resolve_mcdropout(dt_lowres, opt)
 
     # Save:
-    output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
-    uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
+    if no_channels>6:
+        output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std.npy')
+    else:
+        output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
+        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
 
     print('... saving MC-predicted hi-res as %s' % output_file)
     if not (os.path.exists(os.path.join(recon_dir, subject))):
@@ -323,13 +332,19 @@ def sr_reconstruct_mcdropout(opt):
     print('\nSave each estimated dti separately as a nii file ...')
     sr_utility.save_as_nifti(recon_file,
                              os.path.join(recon_dir, subject, nn_dir),
-                             os.path.join(gt_dir, subject, subpath))
+                             os.path.join(gt_dir, subject, subpath),
+                             no_channels=no_channels,
+                             gt_header=opt['gt_header']
+                             )
 
     __, std_file = os.path.split(uncertainty_file)
     print('\nSave the associated uncertainty separately as a nii file ...')
     sr_utility.save_as_nifti(std_file,
                              os.path.join(recon_dir, subject, nn_dir),
-                             os.path.join(gt_dir, subject, subpath))
+                             os.path.join(gt_dir, subject, subpath),
+                             no_channels=no_channels,
+                             gt_header=opt['gt_header']
+                             )
 
     # Compute the reconstruction error:
     mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
@@ -343,7 +358,10 @@ def sr_reconstruct_mcdropout(opt):
                                   gt_dir=os.path.join(gt_dir, subject, subpath),
                                   mask_choose=True,
                                   mask_dir=os.path.join(mask_dir, subject, 'masks'),
-                                  mask_file=mask_file)
+                                  mask_file=mask_file,
+                                  no_channels=no_channels,
+                                  gt_header=opt['gt_header']
+                                  )
     print('\nRMSE (no edge) is %f.' % rmse)
     print('\nRMSE (whole) is %f.' % rmse_whole)
 

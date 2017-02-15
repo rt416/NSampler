@@ -10,7 +10,7 @@ import analysis_miccai2017
 opt = configuration.set_default()
 
 # Update parameters:
-opt['method'] = 'cnn_heteroscedastic'
+opt['method'] = 'cnn_simple'
 opt['valid'] = False  # pick the best model with the minimal cost (instead of RMSE).
 
 # Training
@@ -31,11 +31,9 @@ else:
     opt['mc_no_samples'] = 100
 
 
-# base directories:
-base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
-base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/non-HCP/'
-
-non_HCP = {'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
+non_HCP = {'monkey': {'subdir': '/Monkeys/ME3583',
+                      'dt_file': 'dt_b2973_lowres_2_'},
+           'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
                       'dt_file': 'dt_all_'},
            'tumour': {'subdir': 'Tumour/06_FORI',
                       'dt_file': 'dt_b700_'},
@@ -56,15 +54,22 @@ non_HCP = {'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
 #             }
 
 
-key = 'prisma'
+key = 'monkey'
+
+# base directories:
+base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data'
+base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017'
+
 print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
-opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
+opt['gt_dir'] = base_input_dir + non_HCP[key]['subdir']
+print('gt_dir is ...' + opt['gt_dir'])
+
 opt['input_file_name'] = non_HCP[key]['dt_file']
-opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
+opt['recon_dir'] = base_recon_dir + non_HCP[key]['subdir']
 opt['save_dir'] = '/Users/ryutarotanno/tmp/model/'
 # clear the graph:
 tf.reset_default_graph()
-analysis_miccai2017.nonhcp_reconstruct(opt,dataset_type=key)
+analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type=key)
 
 
 

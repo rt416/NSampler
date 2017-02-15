@@ -266,12 +266,15 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # load parameters:
     recon_dir = opt['recon_dir']
     gt_dir = opt['gt_dir']
+    # print('gt_dir is ...' + gt_dir)
     input_file_name = opt['input_file_name']
 
     # Load the input low-res DT image:
     print('... loading the low-res input DTI ...')
-    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir,input_file_name))
-    if not(dataset_type=='hcp1' or dataset_type=='hcp2'):
+    print(os.path.join(gt_dir,input_file_name))
+    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir,input_file_name),
+                                          no_channels=opt['no_channels'])
+    if not(dataset_type=='hcp1' or dataset_type=='hcp2' or dataset_type=='monkey'):
         dt_lowres = resize_DTI(dt_lowres,opt['upsampling_rate'])
     else:
         print('HCP dataset: no need to resample.')
@@ -286,6 +289,8 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     uncertainty_file = os.path.join(recon_dir, nn_dir, 'dt_std.npy')
     __, output_header = os.path.split(output_file)
     __, uncertainty_header = os.path.split(uncertainty_file)
+    # print(output_file)
+    # print(uncertainty_file)
 
     if not (os.path.exists(os.path.join(recon_dir, nn_dir))):
         os.makedirs(os.path.join(recon_dir, nn_dir))
