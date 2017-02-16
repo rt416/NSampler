@@ -325,11 +325,17 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
         # save as .nii
         print('\nSave each estimated dti/std separately as a nii file ...')
         sr_utility.save_as_nifti(output_header, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='', save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
         sr_utility.save_as_nifti(uncertainty_header_d, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='', save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
         sr_utility.save_as_nifti(uncertainty_header_m, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='', save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
     elif opt['method']=='cnn_heteroscedastic' or \
          opt['method']=='cnn_dropout' or \
          opt['method']=='cnn_gaussian_dropout' or \
@@ -346,9 +352,14 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
         # save as .nii
         print('\nSave each estimated dti/std separately as a nii file ...')
         sr_utility.save_as_nifti(output_header, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='',
+                                 save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
         sr_utility.save_as_nifti(uncertainty_header, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='', save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
     elif opt['method']=='cnn_simple':
         print('... saving as %s' % output_file)
         dt_hr = super_resolve(dt_lowres, opt)
@@ -357,7 +368,9 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
         # save as .nii
         print('\nSave each estimated dti separately as a nii file ...')
         sr_utility.save_as_nifti(output_header, os.path.join(recon_dir, nn_dir),
-                                 gt_dir='', save_as_ijk=True)
+                                 gt_dir='', save_as_ijk=True,
+                                 no_channels=opt['no_channels'],
+                                 gt_header=opt['gt_header'])
 
     else:
         raise ValueError('specified model not available')

@@ -69,10 +69,10 @@ def models_update(idx, opt):
 
     elif idx == 5:
         opt['method'] = 'cnn_simple'
-        opt['valid'] = False
+        opt['valid'] = True
         opt['dropout_rate'] = 0.0
         name = opt['method']
-        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/MAP/models'
     elif idx == 6:
         opt['method'] = 'cnn_dropout'
         opt['valid'] = False
