@@ -188,9 +188,10 @@ def plot_ROC(img_gt, img_est, img_std, mask, acceptable_err=1e-6, no_points=1000
               'FPR = %0.3f' % (idx, th, tpr[idx], fpr[idx]))
     # plot
     auc = np.trapz(tpr, fpr)
-    plt.plot(fpr, tpr, 'b', label='AUC = %0.3f, F1_max=%0.3f, th=%0.7f'
-                                  % (auc, f1_max, th_max))
-    plt.plot([fpr[39]], [tpr[39]], marker='o', markersize=10, color='black')  # , markersize=3, color="black")
+    plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' #, F1_max=%0.3f, th=%0.7f'
+                                  % (auc, ))  #f1_max, th_max))
+    plt.plot([fpr[39]], [tpr[39]], marker='o', markersize=10, color='black',
+             label='TPR=%0.2f, FPR=%0.2f' %(tpr[39], fpr[39]))  # , markersize=3, color="black")
     # plt.plot([fpr_max], [tpr_max], marker='o',markersize=20) #, markersize=3, color="black")
     plt.legend(loc='lower right')
     plt.plot([0, 1], [0, 1], 'r--')
