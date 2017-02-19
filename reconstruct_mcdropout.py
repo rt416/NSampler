@@ -120,7 +120,10 @@ def mc_inference(fn, fn_std, fd, opt, sess):
         std += 1. * fn_std.eval(feed_dict=fd)
     elif opt['method'] == 'cnn_heteroscedastic_variational_cov' or \
          opt['method'] == 'cnn_heteroscedastic_variational_layerwise_cov' or \
-         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov':
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_cov_hybrid' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_layerwise_cov_hybrid' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov_hybrid':
 
         sum_out = 0.0
         sum_out2 = 0.0
