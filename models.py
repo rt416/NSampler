@@ -899,7 +899,12 @@ def get_tradeoff_values(opt):
     n_epochs = opt['n_epochs']
     tradeoff_list = np.zeros(n_epochs)
     if opt['method'] == 'cnn_heteroscedastic_variational_hybrid_control' or \
-       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_hybrid_control':
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_hybrid_control' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_cov_hybrid' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_layerwise_cov_hybrid' or \
+       opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov_hybrid':
+
+        print('apply trade-off!')
         init_idx = n_epochs//4  # intial stable training with std variational dropout loss
         freq = 1
         counter = 0
