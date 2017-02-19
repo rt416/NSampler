@@ -75,7 +75,7 @@ def dt_trim(dt_volume, pd):
     return dt_volume
 
 
-def mc_inference(fn, fn_std, fd, opt):
+def mc_inference(fn, fn_std, fd, opt, sess):
     """ Compute the mean and std of samples drawn from stochastic function"""
     no_samples = opt['mc_no_samples']
     if opt['method']=='cnn_dropout' or \
@@ -118,6 +118,21 @@ def mc_inference(fn, fn_std, fd, opt):
         mean = sum_out / (1. * no_samples)
         std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
         std += 1. * fn_std.eval(feed_dict=fd)
+    elif opt['method'] == 'cnn_heteroscedastic_variational_cov' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_layerwise_cov' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov':
+
+        sum_out = 0.0
+        sum_out2 = 0.0
+        sum_var = 0.0
+        for i in xrange(no_samples):
+            current, current_std = sess.run([fn, fn_std], feed_dict=fd)
+            sum_out += current
+            sum_out2 += current ** 2
+            sum_var += current_std ** 2
+        mean = sum_out / (1. * no_samples)
+        std = np.sqrt((np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) + sum_var) / no_samples)
+
     else:
         raise Exception('The specified method does not support MC inference.')
         mean = fn.eval(feed_dict=fd)
@@ -246,7 +261,7 @@ def super_resolve_mcdropout(dt_lowres, opt):
 
             # Predict high-res patch:
             fd = {x: ipatch, keep_prob: (1.0 - dropout_rate), trade_off: 0.0}
-            opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, y_pred_std, fd, opt)
+            opatch_mean_ps, opatch_std_ps = mc_inference(y_pred, y_pred_std, fd, opt, sess)
 
             opatch = forward_periodic_shuffle(opatch_mean_ps, upsampling_rate)
 

@@ -75,7 +75,7 @@ def dt_trim(dt_volume, pd):
     return dt_volume
 
 
-def mc_inference_hetero_FA_and_MD(fn, fn_std, fd, opt):
+def mc_inference_hetero_FA_and_MD(fn, fn_std, fd, opt, sess):
     """ Compute the mean and std of samples drawn from stochastic function"""
     no_samples = opt['mc_no_samples']
     if opt['method']=='cnn_dropout' or \
@@ -132,6 +132,37 @@ def mc_inference_hetero_FA_and_MD(fn, fn_std, fd, opt):
         for i in xrange(no_samples):
             dti_sample = np.random.normal(0, like_std)
             current = 1. * fn.eval(feed_dict=fd) + dti_sample
+            current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+            md_sample, fa_sample = sr_utility.compute_MD_and_FA(current)
+            md_sum_out += md_sample
+            md_sum_out2 += md_sample ** 2
+            fa_sum_out += fa_sample
+            fa_sum_out2 += fa_sample ** 2
+
+        md_mean = md_sum_out / no_samples
+        md_std = np.sqrt(np.abs(md_sum_out2 -
+                                2 * md_mean * md_sum_out +
+                                no_samples * md_mean ** 2) / no_samples)
+
+        fa_mean = fa_sum_out / no_samples
+        fa_std = np.sqrt(np.abs(fa_sum_out2 -
+                                2 * fa_mean * fa_sum_out +
+                                no_samples * fa_mean ** 2) / no_samples)
+    elif opt['method'] == 'cnn_heteroscedastic_variational_cov' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_layerwise_cov' or \
+         opt['method'] == 'cnn_heteroscedastic_variational_channelwise_cov':
+
+        md_sum_out = 0.0
+        md_sum_out2 = 0.0
+        fa_sum_out = 0.0
+        fa_sum_out2 = 0.0
+
+        like_std = fn_std.eval(feed_dict=fd)  # add noise from the likelihood model.
+
+        for i in xrange(no_samples):
+            dti_mean, dti_std = sess.run([fn, fn_std], feed_dict=fd)
+            dti_noise = np.random.normal(0, dti_std)
+            current = dti_mean + dti_noise
             current = forward_periodic_shuffle(current, opt['upsampling_rate'])
             md_sample, fa_sample = sr_utility.compute_MD_and_FA(current)
             md_sum_out += md_sample
@@ -285,7 +316,7 @@ def super_resolve_FA_and_MD(dt_lowres, opt):
             # Predict high-res patch:
             fd = {x: ipatch, keep_prob: (1.0 - dropout_rate), trade_off: 0.0}
             md_mean, md_std, fa_mean, fa_std = \
-                mc_inference_hetero_FA_and_MD(y_pred, y_pred_std, fd, opt)
+                mc_inference_hetero_FA_and_MD(y_pred, y_pred_std, fd, opt, sess)
 
             dt_md_mean[upsampling_rate * (i - output_radius - 1):
                        upsampling_rate * (i + output_radius),
