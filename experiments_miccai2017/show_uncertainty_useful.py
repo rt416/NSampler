@@ -76,7 +76,6 @@ non_HCP = {'hcp': {'subdir':'HCP/904044',
 #                         ylabel='rmse',
 #                         title='Mean Diffusivity: cnn hetero + variational, ')
 #
-
 # -------------- plot ROC curve ------------------------------------------ :
 dataset_type = 'hcp'
 network = True
@@ -114,7 +113,4 @@ sr_analysis.plot_ROC_twonii(nii_gt, nii_est, nii_std,
 
 plt.title('ROC')
 plt.show()
-
-
-#
 
