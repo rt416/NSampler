@@ -80,7 +80,7 @@ def models_update(idx, opt):
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
         opt['mc_no_samples'] = 200
     elif idx == 8:
-        opt['method'] == 'cnn_variational_dropout_channelwise'
+        opt['method'] = 'cnn_variational_dropout_channelwise'
         opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']
@@ -106,7 +106,7 @@ for model_idx in models_list:
         opt['gt_dir'] = os.path.join(base_input_dir, subject, subpath)
         opt['input_file_name'] = 'dt_b1000_lowres_2_'
         opt['recon_dir'] = os.path.join(base_recon_dir, subject)
-        name, opt = models_update(model_idx,opt)
+        name, opt = models_update(model_idx, opt)
         print('with model: ' + name)
 
         # clear the graph:
