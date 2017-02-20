@@ -115,21 +115,22 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
            }
 
 
+
 model_idx = 4
 key='prisma_MAP'
 
-print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
+for patch_idx in range(1,9):
+    print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
+    opt['patchlib_idx'] = patch_idx
+    opt['gt_dir'] = os.path.join(base_input_dir, non_HCP[key]['subdir'])
+    opt['input_file_name'] = non_HCP[key]['dt_file']
+    opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'],'MAP')
+    name, opt = models_update(model_idx,opt)
+    print('with model: ' + name)
 
-
-opt['gt_dir'] = os.path.join(base_input_dir, non_HCP[key]['subdir'])
-opt['input_file_name'] = non_HCP[key]['dt_file']
-opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'],'MAP')
-name, opt = models_update(model_idx,opt)
-print('with model: ' + name)
-
-# clear the graph:
-tf.reset_default_graph()
-analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type=key)
+    # clear the graph:
+    tf.reset_default_graph()
+    analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type=key)
 
 
 

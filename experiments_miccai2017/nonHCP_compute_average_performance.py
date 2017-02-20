@@ -1,4 +1,4 @@
-""" Perform reconstrution on non- HCP dataset (Prisma, MS, Tumour).
+""" Perform reconstrution on non-HCP dataset (Prisma, Life).
 It assumes that DTI is available as nifti files."""
 
 import tensorflow as tf
