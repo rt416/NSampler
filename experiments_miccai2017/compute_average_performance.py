@@ -327,17 +327,17 @@ for model_idx in model_list:
            {'rmse_noedge': err_mtx.mean(axis=(0,1))[0],
             'psnr_noedge': err_mtx.mean(axis=(0,1))[1],
             'mssim_noedge': err_mtx.mean(axis=(0,1))[2],
-            'rmse_whole': err_mtx.mean(axis=(0,1))[3],
-            'psnr_whole': err_mtx.mean(axis=(0,1))[4],
-            'mssim_whole': err_mtx.mean(axis=(0,1))[5]
+            'rmse_edge': err_mtx.mean(axis=(0,1))[3],
+            'psnr_edge': err_mtx.mean(axis=(0,1))[4],
+            'mssim_edge': err_mtx.mean(axis=(0,1))[5]
             },
        'std':
            {'rmse_noedge': np.std(err_mtx.mean(axis=0),axis=0)[0],
             'psnr_noedge': np.std(err_mtx.mean(axis=0),axis=0)[1],
             'mssim_noedge': np.std(err_mtx.mean(axis=0),axis=0)[2],
-            'rmse_whole': np.std(err_mtx.mean(axis=0),axis=0)[3],
-            'psnr_whole': np.std(err_mtx.mean(axis=0),axis=0)[4],
-            'mssim_whole': np.std(err_mtx.mean(axis=0),axis=0)[5]
+            'rmse_edge': np.std(err_mtx.mean(axis=0),axis=0)[3],
+            'psnr_edge': np.std(err_mtx.mean(axis=0),axis=0)[4],
+            'mssim_edge': np.std(err_mtx.mean(axis=0),axis=0)[5]
             }
        }
 
