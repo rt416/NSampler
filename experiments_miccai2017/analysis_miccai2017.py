@@ -76,7 +76,7 @@ def compute_err(opt):
 
     # Load the ground truth/estimated high-res volumes:
     recon_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
-    gt_file = os.path.join(gt_dir, subject, subpath,'dt_b1000_')
+    gt_file = os.path.join(gt_dir, subject, subpath, 'dt_b1000_')
     uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
     mask_file = os.path.join(mask_dir, subject, 'masks',
                              'mask_us=' + str(opt['upsampling_rate']) + \
@@ -110,6 +110,53 @@ def compute_err(opt):
         pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
     print('Errors details saved as %s' %(err_file,))
 
+    return err
+
+
+def compute_err_nonhcp(params):
+    """ Compute errors for """
+    recon_file = params['recon_file']
+    gt_file = params['gt_file']
+    mask_file_noedge = params['mask_file_noedge']
+    mask_file_whole = params['mask_file_whole']
+    save_file = params['save_file']
+
+    # Load the ground truth/estimated high-res volumes:
+    dt_gt = read_dt_volume(nameroot=gt_file)
+    dt_est = read_dt_volume(nameroot=recon_file)
+
+    print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
+    if params['edge']:
+        print('Edge reconstruction is selected.')
+        dt_est = dt_est[:-1, :, :-1, :] / 7.0
+    print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
+
+    # Get the mask from deep learning reconstruction:
+    img = nib.load(mask_file_whole)
+    mask_whole = img.get_data() == 0
+
+    # Load the masks with no edges:
+    img = nib.load(mask_file_noedge)
+    mask_noedge = img.get_data() == 0
+
+    # Compute rmse, psnr, mssim:
+    start_time = timeit.default_timer()
+    err = dict()
+    err['rmse_noedge'], err['psnr_noedge'], err['mssim_noedge'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_noedge)
+    print('\n(No edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['rmse_noedge'], err['psnr_noedge'], err['mssim_noedge']))
+    err['rmse_whole'], err['psnr_whole'], err['mssim_whole'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_whole)
+    print('\n(Whole)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['rmse_whole'], err['psnr_whole'], err['mssim_whole']))
+    end_time = timeit.default_timer()
+    print('Took %f secs' % (end_time - start_time,))
+
+    # Save this as a separate file:
+    with open(save_file, 'wb') as fp:
+        pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Errors details saved as %s' % (save_file,))
     return err
 
 def compute_err_matlab(params):
@@ -274,7 +321,8 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     print(os.path.join(gt_dir,input_file_name))
     dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir,input_file_name),
                                           no_channels=opt['no_channels'])
-    if not(dataset_type=='hcp1' or dataset_type=='hcp2' or dataset_type=='monkey'):
+    if not(dataset_type=='life' or dataset_type=='hcp1' or
+           dataset_type=='hcp2' or dataset_type=='monkey'):
         dt_lowres = resize_DTI(dt_lowres,opt['upsampling_rate'])
     else:
         print('HCP dataset: no need to resample.')
