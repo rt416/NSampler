@@ -112,6 +112,59 @@ def compute_err(opt):
 
     return err
 
+# Compute errors on the interior and the edge separately:
+def compute_err_edge_and_interior(opt):
+    print('Method: %s \nSubject: %s' %
+          (opt['method'], opt['subject']))
+    recon_dir = opt['recon_dir']
+    gt_dir = opt['gt_dir']
+    mask_dir = opt['mask_dir']
+    subpath = opt['subpath']
+    subject = opt['subject']
+    nn_dir = name_network(opt)
+
+    # Load the ground truth/estimated high-res volumes:
+    recon_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
+    gt_file = os.path.join(gt_dir, subject, subpath, 'dt_b1000_')
+    uncertainty_file = os.path.join(recon_dir, subject, nn_dir, 'dt_std_b1000.npy')
+    mask_file = os.path.join(mask_dir, subject, 'masks',
+                             'mask_us=' + str(opt['upsampling_rate']) + \
+                             '_rec=' + str(5) + '.nii')
+
+    dt_gt = read_dt_volume(nameroot=gt_file)
+    dt_est = np.load(recon_file)
+
+    # Load the masks:
+    img = nib.load(os.path.join(mask_dir, mask_file))
+    mask_noedge = img.get_data() == 0
+    complement_mask_noedge = img.get_data() != 0  #complement of the interior mask
+    mask_whole = dt_est[:, :, :, 0] == 0
+    mask_edge = mask_whole*complement_mask_noedge
+
+    # Compute rmse, psnr, mssim:
+    start_time = timeit.default_timer()
+    err = dict()
+
+    err['rmse_noedge'], err['psnr_noedge'], err['mssim_noedge'] = \
+        compare_images(dt_gt[...,2:], dt_est[...,2:], mask_noedge)
+    print('\n(No edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['rmse_noedge'],err['psnr_noedge'],err['mssim_noedge']))
+
+    err['rmse_edge'], err['psnr_edge'], err['mssim_edge'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_edge)
+    print('\n(Edge)\nRMSE: %.10f \nEdge: %.5f \nEdge: %.5f' %
+          (err['rmse_edge'],err['psnr_edge'],err['mssim_edge']))
+    end_time = timeit.default_timer()
+    print('Took %f secs' % (end_time - start_time,))
+
+    # Save this as a separate file:
+    err_file = os.path.join(recon_dir, subject, nn_dir, 'error_edge_and_interior.pkl')
+    with open(err_file, 'wb') as fp:
+        pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Errors details saved as %s' %(err_file,))
+
+    return err
+
 
 def compute_err_nonhcp(params):
     """ Compute errors for """
@@ -309,11 +362,6 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # ------------------------ Reconstruct --------------------------------------:
     print('Method: %s' %
           (opt['method'], ))
-
-    if not ('output_file_name' in opt):
-        opt['output_file_name'] = 'dt_recon_b1000.npy'
-    if not ('gt_header' in opt):
-        opt['gt_header'] = 'dt_b1000_'
 
     # load parameters:
     recon_dir = opt['recon_dir']
