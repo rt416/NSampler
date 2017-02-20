@@ -308,12 +308,12 @@ err_compare = dict()
 
 for model_idx in model_list:
     err_mtx = np.zeros((len(subjects_list),8,6))
-    name, opt=models_update(model_idx,opt)
     print("Compute average errors ...")
     for i,patch_idx in enumerate(range(1,9)):
-        opt['patchlib_idx'] = patch_idx
         for j, subject in enumerate(subjects_list):
+            opt['patchlib_idx'] = patch_idx
             opt['subject'] = subject
+            name, opt = models_update(model_idx, opt)
             err = analysis_miccai2017.compute_err_edge_and_interior(opt)
             err_mtx[j,i,0] = err['rmse_noedge']
             err_mtx[j,i,1] = err['psnr_noedge']
