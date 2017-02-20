@@ -98,7 +98,7 @@ subpath = 'Diffusion/Diffusion/'
 subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
                  'LS5038', 'LS5041', 'LS6003', 'LS6009', 'LS6046']
 
-models_list = range(1,9)
+models_list = range(8,9)
 
 for model_idx in models_list:
     for subject in subjects_list:
