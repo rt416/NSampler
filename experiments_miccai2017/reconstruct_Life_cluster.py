@@ -74,8 +74,8 @@ def models_update(idx, opt):
         opt['mc_no_samples'] = 200
     elif idx == 7:
         opt['method'] = 'cnn_gaussian_dropout'
-        opt['valid'] = False
         opt['dropout_rate'] = 0.1
+        opt['valid'] = False
         name = opt['method'] + '_0.1'
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
         opt['mc_no_samples'] = 200
