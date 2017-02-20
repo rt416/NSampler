@@ -5,6 +5,7 @@ import tensorflow as tf
 import configuration
 import cPickle as pkl
 import os
+import analysis_miccai2017
 from analysis_miccai2017 import compute_err_matlab
 import numpy as np
 
@@ -157,9 +158,77 @@ subjects_list = ['904044', '165840', '889579', '713239',
 #     print('Recon metrics saved as %s' % (experiment_file,))
 
 
-# --------------------------------RF (edge reconstruction) --------------------------------------:
+# # --------------------------------RF (edge reconstruction) --------------------------------------:
+# analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/analysis'
+# experiment_name = '08feb17_comparison_edgeRF'
+# experiment_file_int = os.path.join(analysis_dir, experiment_name + '.pkl')
+# print('Conduct experiment: ' + experiment_file_int)
+# err_compare = dict()
+# params=dict()
+# params['edge'] = True
+# recon_interp = {'IQT-edge':'OrigReconEdge_NoTree07_SR02_DS02toDS01_MapDS02_V5_randomidx01.mat',
+#                 'BIQT-edge':'StdBayReconEdge_NoTree07_SR02_DS02toDS01_MapDS02_V5_randomidx01.mat'}
+#
+# for name, dt_est_int in recon_interp.iteritems():
+#     err_mtx = np.zeros((len(subjects_list),6))
+#     for j, subject in enumerate(subjects_list):
+#
+#         # set:
+#         params['edge'] = True
+#
+#         # reconstructed files (IQT/BIQT/Interpolation):
+#         recon_dir = '/SAN/vision/hcp/Ryu/miccai2017/RF_recon'
+#         subpath = 'T1w/Diffusion'
+#         recon_name = dt_est_int
+#         params['recon_file']=os.path.join(recon_dir, subject, subpath, recon_name)
+#
+#         # ground truth file:
+#         gt_dir = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'
+#         params['gt_file'] = os.path.join(gt_dir, subject, subpath,'dt_b1000_')
+#
+#         # mask file (no edge):
+#         mask_dir = '/SAN/vision/hcp/Ryu/miccai2017/recon'
+#         params['mask_file'] = os.path.join(mask_dir, subject, 'masks', 'mask_us=2_rec=5.nii')
+#
+#         # reference file:
+#         ref_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+#         ref_name = 'cnn_heteroscedastic_variational_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_001'
+#         params['ref_file'] = os.path.join(ref_dir,subject,ref_name,'dt_recon_b1000.npy')
+#
+#         # save dir:
+#         save_dir = recon_dir
+#         header, __ =os.path.splitext(recon_name)
+#         save_name = 'error_'+ header + '.pkl'
+#         params['save_file'] = os.path.join(save_dir, subject, subpath, save_name)
+#
+#         err=compute_err_matlab(params)
+#         err_mtx[j, 0] = err['rmse_noedge']
+#         err_mtx[j, 1] = err['psnr_noedge']
+#         err_mtx[j, 2] = err['mssim_noedge']
+#         err_mtx[j, 3] = err['rmse_whole']
+#         err_mtx[j, 4] = err['psnr_whole']
+#         err_mtx[j, 5] = err['mssim_whole']
+#
+#     # Compute the average errors over subjects:
+#     err_compare[name] = {'error':
+#                              {'rmse_noedge': err_mtx.mean(axis=0)[0],
+#                               'psnr_noedge': err_mtx.mean(axis=0)[1],
+#                               'mssim_noedge': err_mtx.mean(axis=0)[2],
+#                               'rmse_whole': err_mtx.mean(axis=0)[3],
+#                               'psnr_whole': err_mtx.mean(axis=0)[4],
+#                               'mssim_whole': err_mtx.mean(axis=0)[5]
+#                               }
+#                          }
+#     with open(experiment_file_int, 'wb') as fp:
+#         if not os.path.exists(analysis_dir):
+#             os.makedirs((analysis_dir))
+#         pkl.dump(err_compare, fp, protocol=pkl.HIGHEST_PROTOCOL)
+#     print('Recon metrics saved as %s' % (experiment_file_int,))
+
+
+# --------------------------------RF (edge reconstruction) on the edge and the interior ----------------------:
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/analysis'
-experiment_name = '08feb17_comparison_edgeRF'
+experiment_name = '20feb17_comparison_edgeRF_edge_and_interior'
 experiment_file_int = os.path.join(analysis_dir, experiment_name + '.pkl')
 print('Conduct experiment: ' + experiment_file_int)
 err_compare = dict()
@@ -197,25 +266,25 @@ for name, dt_est_int in recon_interp.iteritems():
         # save dir:
         save_dir = recon_dir
         header, __ =os.path.splitext(recon_name)
-        save_name = 'error_'+ header + '.pkl'
+        save_name = 'error_edge_and_interior'+ header + '.pkl'
         params['save_file'] = os.path.join(save_dir, subject, subpath, save_name)
 
-        err=compute_err_matlab(params)
+        err=analysis_miccai2017.compute_err_matlab_edge_and_interior(params)
         err_mtx[j, 0] = err['rmse_noedge']
         err_mtx[j, 1] = err['psnr_noedge']
         err_mtx[j, 2] = err['mssim_noedge']
-        err_mtx[j, 3] = err['rmse_whole']
-        err_mtx[j, 4] = err['psnr_whole']
-        err_mtx[j, 5] = err['mssim_whole']
+        err_mtx[j, 3] = err['rmse_edge']
+        err_mtx[j, 4] = err['psnr_edge']
+        err_mtx[j, 5] = err['mssim_edge']
 
     # Compute the average errors over subjects:
     err_compare[name] = {'error':
                              {'rmse_noedge': err_mtx.mean(axis=0)[0],
                               'psnr_noedge': err_mtx.mean(axis=0)[1],
                               'mssim_noedge': err_mtx.mean(axis=0)[2],
-                              'rmse_whole': err_mtx.mean(axis=0)[3],
-                              'psnr_whole': err_mtx.mean(axis=0)[4],
-                              'mssim_whole': err_mtx.mean(axis=0)[5]
+                              'rmse_edge': err_mtx.mean(axis=0)[3],
+                              'psnr_edge': err_mtx.mean(axis=0)[4],
+                              'mssim_edge': err_mtx.mean(axis=0)[5]
                               }
                          }
     with open(experiment_file_int, 'wb') as fp:
