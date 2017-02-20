@@ -86,13 +86,16 @@ import numpy as np
 #     print('Recon metrics saved as %s' % (experiment_file_int,))
 
 # -------------------------------- Life-HCP experiment (local) --------------------------------------:
-print('Compute erros on the Life dataset!!\n')
+print('Compute errors on the Life dataset!!\n')
 
-subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
-                 'LS5038', 'LS5041', 'LS6003', 'LS6009', 'LS6046']
+# subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
+#                  'LS5038', 'LS5041', 'LS6003', 'LS6009', 'LS6046']
+
+subjects_list = ['LS6006', 'LS6038', 'LS6003', 'LS6009', 'LS6046']
+
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/Life/analysis'
-experiment_name = '/20feb17_comparison'
+experiment_name = '/20feb17_comparison_oldpeople'
 experiment_file_int = analysis_dir + experiment_name + '.pkl'
 
 print('Conduct experiment: ' + experiment_file_int)
