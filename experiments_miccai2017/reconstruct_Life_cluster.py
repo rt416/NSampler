@@ -98,20 +98,22 @@ subpath = 'Diffusion/Diffusion/'
 subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
                  'LS5038', 'LS5041', 'LS6003', 'LS6009', 'LS6046']
 
-models_list = range(8,9)
+models_list = range(1,9)
 
-for model_idx in models_list:
-    for subject in subjects_list:
-        print('Reconstructing subject %s with model %i' % (subject, model_idx))
-        opt['gt_dir'] = os.path.join(base_input_dir, subject, subpath)
-        opt['input_file_name'] = 'dt_b1000_lowres_2_'
-        opt['recon_dir'] = os.path.join(base_recon_dir, subject)
-        name, opt = models_update(model_idx, opt)
-        print('with model: ' + name)
+for patch_idx in range(2,9):
+    for model_idx in models_list:
+        for subject in subjects_list:
+            print('Reconstructing subject %s with model %i' % (subject, model_idx))
+            opt['patchlib_idx'] = patch_idx
+            opt['gt_dir'] = os.path.join(base_input_dir, subject, subpath)
+            opt['input_file_name'] = 'dt_b1000_lowres_2_'
+            opt['recon_dir'] = os.path.join(base_recon_dir, subject)
+            name, opt = models_update(model_idx, opt)
+            print('with model: ' + name)
 
-        # clear the graph:
-        tf.reset_default_graph()
-        analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type='life')
+            # clear the graph:
+            tf.reset_default_graph()
+            analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type='life')
 
 
 
