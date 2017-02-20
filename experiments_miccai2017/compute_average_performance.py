@@ -67,6 +67,7 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 1
     elif idx == 2:
         opt['method'] = 'cnn_variational_dropout'
@@ -74,6 +75,7 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
     elif idx == 3:
         opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
@@ -81,6 +83,7 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
         opt['mc_no_samples'] = 200
 
     elif idx == 4:
@@ -89,6 +92,7 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
         opt['mc_no_samples'] = 200
 
     elif idx == 5:
@@ -97,12 +101,14 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
     elif idx == 6:
         opt['method'] = 'cnn_dropout'
         opt['valid'] = False
         opt['dropout_rate'] = 0.1
         name = opt['method'] + '_0.1'
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
     elif idx == 7:
         opt['method'] = 'cnn_gaussian_dropout'
@@ -110,6 +116,7 @@ def models_update(idx, opt):
         opt['valid'] = False
         name = opt['method'] + '_0.1'
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
     elif idx == 8:
         opt['method'] = 'cnn_variational_dropout_channelwise'
@@ -117,6 +124,7 @@ def models_update(idx, opt):
         opt['dropout_rate'] = 0.0
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
     else:
         raise ValueError('no network for the given idx.')
