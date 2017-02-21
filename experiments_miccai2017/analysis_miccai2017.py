@@ -247,7 +247,7 @@ def compute_err_nonhcp_all(params):
     err = dict()
     err['interior_rmse'], err['interior_psnr'], err['interior_mssim'] = \
         compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_noedge)
-    print('\n(No edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+    print('\n(Interior)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
           (err['interior_rmse'], err['interior_psnr'], err['interior_mssim']))
     err['whole_rmse'], err['whole_psnr'], err['whole_mssim'] = \
         compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_whole)
@@ -256,7 +256,7 @@ def compute_err_nonhcp_all(params):
 
     err['edge_rmse'], err['edge_psnr'], err['edge_mssim'] = \
         compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_edge)
-    print('\n(Whole)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+    print('\n(Edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
           (err['edge_rmse'], err['edge_psnr'], err['edge_mssim']))
 
     end_time = timeit.default_timer()

@@ -184,7 +184,7 @@ experiment_file_int = analysis_dir + experiment_name + '.pkl'
 print('Conduct experiment: ' + experiment_file_int)
 err_compare = dict()
 params=dict()
-params['edge'] = False
+params['edge'] = True
 recon_dict = {'IQT_rf_whole':'/IQT_rf_whole',
               'BIQT_rf_whole':'/BIQT_rf_whole'}
 
@@ -216,7 +216,7 @@ for name, nn_dir in recon_dict.iteritems():
         save_dir = recon_dir + subject + nn_dir
         params['save_file'] = save_dir + '/error.pkl'
 
-        err=analysis_miccai2017.compute_err_nonhcp(params)
+        err=analysis_miccai2017.compute_err_nonhcp_all(params)
         err_mtx[j, 0] = err['interior_rmse']
         err_mtx[j, 1] = err['interior_psnr']
         err_mtx[j, 2] = err['interior_mssim']
