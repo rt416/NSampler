@@ -212,6 +212,62 @@ def compute_err_nonhcp(params):
     print('Errors details saved as %s' % (save_file,))
     return err
 
+def compute_err_nonhcp_all(params):
+    """ Compute errors for """
+    recon_file = params['recon_file']
+    gt_file = params['gt_file']
+    mask_file_noedge = params['mask_file_noedge']
+    mask_file_whole = params['mask_file_whole']
+    save_file = params['save_file']
+
+    # Load the ground truth/estimated high-res volumes:
+    dt_gt = read_dt_volume(nameroot=gt_file)
+    dt_est = read_dt_volume(nameroot=recon_file)
+
+    print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
+    if params['edge']:
+        print('Edge reconstruction is selected.')
+        dt_est = dt_est[:-1, :, :-1, :] / 7.0
+    print('shape of dt_gt and dt_est are: %s and %s' % (dt_gt.shape, dt_est.shape))
+
+    # Get the mask from deep learning reconstruction:
+    img = nib.load(mask_file_whole)
+    mask_whole = img.get_data() == 0
+
+    # Load the masks with no edges:
+    img2 = nib.load(mask_file_noedge)
+    mask_noedge = img2.get_data() == 0
+
+    # compute the mask on the edge:
+    complement_mask_noedge = img2.get_data() != 0  # complement of the interior mask
+    mask_edge = mask_whole * complement_mask_noedge
+
+    # Compute rmse, psnr, mssim:
+    start_time = timeit.default_timer()
+    err = dict()
+    err['interior_rmse'], err['interior_psnr'], err['interior_mssim'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_noedge)
+    print('\n(No edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['interior_rmse'], err['interior_psnr'], err['interior_mssim']))
+    err['whole_rmse'], err['whole_psnr'], err['whole_mssim'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_whole)
+    print('\n(Whole)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['whole_rmse'], err['whole_psnr'], err['whole_mssim']))
+
+    err['edge_rmse'], err['edge_psnr'], err['edge_mssim'] = \
+        compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_edge)
+    print('\n(Whole)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
+          (err['edge_rmse'], err['edge_psnr'], err['edge_mssim']))
+
+    end_time = timeit.default_timer()
+    print('Took %f secs' % (end_time - start_time,))
+
+    # Save this as a separate file:
+    with open(save_file, 'wb') as fp:
+        pkl.dump(err, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Errors details saved as %s' % (save_file,))
+    return err
+
 def compute_err_matlab(params):
     """ Compute errors for """
 
