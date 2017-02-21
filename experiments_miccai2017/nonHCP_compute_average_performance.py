@@ -293,9 +293,9 @@ def get_nndir(name, nn_header, patch_idx):
     if name == 'Interp_cubic' or name == 'Interp_spline':
         nn_dir = nn_header
     elif name == 'cnn_heterovar_valid' or name == 'cnn_heterovar_channel_valid':
-        nn_dir = nn_header + '_%03i_valid_cost' % (patch_idx,)
+        nn_dir = nn_header + '%03i_valid_cost' % (patch_idx,)
     else:
-        nn_dir = nn_header + '_%03i' % (patch_idx,)
+        nn_dir = nn_header + '%03i' % (patch_idx,)
 
     return nn_dir
 
