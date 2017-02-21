@@ -350,7 +350,7 @@ err_compare = dict()
 for model_idx in model_list:
     err_mtx = np.zeros((len(subjects_list),8,6))
     print("Compute average errors ...")
-    for i,patch_idx in enumerate(range(1,9)):
+    for i,patch_idx in enumerate(range(1,2)):
         for j, subject in enumerate(subjects_list):
             opt['patchlib_idx'] = patch_idx
             opt['subject'] = subject

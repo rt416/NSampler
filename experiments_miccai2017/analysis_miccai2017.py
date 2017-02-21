@@ -152,7 +152,7 @@ def compute_err_edge_and_interior(opt):
 
     err['rmse_edge'], err['psnr_edge'], err['mssim_edge'] = \
         compare_images(dt_gt[..., 2:], dt_est[..., 2:], mask_edge)
-    print('\n(Edge)\nRMSE: %.10f \nEdge: %.5f \nEdge: %.5f' %
+    print('\n(Edge)\nRMSE: %.10f \nPSNR: %.5f \nMSSIM: %.5f' %
           (err['rmse_edge'],err['psnr_edge'],err['mssim_edge']))
     end_time = timeit.default_timer()
     print('Took %f secs' % (end_time - start_time,))
