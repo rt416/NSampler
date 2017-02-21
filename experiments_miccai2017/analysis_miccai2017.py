@@ -416,6 +416,10 @@ def nonhcp_reconstruct(opt, dataset_type='prisma'):
     # ------------------------ Reconstruct --------------------------------------:
     print('Method: %s' %
           (opt['method'], ))
+    if not('output_file_name' in opt):
+        opt['output_file_name']='dt_recon_b1000.npy'
+    if not('gt_header' in opt):
+        opt['gt_header']='dt_b1000_'
 
     # load parameters:
     recon_dir = opt['recon_dir']
