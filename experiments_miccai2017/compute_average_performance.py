@@ -135,7 +135,7 @@ def models_update(idx, opt):
         opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
         opt['mc_no_samples'] = 200
     elif idx==10:
-        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_cov'
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_cov_hybrid'
         opt['valid'] = False
         opt['dropout_rate'] = 0.0
         name = opt['method']

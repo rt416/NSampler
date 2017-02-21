@@ -27,28 +27,38 @@ opt['no_channels'] = 6
 # Experiment (local)
 # base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
 base_gt_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
-network = False
+network = True
+dataset_type = 'tumour'
 
 if network:
     base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017/'
     nn_name = name_network(opt)
+    non_HCP = {'hcp': {'subdir': 'HCP/904044',
+                       'dt_file': 'dt_recon_',
+                       'std_file': 'dt_std_'},
+               'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
+                          'dt_file': 'dt_recon_'},
+               'tumour': {'subdir': 'Tumour/06_FORI',
+                          'dt_file': 'dt_recon_',
+                          'std_file': 'dt_std_data_'},
+               'ms': {'subdir': 'MS/B0410637-2010-00411',
+                      'dt_file': 'dt_b1200_lowres2_'}
+               }
 else:
     base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data/'
     nn_name=''
+    non_HCP = {'hcp': {'subdir': 'HCP/904044',
+                       'dt_file': 'dt_b1000_lowres_2_',
+                       'std_file': 'dt_std_'},
+               'prisma': {'subdir': 'Prisma/Diffusion_2.5mm',
+                          'dt_file': 'dt_all_'},
+               'tumour': {'subdir': 'Tumour/06_FORI',
+                          'dt_file': 'dt_b700_',
+                          'std_file': 'dt_std_data_'},
+               'ms': {'subdir': 'MS/B0410637-2010-00411',
+                      'dt_file': 'dt_b1200_lowres2_'}
+               }
 
-non_HCP = {'hcp': {'subdir':'HCP/904044',
-                   'dt_file':'dt_recon_',
-                   'std_file': 'dt_std_'},
-           'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
-                     'dt_file':'dt_all_'},
-           'tumour':{'subdir':'Tumour/06_FORI',
-                     'dt_file':'dt_b700_',
-                     'std_file': 'dt_std_data_'},
-           'ms':{'subdir':'MS/B0410637-2010-00411',
-                 'dt_file':'dt_b1200_lowres2_'}
-            }
-
-dataset_type = 'tumour'
 dti_file = os.path.join(base_input_dir,
                         non_HCP[dataset_type]['subdir'],
                         nn_name,
@@ -59,12 +69,22 @@ std_file = os.path.join(base_input_dir,
                         non_HCP[dataset_type]['std_file'])
 
 print('Compute MD and FA of' + dti_file)
+recon_method = input("Select the reconstruction option 1, 2, 3, 4: ")
 
-md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, save_tail='_dir')
-
-#md_nii, fa_nii, __ = analysis_miccai2017._MD_FA(dti_file, std_file,
-#                                                save_tail='',
-#                                                compute_md_analytical=True)
+if recon_method == 1:
+    # ---------- simply compute MD and FA --------------------------------:
+    md_nii, fa_nii = analysis_miccai2017._MD_FA(dti_file, save_tail='_dir')
+elif recon_method == 2:
+    # --------- compute MD/FA and also uncertainty over MD analytically---:
+    md_nii, fa_nii, __ = analysis_miccai2017._MD_FA(dti_file, std_file,
+                                                    save_tail='',
+                                                    compute_md_analytical=True)
+elif recon_method == 3:
+    # --------- compute MD/FA and uncertainty through MC estimates -------:
+    analysis_miccai2017._MD_FA(dti_file, std_file,
+                               no_samples=1000,
+                               compute_md_analytical=False)
+    # analysis_miccai2017._MD_FA(dti_file,no_samples=1)
 
 
 # Also compute the errors:
