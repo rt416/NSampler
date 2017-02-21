@@ -115,7 +115,7 @@ subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
 
 models_list = range(9,11)
 
-for patch_idx in range(2,9):
+for patch_idx in range(1,2):
     for model_idx in models_list:
         for subject in subjects_list:
             print('Reconstructing subject %s with model %i' % (subject, model_idx))
