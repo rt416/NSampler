@@ -20,9 +20,9 @@ for slice_idx in range(2,25):
             print('     model: %i/8' % (nn_idx,))
             nn_dir = nn_dir_header + '%03i' % (nn_idx,)
 
-            map_file = recon_dir + nn_dir + 'dt_recon_%i.nii' % (slice_idx,)
-            std_data_file = recon_dir + nn_dir + 'dt_std_data_%i.nii' % (slice_idx,)
-            std_model_file = recon_dir + nn_dir + 'dt_std_model_%i.nii' % (slice_idx,)
+            map_file = recon_dir + nn_dir + '/dt_recon_%i.nii' % (slice_idx,)
+            std_data_file = recon_dir + nn_dir + '/dt_std_data_%i.nii' % (slice_idx,)
+            std_model_file = recon_dir + nn_dir + '/dt_std_model_%i.nii' % (slice_idx,)
 
             map_pred = nib.load(map_file).get_data()
             map_uncertainty = np.sqrt(np.square(nib.load(std_data_file).get_data()) + \
@@ -41,7 +41,7 @@ for slice_idx in range(2,25):
         for nn_idx in range(1, 9):
             print('     model: %i/8' % (nn_idx,))
             nn_dir = nn_dir_header + '%03i' % (nn_idx,)
-            map_file = recon_dir + nn_dir + 'dt_recon_%i.nii' % (slice_idx,)
+            map_file = recon_dir + nn_dir + '/dt_recon_%i.nii' % (slice_idx,)
             current_pred += nib.load(map_file).get_data()
 
         final_pred = current_pred/8.0
