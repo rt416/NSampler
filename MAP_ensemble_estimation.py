@@ -5,9 +5,17 @@ import numpy as np
 import sr_utility
 
 recon_dir = '/SAN/vision/hcp/Ryu/non-HCP/Prisma/Diffusion_2.5mm/MAP'
+# nn_dir_header = '/cnn_heteroscedastic_variational_channelwise_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_'
+# save_dir = '/SAN/vision/hcp/Ryu/non-HCP/Prisma/Diffusion_2.5mm/MAP/cnn_heteroscedastic_variational_channelwise_hybrid_control_weight_mean'
+# weight=True
+
 nn_dir_header = '/cnn_heteroscedastic_variational_channelwise_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_'
-save_dir = '/SAN/vision/hcp/Ryu/non-HCP/Prisma/Diffusion_2.5mm/MAP/cnn_heteroscedastic_variational_channelwise_hybrid_control_weighted_mean'
-weight=True
+save_dir = '/SAN/vision/hcp/Ryu/non-HCP/Prisma/Diffusion_2.5mm/MAP/cnn_heteroscedastic_variational_channelwise_hybrid_control_mean'
+weight=False
+
+nn_dir_header = '/cnn_heteroscedastic_variational_channelwise_hybrid_control_us=2_in=11_rec=5_out=14_opt=AdamOptimizer_drop=0.0_prep=standard_Diverse_TS8_Subsample343_'
+save_dir = '/SAN/vision/hcp/Ryu/non-HCP/Prisma/Diffusion_2.5mm/MAP/cnn_heteroscedastic_variational_channelwise_hybrid_control_weight_mean'
+weight=False
 
 # For each component, compute the weighted average:
 for slice_idx in range(2,25):

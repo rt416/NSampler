@@ -86,6 +86,21 @@ def models_update(idx, opt):
         name = opt['method']
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
         opt['mc_no_samples'] = 200
+    elif idx == 9:
+        opt['method'] = 'cnn_heteroscedastic_variational_hybrid_control'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['mc_no_samples'] = 200
+    elif idx == 10:
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_hybrid_control'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['mc_no_samples'] = 200
+
     else:
         raise ValueError('no network for the given idx.')
 
@@ -98,7 +113,7 @@ subpath = 'Diffusion/Diffusion/'
 subjects_list = ['LS5007', 'LS5040', 'LS5049', 'LS6006', 'LS6038',
                  'LS5038', 'LS5041', 'LS6003', 'LS6009', 'LS6046']
 
-models_list = range(1,9)
+models_list = range(9,11)
 
 for patch_idx in range(2,9):
     for model_idx in models_list:
