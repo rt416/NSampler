@@ -126,6 +126,39 @@ def models_update(idx, opt):
         opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/models'
         opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v1/recon'
         opt['mc_no_samples'] = 200
+    elif idx==9:
+        opt['method'] = 'cnn_heteroscedastic_variational_cov'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+        opt['mc_no_samples'] = 200
+    elif idx==10:
+        opt['method'] = 'cnn_heteroscedastic_variational_channelwise_cov'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+        opt['mc_no_samples'] = 200
+    elif idx == 11:
+        opt['method'] = 'cnn_heteroscedastic_variational_cov_hybrid'
+        opt['valid'] = False
+        opt['dropout_rate'] = 0.0
+        name = opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+        opt['mc_no_samples'] = 200
+    elif idx == 12:
+        opt['method'] = 'cnn_heteroscedastic_variational_cov_hybrid'
+        opt['valid'] = True
+        opt['dropout_rate'] = 0.0
+        name = 'valid_'+ opt['method']
+        opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
+        opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
+        opt['mc_no_samples'] = 200
+
     else:
         raise ValueError('no network for the given idx.')
 
@@ -300,8 +333,8 @@ def models_update(idx, opt):
 import analysis_miccai2017
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/analysis'
-experiment_name = '20feb17_comparison_edge'
-model_list = range(1,9)  # index corresponding to different models in model_update()
+experiment_name = '21feb17_variational_covariance_edge'
+model_list = range(9,13)  # index corresponding to different models in model_update()
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
