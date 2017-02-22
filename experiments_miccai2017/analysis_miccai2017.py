@@ -316,6 +316,7 @@ def compute_err_matlab(params):
     print('Errors details saved as %s' %(save_file,))
     return err
 
+
 def compute_err_matlab_edge_and_interior(params):
     """ Compute errors for """
 
