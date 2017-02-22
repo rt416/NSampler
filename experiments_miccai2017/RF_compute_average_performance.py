@@ -31,6 +31,7 @@ for name, dt_est_int in recon_interp.iteritems():
     err_mtx = np.zeros((len(subjects_list),6))
     for j, subject in enumerate(subjects_list):
         # reconstructed files (IQT/BIQT/Interpolation):
+        params['edge'] = False
         recon_dir = '/SAN/vision/hcp/Ryu/miccai2017/RF_recon'
         subpath = 'T1w/Diffusion'
         recon_name = dt_est_int
