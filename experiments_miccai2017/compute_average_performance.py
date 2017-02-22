@@ -333,10 +333,12 @@ def models_update(idx, opt):
 import analysis_miccai2017
 
 analysis_dir = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/analysis'
-experiment_name = '21feb17_variational_covariance_edge'
+experiment_name = '22feb17_HCP_variational_covariance_edge'
 model_list = range(9,13)  # index corresponding to different models in model_update()
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
+patchlibs_list = range(1,2)
+
 experiment_file = os.path.join(analysis_dir, experiment_name + '.pkl')
 print(experiment_file)
 
@@ -348,9 +350,9 @@ print(experiment_file)
 err_compare = dict()
 
 for model_idx in model_list:
-    err_mtx = np.zeros((len(subjects_list),8,6))
+    err_mtx = np.zeros((len(subjects_list),len(patchlibs_list),6))
     print("Compute average errors ...")
-    for i,patch_idx in enumerate(range(1,2)):
+    for i,patch_idx in enumerate(patchlibs_list):
         for j, subject in enumerate(subjects_list):
             opt['patchlib_idx'] = patch_idx
             opt['subject'] = subject

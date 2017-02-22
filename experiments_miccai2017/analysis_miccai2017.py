@@ -440,10 +440,10 @@ def _MD_FA(dti_file, std_file=None, no_samples=500,
                                           dti_std[...,2:],
                                           no_samples=no_samples)
 
-        md_nii = save_file + 'MD_mean' + save_tail + str(no_samples) + '.nii'
-        md_std_nii = save_file + 'MD_std' + save_tail + str(no_samples) + '.nii'
-        fa_nii = save_file + 'FA_mean'+save_tail + str(no_samples) + '.nii'
-        fa_std_nii = save_file + 'FA_std'+save_tail + + str(no_samples) + '.nii'
+        md_nii = save_file + 'MD_mean_' + save_tail + str(no_samples) + '.nii'
+        md_std_nii = save_file + 'MD_std_' + save_tail + str(no_samples) + '.nii'
+        fa_nii = save_file + 'FA_mean_'+save_tail + str(no_samples) + '.nii'
+        fa_std_nii = save_file + 'FA_std_'+save_tail + str(no_samples) + '.nii'
         sr_utility.ndarray_to_nifti(md_mean, md_nii)
         sr_utility.ndarray_to_nifti(md_std, md_std_nii)
         sr_utility.ndarray_to_nifti(fa_mean, fa_nii)

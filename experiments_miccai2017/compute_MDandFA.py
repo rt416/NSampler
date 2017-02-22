@@ -82,7 +82,7 @@ elif recon_method == 2:
 elif recon_method == 3:
     # --------- compute MD/FA and uncertainty through MC estimates -------:
     analysis_miccai2017._MD_FA(dti_file, std_file,
-                               no_samples=1000,
+                               no_samples=250,
                                compute_md_analytical=False)
     # analysis_miccai2017._MD_FA(dti_file,no_samples=1)
 
