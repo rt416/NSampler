@@ -889,6 +889,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
 
     if opt['method']=='cnn_simple' or \
+       opt['method']=='cnn_simple_L1' or \
        opt['method']=='cnn_dropout' or \
        opt['method']=='cnn_gaussian_dropout' or\
        opt['method']=='cnn_variational_dropout' or \

@@ -21,6 +21,7 @@ def load_hdf5(opt):
 
     data_dir = opt['data_dir']
     fstr = 'PatchLibs_%s_Upsample%02i_Input%02i_Recep%02i_TS%i_Subsample%03i_%03i.h5'
+
     filename = data_dir + fstr % (cohort, upsampling_rate,
                                   2*input_radius+1,
                                   2*receptive_field_radius+1,
