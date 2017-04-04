@@ -7,8 +7,8 @@ from __future__ import print_function
 import numpy as np
 import pickle
 import copy
-import data_utils as du
-import math_utils as mu
+import largesc.data_utils as du
+import largesc.math_utils as mu
 # import data_whiten as dwh
 # import pepys.flags as flags
 # from debug import set_trace
@@ -33,8 +33,11 @@ class Data(object):
     def scale_params(self):
         return self._sparams
     @property
-    def size(self):
+    def size(self):  # get the size of training set
         return self._size
+    @property
+    def size_valid(self): # get the size of validation set
+        return self._valsize
     @property
     def inpN(self):
         return self._inpN
@@ -120,8 +123,7 @@ class Data(object):
 
         #Now collect validation patch indices
         N = len(inp_images) 
-        self._val_pindlistI = self._select_patch_indices(self._valsize, 
-                                                        5, vox_indx, N)
+        self._val_pindlistI = self._select_patch_indices_ryu(self._valsize, vox_indx)
         self._val_pindlistO = self._val_pindlistI
 
         #Seggregate validation and training patch sets by
@@ -134,10 +136,7 @@ class Data(object):
 
         # From these new patch indices that are free of validation
         # patches now select patches for training
-        self._train_pindlistI = self._select_patch_indices(self._size,
-                                                           sample_sz,
-                                                           vox_indx,
-                                                           N)
+        self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
         self._train_pindlistO = self._train_pindlistI
 
         if whiten != '0':
@@ -212,6 +211,7 @@ class Data(object):
 
 
     def save_patch_indices(self, filename):
+        # just save the indices but the data.
         tmp_inp = self._inp_images
         tmp_out = self._out_images
         self._inp_images = None
@@ -227,6 +227,19 @@ class Data(object):
         self._out_images = out_images
         return self
 
+    def load_patch_indices_ryu(self, filename, inp_images, out_images, inpN, ds):
+        self.load(filename)
+
+        # Pad:
+        inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
+
+        # Bring all images to low-res space
+        inp_images = self._downsample_lowres(inp_images, ds)
+        out_images = du.backward_shuffle_img(out_images, ds)
+
+        self._inp_images = inp_images
+        self._out_images = out_images
+        return self
 
     def visualise_patches(self, pindlist, iz2=-1, ic=0):
         """
@@ -438,21 +451,40 @@ class Data(object):
 
 
     def _select_patch_indices(self, size, sample_sz, vox_indx, N):
+        """ Select the indices of patches to be extracted
+        Args:
+            size (int): the total number of patches to be extracted
+            sample_sz (int): the number of patches sampled each time
+            vox_indx (list): list of 2d np arrays. Each array stores the indices
+                            (i,j,k) of all valid patches in each subject.
+                            Each row is an instance of patch location (i, j, k).
+            N (int): number of subjects
+
+        Returns:
+            pindlist (list ?)
+
+        """
         print ('Selecting random patch-indices...')
         ITERS = size // (N * sample_sz)
         REMND = size %  (N * sample_sz)
         subind = np.random.randint(0, N, (ITERS+1, N))
         ptch_szlist = []
+
+        # get the number of all patches in each subject.
         for indx in vox_indx:
             ptch_szlist.append(indx.shape[0])
+
         cnt = 0
         pindlist= np.zeros((size, 4), dtype=int)
         for itind in subind[:-1, :]:
             for sind in itind:
+                # todo: FIX. vind random sampling with relacement => potential duplicates!
                 vind = np.random.randint(0, ptch_szlist[sind], (sample_sz))
                 pindlist[cnt:cnt+sample_sz, 0]  = sind
                 pindlist[cnt:cnt+sample_sz, 1:] = vox_indx[sind][vind, :]
                 cnt += sample_sz
+
+        # extract the remaining patches.
         ITERS = REMND // sample_sz
         REMND = REMND % sample_sz
         itind = subind[-1, 0:ITERS]
@@ -476,6 +508,43 @@ class Data(object):
         pindlist = pindlist[perm,:]
         return pindlist
 
+    def _select_patch_indices_ryu(self, size, vox_indx):
+        """ Select the indices of patches to be extracted
+        Args:
+            size (int): the total number of patches to be extracted
+            sample_sz (int): the number of patches sampled each time
+            vox_indx (list): list of 2d np arrays. Each array stores the indices
+                            (i,j,k) of all valid patches in each subject.
+                            Each row is an instance of patch location (i, j, k).
+                            len(vox_idx) = number of subjects.
+        Returns:
+            pindlist (np array):
+
+        """
+        print('Selecting random patch-indices...')
+        no_samples = size//len(vox_indx)
+        reminder = size % len(vox_indx)
+        size_total = 0
+
+        pindlist = np.zeros((size, 4), dtype=int)
+
+        for idx in range(len(vox_indx)):
+            if not(idx==(len(vox_indx)-1)):
+                pindlist[idx*no_samples:(idx+1)*no_samples,0]=idx # subject idx
+                pindlist[idx*no_samples:(idx+1)*no_samples,1:]\
+                    = np.random.permutation(vox_indx[idx])[:no_samples,:]
+            else:
+                pindlist[idx*no_samples:,0]= idx
+                pindlist[idx*no_samples:,1:] \
+                    = np.random.permutation(vox_indx[idx])[:(no_samples+reminder),:]
+            size_total += vox_indx[idx].shape[0]
+
+        print('Patch extraction: %d/%d are retrieved.'
+              % (pindlist.shape[0], size_total))
+        perm = np.arange(pindlist.shape[0])
+        np.random.shuffle(perm)
+        pindlist = pindlist[perm, :]
+        return pindlist
 
     def _segregate_trainvalid_masks(self, inp_images, inpN, valindlist):
         print ('Segretating validation and training patch-masks')

@@ -8,7 +8,7 @@ import cPickle as pkl
 import h5py
 import numpy as np
 import tensorflow as tf
-
+import largesc.data_generator as data_generator
 import sr_preprocess as pp
 import sr_utility
 import models
@@ -35,21 +35,58 @@ def name_network(opt):
     """given inputs, return the model name."""
     optim = opt['optimizer'].__name__
 
-    nn_tuple = (opt['method'], opt['upsampling_rate'],
-                2*opt['input_radius']+1,
-                2*opt['receptive_field_radius']+1,
-                (2*opt['output_radius']+1)*opt['upsampling_rate'],
-                optim, str(opt['dropout_rate']), opt['transform_opt'],)
-    nn_str = '%s_us=%i_in=%i_rec=%i_out=%i_opt=%s_drop=%s_prep=%s_'
-    nn_tuple += (opt['cohort'], opt['no_subjects'],
-                 opt['subsampling_rate'], opt['patchlib_idx'])
-    nn_str += '%s_TS%i_Subsample%03i_%03i'
+    nn_header = opt['method'] if opt['dropout_rate']==0 \
+    else opt['method'] + str(opt['dropout_rate'])
 
-    nn_name = nn_str % nn_tuple
+    # problem definition:
+    nn_var = (opt['upsampling_rate'],
+              2*opt['input_radius']+1,
+              2*opt['receptive_field_radius']+1,
+             (2*opt['output_radius']+1)*opt['upsampling_rate'])
+    nn_str = 'us=%i_in=%i_rec=%i_out=%i_'
+
+    nn_var += (opt['no_subjects'],
+               opt['train_size'],
+               opt['transform_opt'],
+               opt['patch_sampling_opt'],
+               opt['patchlib_idx'])
+    nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
+
+    # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
+    # nn_str +='opt=%s_drop=%s_prep=%s_'
+
+    nn_body = nn_str % nn_var
+
     if opt['valid']:
         # Validate on the cost:
-        nn_name += '_valid_cost'
-    return nn_name
+        nn_header += '_valid_cost'
+
+    return nn_header + '_' + nn_body
+
+def name_patchlib(opt):
+    """given inputs, return the patchlib name """
+
+    header = 'patchlib_'
+
+    # problem definition:
+    nn_var = (opt['upsampling_rate'],
+              2 * opt['input_radius'] + 1,
+              2 * opt['receptive_field_radius'] + 1,
+              (2 * opt['output_radius'] + 1) * opt['upsampling_rate'])
+    nn_str = 'us=%i_in=%i_rec=%i_out=%i_'
+
+    nn_var += (opt['no_subjects'],
+               opt['train_size'],
+               opt['transform_opt'],
+               opt['patch_sampling_opt'],
+               opt['patchlib_idx'])
+    nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
+
+    # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
+    # nn_str +='opt=%s_drop=%s_prep=%s_'
+
+    nn_body = nn_str % nn_var
+    return header+nn_body
 
 
 def update_best_loss(this_loss, bests, iter_, current_step):
@@ -82,11 +119,7 @@ def save_model(opt, sess, saver, global_step, model_details):
 def train_cnn(opt):
     # ------------------ Load inputs from op ------------------------:
     # Network details:
-    optimizer = opt['optimizer']
-    optimisation_method = opt['optimizer'].__name__
-
     dropout_rate = opt['dropout_rate']
-    learning_rate = opt['learning_rate']
     L1_reg = opt['L1_reg']
     L2_reg = opt['L2_reg']
     n_epochs = opt['n_epochs']
@@ -101,10 +134,6 @@ def train_cnn(opt):
     n_h3 = opt['n_h3']
     cohort = opt['cohort']
 
-    # Data details:
-    no_subjects = opt['no_subjects']
-    subsampling_rate = opt['subsampling_rate']
-
     # Input/Output details:
     upsampling_rate = opt['upsampling_rate']
     no_channels = opt['no_channels']
@@ -114,9 +143,6 @@ def train_cnn(opt):
     opt['output_radius'] = output_radius
     transform_opt = opt['transform_opt']
 
-    # Dir:
-    data_dir = opt['data_dir']  # '../data/'
-    save_dir = opt['save_dir']
 
     # Set the directory for saving checkpoints:
     checkpoint_dir = define_checkpoint(opt)
@@ -128,13 +154,31 @@ def train_cnn(opt):
         print('Network already trained. Move on to next.')
         return
 
-    # -------------------------load data------------------------------------:
+    # -------------------------load data---------------------------------------:
+    # todo: need to have separate names for training data and network names.
+    # todo: need to change the names of both networks/patch-library
 
-    data = pp.load_hdf5(opt)
-    opt['train_noexamples'] = data['in']['train'].shape[0]
-    opt['valid_noexamples'] = data['in']['valid'].shape[0]
-    in_shape = data['in']['train'].shape[1:]
-    out_shape = data['out']['train'].shape[1:]
+    filename_patchlib = name_patchlib(opt)
+    dataset, train_folder = data_generator.prepare_data(opt['train_size'],
+                                                        opt['validation_fraction'],
+                                                        input_radius,
+                                                        output_radius,
+                                                        patchlib_name=filename_patchlib,
+                                                        whiten=opt['transform_opt'],
+                                                        train_index=opt['train_subjects'],
+                                                        bgval=opt['background_value'],
+                                                        is_reset=False,
+                                                        sample_sz=10,
+                                                        us_rate=opt['upsampling_rate'],
+                                                        data_dir_root=opt['gt_dir'],
+                                                        save_dir_root=opt['data_dir']
+                                                        )
+
+    opt['train_noexamples'] = dataset.size
+    opt['valid_noexamples'] = dataset.size_valid
+    print ('Patch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
+           'Train size:',     opt['train_noexamples'],
+           'Valid size:',     opt['valid_noexamples'])
 
     # --------------------------- Define the model--------------------------:
     #  define input and output:
@@ -145,6 +189,7 @@ def train_cnn(opt):
                                         2*input_radius+1,
                                         no_channels],
                                         name='lo_res')
+
         y = tf.placeholder(tf.float32, [None,
                                         2*output_radius+1,
                                         2*output_radius+1,
@@ -172,7 +217,9 @@ def train_cnn(opt):
         train_step = optim.minimize(cost, global_step=global_step)
 
     with tf.name_scope('accuracy'):
-        mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
+        # todo: introduce proper scaling
+        # mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
+        mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
 
     # -------------------------- Start training -----------------------------:
@@ -189,8 +236,8 @@ def train_cnn(opt):
         valid_writer = tf.train.SummaryWriter(log_dir + '/valid')
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = data['in']['train'].shape[0] // batch_size
-        n_valid_batches = data['in']['valid'].shape[0] // batch_size
+        n_train_batches = opt['train_noexamples'] // opt['batch_size']
+        n_valid_batches = opt['valid_noexamples'] // opt['batch_size']
 
         # Compute the trade-off values:
         tradeoff_list = models.get_tradeoff_values(opt)
@@ -199,6 +246,7 @@ def train_cnn(opt):
         test_score = 0
         start_time = timeit.default_timer()
         epoch = 0
+        epoch_auro = 0
         done_looping = False
         iter_valid = 0
         total_val_mse_epoch = 0
@@ -216,7 +264,7 @@ def train_cnn(opt):
         bests['step_save'] = 0  # global step for the best saved model
         bests['counter'] = 0
         bests['counter_thresh'] = 10
-        validation_frequency = n_train_batches
+        validation_frequency = n_train_batches  #
         save_frequency = 1
 
 
@@ -228,45 +276,48 @@ def train_cnn(opt):
         model_details['epoch_val_cost'] = []
 
         while (epoch < n_epochs) and (not done_looping):
-            epoch += 1
             start_time_epoch = timeit.default_timer()
-            if epoch % 50 == 0:
+
+            # gradually reduce learning rate every 50 epochs:
+            if (epoch+1) % 50 == 0:
                 lr_ = lr_ / 10.
-            if shuffle:
-                indices = np.random.permutation(data['in']['train'].shape[0])
-            else:
-                indices = np.arange(data['in']['train'].shape[0])
+
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
-                idx = np.s_[indices[mi*batch_size:(mi+1)*batch_size],...]
 
-                xt = pp.dict_whiten(data, 'in', 'train', idx)
-                yt = pp.dict_whiten(data, 'out', 'train', idx)
-                xv = pp.dict_whiten(data, 'in', 'valid', idx)
-                yv = pp.dict_whiten(data, 'out', 'valid', idx)
+                xt, yt = dataset.next_batch(opt['batch_size'])
+                xt_shape = xt.shape
+                yt_shape = yt.shape
+                xv, yv = dataset.next_val_batch(opt['batch_size'])
+
+                # xt = pp.dict_whiten(data, 'in', 'train', idx)
+                # yt = pp.dict_whiten(data, 'out', 'train', idx)
+                # xv = pp.dict_whiten(data, 'in', 'valid', idx)
+                # yv = pp.dict_whiten(data, 'out', 'valid', idx)
                 current_step = tf.train.global_step(sess, global_step)
 
                 # train op and loss
                 fd_t={x: xt, y: yt, lr: lr_,
-                      keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
+                      keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch]}
+
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
                 total_tr_cost_epoch += tr_cost
 
                 # valid loss
                 fd_v = {x: xv, y: yv,
-                        keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch-1]}
+                        keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch]}
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
                 total_val_cost_epoch += va_cost
 
                 # iteration number
-                iter_ = (epoch - 1) * n_train_batches + mi
+                iter_ = epoch * n_train_batches + mi
                 iter_valid += 1
 
                 # Print out current progress
-                if (iter_ + 1) % (validation_frequency/10) == 0:
+                if (iter_ + 1) % (max(validation_frequency/10,1)) == 0:
                     summary_t = sess.run(merged, feed_dict=fd_t)
                     summary_v = sess.run(merged, feed_dict=fd_v)
                     train_writer.add_summary(summary_t, iter_+1)
@@ -323,7 +374,7 @@ def train_cnn(opt):
                     iter_valid = 0
                     start_time_epoch = timeit.default_timer()
 
-            if epoch % save_frequency == 0:
+            if (epoch+1) % save_frequency == 0:
                 if opt['valid']:
                     this_val_loss=this_val_cost
                 else:
@@ -333,6 +384,12 @@ def train_cnn(opt):
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     model_details.update(bests)
                     save_model(opt, sess, saver, global_step, model_details)
+
+            # Update iteration counters:
+            epoch_auro = dataset.epochs_completed
+            epoch += 1
+            print('epoch=%d \n'
+                  'epoch_auro=%d' % (epoch, epoch_auro))
 
         # close the summary writers:
         train_writer.close()

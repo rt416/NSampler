@@ -26,48 +26,45 @@ import largesc.data_utils as dutils
 # import data_restore as restore
 import numpy as np
 
-def load_patchlib(filename, train_folder):
-    """
-    Looks and loads patchlib
-
-    Args:
-        filename (str): Filename to save patchlib (will be saved in Training data
-                        folder)
-        train_folder (str): subpath is added between training data folder and filename
-
-    Returns:
-        dataset: data_patchlib.Data, which provides a next_batch function
-                 (dataset = None if no patchlib is found)
-    """
-    trainfile = train_folder + filename
-    dataset = None
-    if os.path.isfile(trainfile):
-        print ('Loading patch library:', trainfile)
-        dataset = patch_sampler.Data().load(trainfile)
-    else:
-        raise RuntimeError('Patch library not found:', trainfile)
-    return dataset
-
+# def load_patchlib(filename, train_folder):
+#     """
+#     Looks and loads patchlib
+#
+#     Args:
+#         filename (str): Filename to save patchlib (will be saved in Training data
+#                         folder)
+#         train_folder (str): subpath is added between training data folder and filename
+#
+#     Returns:
+#         dataset: data_patchlib.Data, which provides a next_batch function
+#                  (dataset = None if no patchlib is found)
+#     """
+#     trainfile = train_folder + filename
+#     dataset = None
+#     if os.path.isfile(trainfile):
+#         print ('Loading patch library:', trainfile)
+#         dataset = patch_sampler.Data().load(trainfile)
+#     else:
+#         raise RuntimeError('Patch library not found:', trainfile)
+#     return dataset
+#
 
 # the basic data preparation subfunction:
 def prepare_data(size,
                  eval_frac,
                  inpN,
                  outM,
-                 filename,
+                 patchlib_name,
                  whiten,
-                 is_Blockmatch=False,
-                 sub_path='',
                  train_index=[],
                  bgval=0,
-                 inp_channels=4,
                  is_reset=False,
                  sample_sz=10,
-                 us_rate = 1,
+                 us_rate = 2,
                  data_dir_root='',
                  save_dir_root=''):
     """
-    Data preparation and patch generation for Pepys rat data.
+    Data preparation and patch generation for diffusion data.
     Outputs the Data class that provides a next_batch function to call for training.
 
     Does:
@@ -85,9 +82,8 @@ def prepare_data(size,
         eval_frac (float: [0,1]): fraction of the dataset used for evaluation
         inpN (int): input patch size = (2*inpN + 1)
         outM (int): output patch size = (2*outM + 1)
-        filename (str): Filename to save patchlib (will be saved in Training data
-                        folder)
-        sub_path (str): subpath is added between training data folder and filename
+        patchlib_name (str): name of the patchlib subdir to save patchlib indices and transformation.
+
         train_index (list): subject list to include in the training data
         bgval (float): Background value: voxels outside the mask
         inp_channels (int): Number of input data channels
@@ -109,76 +105,74 @@ def prepare_data(size,
 
     # Get the list of training subjects.
     if not train_index:
-        print ('Training index not provided, using default ')
-        train_index = ['117324', '904044']
+        raise ('Training index not provided, using default ')
+
 
     # Create the dir for saving the training data details
-    train_folder = save_dir_root + 'TrainingData/' + sub_path
+    train_folder = save_dir_root + patchlib_name
+
     if not os.path.exists(train_folder):
         os.makedirs(train_folder)
 
-    # Load/create training sets.
-    trainfile = train_folder + filename
-    if os.path.isfile(trainfile) and not is_reset:
-        print('Loading patch library:', trainfile)
-        dataset = patch_sampler.Data().load(trainfile)
+
+    # load the images into memory
+    inp_channels = range(3,9)
+    out_channels = range(3,9)
+    inp_images, out_images = load_data(data_dir_root,
+                                       train_index,
+                                       inp_channels,
+                                       out_channels)
+
+    # Check if there're any nan/inf
+    print ('Sanitising data...')
+    for i in range(len(train_index)):
+        dutils.sanitise_imgdata(inp_images[i])
+        dutils.sanitise_imgdata(out_images[i])
+
+    new_whiten = whiten
+    # normalise the image.
+    # if whiten == flags.NORM_SCALE_IMG:
+    #     inp = []
+    #     for img in inp_images:
+    #         inp.append(img[...,0])
+    #     med2 = dwh.scale_images(inp, out_images, bgval=bgval)
+    #     for it in range(1, inp_channels):
+    #         inp = []
+    #         for img in inp_images:
+    #             inp.append(img[...,it])
+    #         dwh.normalise_minmax(inp, maxval=1000, minval=0, bgval=bgval)
+    #         dwh.scale_src_image(inp, med2, bgval=bgval)
+    #     new_whiten = flags.NORM_NONE
+    # ext = sub_path.replace('/', '')
+    # patfile = train_folder + patchlib_name.replace('.p', '_') + ext + '_patches.p'
+
+    patfile = train_folder + '/patchlib_indices.p'
+
+    # Feed the data into patch extractor:
+    if os.path.isfile(patfile) and not is_reset:
+        print ('Loading patch indices...')
+        dataset = patch_sampler.Data().load_patch_indices_ryu(patfile,
+                                                          inp_images,
+                                                          out_images)
     else:
-        # load the images into memory
-        inp_channels = range(3,9)
-        out_channels = range(3,9)
-        inp_images, out_images = load_data(data_dir_root,
-                                           train_index,
-                                           inp_channels,
-                                           out_channels)
-
-        # Check if there're any nan/inf
-        print ('Sanitising data...')
-        for i in range(len(train_index)):
-            dutils.sanitise_imgdata(inp_images[i])
-            dutils.sanitise_imgdata(out_images[i])
-
-        new_whiten = whiten
-        # normalise the image.
+        print ('Computing patch library...')
+        print(us_rate)
+        dataset = patch_sampler.Data().create_patch_lib(size,
+                                                       eval_frac,
+                                                       inpN,
+                                                       outM,
+                                                       inp_images,
+                                                       out_images,
+                                                       ds=us_rate,
+                                                       whiten=new_whiten,
+                                                       bgval=bgval,
+                                                       sample_sz=sample_sz)
         # if whiten == flags.NORM_SCALE_IMG:
-        #     inp = []
-        #     for img in inp_images:
-        #         inp.append(img[...,0])
-        #     med2 = dwh.scale_images(inp, out_images, bgval=bgval)
-        #     for it in range(1, inp_channels):
-        #         inp = []
-        #         for img in inp_images:
-        #             inp.append(img[...,it])
-        #         dwh.normalise_minmax(inp, maxval=1000, minval=0, bgval=bgval)
-        #         dwh.scale_src_image(inp, med2, bgval=bgval)
-        #     new_whiten = flags.NORM_NONE
-
-        ext = sub_path.replace('/', '')
-        patfile = train_folder + filename.replace('.p', '_') + ext + '_patches.p'
-
-        # Feed the data into patch extractor:
-        if os.path.isfile(patfile) and not is_reset:
-            print ('Loading patch indices...')
-            dataset = patch_sampler.Data().load_patch_indices(patfile,
-                                                     inp_images, out_images)
-        else:
-            print ('Computing patch library...')
-            print(us_rate)
-            dataset = patch_sampler.Data().create_patch_lib(size,
-                                                   eval_frac,
-                                                   inpN,
-                                                   outM,
-                                                   inp_images,
-                                                   out_images,
-                                                   ds=us_rate,
-                                                   whiten=new_whiten,
-                                                   bgval=bgval,
-                                                   sample_sz=sample_sz)
-            # if whiten == flags.NORM_SCALE_IMG:
-            #     dataset._sparams.med2 = med2
-            spfile = train_folder + filename.replace('.p', '_') + ext + '_spars.p'
-            print ('Saving patch-scale-params:', spfile)
-            dataset.save_scale_params(spfile)
-            dataset.save_patch_indices(patfile)
+        #     dataset._sparams.med2 = med2
+        # spfile = train_folder + patchlib_name.replace('.p', '_') + ext + '_spars.p'
+        print ('Saving patch indices:' + patfile)
+        # dataset.save_scale_params(spfile)
+        dataset.save_patch_indices(patfile)
 
     return dataset, train_folder
 
