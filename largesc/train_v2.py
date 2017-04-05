@@ -150,14 +150,12 @@ def train_cnn(opt):
     opt["checkpoint_dir"] = checkpoint_dir
 
     # exit if the network has already been trained:
-    if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
+    if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')) \
+       and not(opt['continue']) and not(opt['overwrite']):
         print('Network already trained. Move on to next.')
         return
 
     # -------------------------load data---------------------------------------:
-    # todo: need to have separate names for training data and network names.
-    # todo: need to change the names of both networks/patch-library
-
     filename_patchlib = name_patchlib(opt)
     dataset, train_folder = data_generator.prepare_data(opt['train_size'],
                                                         opt['validation_fraction'],
@@ -224,11 +222,8 @@ def train_cnn(opt):
 
     # -------------------------- Start training -----------------------------:
     saver = tf.train.Saver()
-    print('... training')
+    print('\nStart training!\n')
     with tf.Session() as sess:
-        # Run the Op to initialize the variables.
-        init = tf.initialize_all_variables()
-        sess.run(init)
 
         # Merge all the summaries and write them out to ../network_name/log
         merged = tf.summary.merge_all()
@@ -243,10 +238,8 @@ def train_cnn(opt):
         tradeoff_list = models.get_tradeoff_values(opt)
 
         # Define some counters
-        test_score = 0
         start_time = timeit.default_timer()
         epoch = 0
-        epoch_auro = 0
         done_looping = False
         iter_valid = 0
         total_val_mse_epoch = 0
@@ -254,8 +247,7 @@ def train_cnn(opt):
         total_tr_cost_epoch = 0
         total_val_cost_epoch = 0
 
-        lr_ = opt['learning_rate']
-
+        # Define dictionary to save some results:
         bests = {}
         bests['val_loss'] = np.inf  # best valid loss itr wise
         bests['val_loss_save'] = np.inf  # best valid loss in saved checkpoints
@@ -264,19 +256,56 @@ def train_cnn(opt):
         bests['step_save'] = 0  # global step for the best saved model
         bests['counter'] = 0
         bests['counter_thresh'] = 10
-        validation_frequency = n_train_batches  #
+        validation_frequency = n_train_batches  # save every epoch basically.
         save_frequency = 1
-
 
         model_details = opt.copy()
         model_details.update(bests)
+        model_details['last_epoch'] = 0
         model_details['epoch_tr_mse'] = []
         model_details['epoch_val_mse'] = []
         model_details['epoch_tr_cost'] = []
         model_details['epoch_val_cost'] = []
 
+        # Initialization:
+        if opt['continue']:
+            # Specify the network parameters to be restored:
+            if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
+                print('continue from the previous training ...')
+                model_details = pkl.load(
+                    open(os.path.join(opt['checkpoint_dir'], 'settings.pkl'), 'rb'))
+                nn_file = os.path.join(opt['checkpoint_dir'],
+                                       "model-" + str(model_details['step_save']))
+                # Initialise the best parameters dict with the previous training:
+                bests.update(model_details)
+
+                # Restore the previous model parameters:
+                saver.restore(sess, nn_file)
+            else:
+                print('no trace of previous training!')
+                print('intialise and start training from scratch.')
+                #init = tf.initialize_all_variables()
+                init = tf.global_variables_initializer()
+                sess.run(init)
+        else:
+            if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
+                if opt['overwrite']:
+                    print('Overwriting the previous trained model ...')
+                else:
+                    print(
+                    'You have selected not to overwrite. Stop training ...')
+                    return
+            else:
+                print('Start brand new training ...')
+
+            #init = tf.initialize_all_variables()
+            init = tf.global_variables_initializer()
+            sess.run(init)
+
+        # Start training!
         while (epoch < n_epochs) and (not done_looping):
             start_time_epoch = timeit.default_timer()
+            lr_ = opt['learning_rate']
 
             # gradually reduce learning rate every 50 epochs:
             if (epoch+1) % 50 == 0:
@@ -287,8 +316,6 @@ def train_cnn(opt):
                 # multi-threading for speed if this is too slow
 
                 xt, yt = dataset.next_batch(opt['batch_size'])
-                xt_shape = xt.shape
-                yt_shape = yt.shape
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
 
                 # xt = pp.dict_whiten(data, 'in', 'train', idx)
@@ -350,19 +377,22 @@ def train_cnn(opt):
                           '\ttraining cost : %.2f \n'\
                           '\tvalidation cost : %.2f \n'\
                           '\ttook %f secs'
-                          % (epoch, mi + 1, n_train_batches,
-                            np.sqrt(this_tr_mse*10**10),
-                            np.sqrt(this_val_mse*10**10),
-                            this_tr_cost/10**4,
-                            this_val_cost/10**4,
-                            end_time_epoch - start_time_epoch))
+                          % (epoch + 1 + model_details['last_epoch'],
+                             mi + 1, n_train_batches,
+                             np.sqrt(this_tr_mse*10**10),
+                             np.sqrt(this_val_mse*10**10),
+                             this_tr_cost/10**4,
+                             this_val_cost/10**4,
+                             end_time_epoch - start_time_epoch))
 
                     if opt['valid']:
                         this_val_loss = this_val_cost
                     else:
                         this_val_loss = this_val_mse
 
-                    bests = update_best_loss(this_val_loss, bests, iter_,
+                    bests = update_best_loss(this_val_loss,
+                                             bests,
+                                             iter_,
                                              current_step)
 
                     # Start counting again:
@@ -381,6 +411,7 @@ def train_cnn(opt):
                     this_val_loss=this_val_mse
 
                 if this_val_loss < bests['val_loss_save']:
+                    model_details['last_epoch'] = epoch + 1
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     model_details.update(bests)
                     save_model(opt, sess, saver, global_step, model_details)
@@ -388,8 +419,8 @@ def train_cnn(opt):
             # Update iteration counters:
             epoch_auro = dataset.epochs_completed
             epoch += 1
-            print('epoch=%d \n'
-                  'epoch_auro=%d' % (epoch, epoch_auro))
+            # print('epoch=%d \n'
+            #       'epoch_auro=%d' % (epoch, epoch_auro))
 
         # close the summary writers:
         train_writer.close()

@@ -151,9 +151,11 @@ def prepare_data(size,
     # Feed the data into patch extractor:
     if os.path.isfile(patfile) and not is_reset:
         print ('Loading patch indices...')
-        dataset = patch_sampler.Data().load_patch_indices(patfile,
-                                                          inp_images,
-                                                          out_images)
+        dataset = patch_sampler.Data().load_patch_indices_ryu(patfile,
+                                                              inp_images,
+                                                              out_images,
+                                                              inpN,
+                                                              ds=us_rate)
     else:
         print ('Computing patch library...')
         print(us_rate)
