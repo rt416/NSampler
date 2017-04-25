@@ -36,9 +36,9 @@ opt['shuffle'] = True
 
 # Data (new):
 opt['background_value'] = 0  # background value in the images
-opt['train_subjects']=['117324', '904044']
-# opt['train_subjects'] = ['992774', '125525', '205119', '133928',
-#                          '570243', '448347', '654754', '153025']
+#opt['train_subjects']=['117324', '904044']
+opt['train_subjects'] = ['992774', '125525', '205119', '133928',
+                         '570243', '448347', '654754', '153025']
 opt['test_subjects'] = ['904044', '165840', '889579', '713239',
                         '899885', '117324', '214423', '857263']
 
@@ -80,9 +80,9 @@ opt['save_dir'] = base_dir + 'models/'
 opt['log_dir'] = base_dir + 'log/'
 opt['recon_dir'] = base_dir + 'recon/'
 
-opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
+opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
-opt['subpath'] = 'T1w/Diffusion'
+opt['subpath'] = '/T1w/Diffusion/'
 
 opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
