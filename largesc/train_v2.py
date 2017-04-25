@@ -310,7 +310,7 @@ def train_cnn(opt):
 
         # Start training!
         while (epoch < n_epochs) and (not done_looping):
-            epoch = dataset.epochs_completed
+
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
 
@@ -424,6 +424,7 @@ def train_cnn(opt):
                     save_model(opt, sess, saver, global_step, model_details)
 
             # Update iteration counters:
+            epoch = dataset.epochs_completed
             # epoch_auro = dataset.epochs_completed
             # epoch += 1
             # print('epoch=%d \n'
