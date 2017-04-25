@@ -378,6 +378,8 @@ def train_cnn(opt):
                     model_details['epoch_val_cost'].append(this_val_cost)
                     model_details['epoch_tr_cost'].append(this_tr_cost)
 
+                    epoch = dataset.epochs_completed
+
                     print('\nEpoch %i, minibatch %i/%i:\n' \
                           '\ttraining error (rmse) : %f times 1E-5\n' \
                           '\tvalidation error (rmse) : %f times 1E-5\n' \
@@ -424,7 +426,6 @@ def train_cnn(opt):
                     save_model(opt, sess, saver, global_step, model_details)
 
             # Update iteration counters:
-            epoch = dataset.epochs_completed
             # epoch_auro = dataset.epochs_completed
             # epoch += 1
             # print('epoch=%d \n'
