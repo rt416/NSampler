@@ -175,7 +175,7 @@ def train_cnn(opt):
 
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
-    print ('Patch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
+    print ('\nPatch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
            'Train size:',     opt['train_noexamples'],
            'Valid size:',     opt['valid_noexamples'])
 
@@ -232,8 +232,8 @@ def train_cnn(opt):
         valid_writer = tf.train.SummaryWriter(log_dir + '/valid')
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = opt['train_noexamples'] // opt['batch_size']
-        n_valid_batches = opt['valid_noexamples'] // opt['batch_size']
+        n_train_batches = opt['train_noexamples'] // opt['batch_size'] + 1
+        n_valid_batches = opt['valid_noexamples'] // opt['batch_size'] + 1
 
         # Compute the trade-off values:
         tradeoff_list = models.get_tradeoff_values(opt)
@@ -305,6 +305,7 @@ def train_cnn(opt):
 
         # Start training!
         while (epoch < n_epochs) and (not done_looping):
+            epoch = dataset.epochs_completed
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
 
@@ -318,6 +319,9 @@ def train_cnn(opt):
 
                 xt, yt = dataset.next_batch(opt['batch_size'])
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
+
+                print(mi)
+                print(dataset._index)
 
                 # xt = pp.dict_whiten(data, 'in', 'train', idx)
                 # yt = pp.dict_whiten(data, 'out', 'train', idx)
@@ -418,8 +422,8 @@ def train_cnn(opt):
                     save_model(opt, sess, saver, global_step, model_details)
 
             # Update iteration counters:
-            epoch_auro = dataset.epochs_completed
-            epoch += 1
+            # epoch_auro = dataset.epochs_completed
+            # epoch += 1
             # print('epoch=%d \n'
             #       'epoch_auro=%d' % (epoch, epoch_auro))
 

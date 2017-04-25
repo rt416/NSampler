@@ -89,6 +89,7 @@ class Data(object):
         self._sparams = ScaleParams()
         self._epochs_completed = 0
         self._index_in_epoch   = 0
+        self._index            = 0
         self._valid_index      = 0
         self._ds               = ds
 
@@ -122,6 +123,7 @@ class Data(object):
 
         # --------------- Prepare a patch library ----------------------
         print('Checking valid voxels...')
+        print('Sampling method: ' + method)
         vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
 
         if method=='default':
@@ -315,13 +317,16 @@ class Data(object):
             self._train_pindlistO = self._train_pindlistO[perm,:]
             # Start next epoch
             start = 0
+            self._index = 0
             self._index_in_epoch = batch_size
+
         end = self._index_in_epoch
         pindlist1 = self._train_pindlistI[start:end,:]
         pindlist2 = self._train_pindlistO[start:end,:]
         inp, out = self._collect_patches(self._inpN, self._outM, 
                                          self._inp_images, self._out_images,
                                          pindlist1, pindlist2)
+        self._index += 1
         return inp, out
 
 
