@@ -316,11 +316,12 @@ def train_cnn(opt):
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
                 # multi-threading for speed if this is too slow
-                print(mi)
-                print(dataset._index)
 
                 xt, yt = dataset.next_batch(opt['batch_size'])
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
+
+                print(mi+1)
+                print(dataset._index)
 
                 # xt = pp.dict_whiten(data, 'in', 'train', idx)
                 # yt = pp.dict_whiten(data, 'out', 'train', idx)
