@@ -9,7 +9,7 @@ opt = {}
 
 # Network:
 opt['method'] = 'cnn_simple_L1'
-opt['valid'] = True
+opt['valid'] = False
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
@@ -42,7 +42,7 @@ opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius
 opt['no_channels'] = 6
-opt['transform_opt'] = 'standard'  # preprocessing of input/output variables
+opt['transform_opt'] = 'scaling' #'standard'  # preprocessing of input/output variables
 
 # Dir:
 opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'

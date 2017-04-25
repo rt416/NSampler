@@ -16,6 +16,30 @@ from largesc.train_v2 import define_checkpoint, name_network
 from sr_datageneration import forward_periodic_shuffle
 
 
+def get_trasnform(opt):
+    if opt['transform_opt']=='0':
+        transform = dict()
+        transform['input_mean'] = .0
+        transform['input_std'] = 1.0
+        transform['output_mean'] = .0
+        transform['output_std'] = 1.0
+    elif opt['transform_opt']=='standard':
+        transform = dict()
+        transform['input_mean']=np.array([0.0007143541,
+                                          9.1065253e-09,
+                                          1.0169547e-06,
+                                          0.00074001489,
+                                          -1.2684665e-05,
+                                          0.00071994716])
+        transform['input_std']=np.array([0.00047637321,
+                                         8.8792462e-05,
+                                         9.2553419e-05,
+                                         0.00048288782,
+                                         9.5012001e-05,
+                                         0.00047756024])
+        transform['output_mean']=np.array([0.00089535239,
+                                           0.0008760544,
+                                           0.00087555352])
 # Pad the volumes:
 def dt_pad(dt_volume, opt):
     """ Pad a volume with zeros before reconstruction """
