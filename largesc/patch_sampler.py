@@ -28,6 +28,10 @@ class Data(object):
     This class assumes that the low-res image is in the hi-res space
     with repeated or interpolated voxels.
     """
+    def __init__(self):
+        self._epochs_completed = 0
+        self._index_in_epoch = 0
+        self._index = 0
 
     @property
     def scale_params(self):
@@ -188,6 +192,7 @@ class Data(object):
         with open(filename, 'rb') as handle:
             self.__dict__.update(pickle.load(handle).__dict__)
         self._epochs_completed = 0
+        self._index = 0
         self._index_in_epoch   = 0
         self._valid_index      = 0
         print ('Patch-lib size:', self._size + self._valsize, 
