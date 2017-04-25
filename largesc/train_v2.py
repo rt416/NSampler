@@ -379,7 +379,7 @@ def train_cnn(opt):
                           '\ttraining cost : %.2f \n'\
                           '\tvalidation cost : %.2f \n'\
                           '\ttook %f secs'
-                          % (epoch + 1 + model_details['last_epoch'],
+                          % (epoch + 1 , #+  model_details['last_epoch'],
                              mi + 1, n_train_batches,
                              np.sqrt(this_tr_mse*10**10),
                              np.sqrt(this_val_mse*10**10),
