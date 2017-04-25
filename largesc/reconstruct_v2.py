@@ -239,7 +239,7 @@ def sr_reconstruct(opt):
         opt['gt_header']='dt_b1000_'
 
     # Load the input low-res DT image:
-    input_file = os.path.join(gt_dir, subject, subpath, input_file_name)
+    input_file = gt_dir + subject + subpath + input_file_name
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 

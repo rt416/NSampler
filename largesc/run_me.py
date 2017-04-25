@@ -95,10 +95,10 @@ tf.reset_default_graph()
 train_cnn(opt)
 
 # Reconstruct:
+import largesc.reconstruct_v2 as reconstruct
 subjects_list = ['904044', '165840', '889579', '713239',
                  '899885', '117324', '214423', '857263']
 rmse_average = 0
-import largesc.reconstruct_v2 as reconstruct
 for subject in subjects_list:
     opt['subject'] = subject
     rmse, _ = reconstruct.sr_reconstruct(opt)
