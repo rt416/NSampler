@@ -225,7 +225,7 @@ def super_resolve(dt_lowres, opt):
 
 # Main reconstruction code:
 def sr_reconstruct(opt):
-
+    print('\nStart reconstruction! \n')
     # load parameters:
     recon_dir = opt['recon_dir']
     gt_dir = opt['gt_dir']
@@ -238,11 +238,10 @@ def sr_reconstruct(opt):
     if not('gt_header' in opt):
         opt['gt_header']='dt_b1000_'
 
-
     # Load the input low-res DT image:
+    input_file = os.path.join(gt_dir, subject, subpath, input_file_name)
     print('... loading the test low-res image ...')
-    dt_lowres = sr_utility.read_dt_volume(os.path.join(gt_dir, subject, subpath, input_file_name),
-                                          no_channels=no_channels)
+    dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
