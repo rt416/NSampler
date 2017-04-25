@@ -74,6 +74,10 @@ def moments(opt, x):
         shape = np.mean(x, axis=0, keepdims=True).shape
         mean = np.zeros(shape)
         std = 1e-4*np.ones(shape)
+    elif transform_opt == 'none':
+        shape = np.mean(x, axis=0, keepdims=True).shape
+        mean = np.zeros(shape)
+        std = np.ones(shape)
     return mean, std
 
 def dict_whiten(data, field1, field2, idx):
