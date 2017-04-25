@@ -48,7 +48,6 @@ class Data(object):
     def epochs_completed(self):
         return self._epochs_completed
 
-
     def create_patch_lib(self, 
                          size, 
                          eval_frac,
@@ -58,8 +57,9 @@ class Data(object):
                          out_images, 
                          ds,
                          whiten='0',
-                         bgval=0, 
-                         sample_sz=10):
+                         bgval=0,
+                         method='default'):
+
         """
         Generates the patchlib, which is equivalent to creating the randomised
         voxel list within the given list of subjects.
@@ -80,6 +80,7 @@ class Data(object):
         Returns:
             self: The class instance itself
         """
+        # ------------------- Set up config --------------------------------
         trainlen = int((1-eval_frac) * size)
         self._size = trainlen
         self._valsize = size - trainlen
@@ -93,16 +94,15 @@ class Data(object):
 
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
 
-            # Bring all images to low-res space
+        # ------------------ Preprocess --------------------------------
+        # bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)
+        # reverse-shuffle output images
         out_images = du.backward_shuffle_img(out_images, ds)
 
-        print ('Checking valid voxels...')
-        vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
-
+        # todo: need to include normalisation step.
         if whiten != '0':
-            raise RuntimeError('Cannot whiten patches in Patchlib Data now, ' + 
-                                'not collecting patches')
+            raise RuntimeError('No whiteining implemented yet, stop.')
 
         #  if whiten == flags.NORM_WHITEN_IMG:
         #    dwh.whiten_image_channels(inp_images)
@@ -116,54 +116,48 @@ class Data(object):
         #    self._sparams.med2 = dwh.scale_images(inp_images, out_images,
         #                                            bgval=bgval)
 
-        # Store input and reverse-shuffled output images
-        # for future patch collection
+        # store input and output for patch collection
         self._inp_images = inp_images
         self._out_images = out_images
 
-        #Now collect validation patch indices
-        N = len(inp_images) 
-        self._val_pindlistI = self._select_patch_indices_ryu(self._valsize, vox_indx)
-        self._val_pindlistO = self._val_pindlistI
+        # --------------- Prepare a patch library ----------------------
+        print('Checking valid voxels...')
+        vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
 
-        #Seggregate validation and training patch sets by
-        #creating masks of regions chosen for validation patches
-        tmasks = self._segregate_trainvalid_masks(inp_images, inpN, 
-                                                  self._val_pindlistI)
+        if method=='default':
+            # randomly sample patch indices
+            pindlistI = self._select_patch_indices_ryu(size, vox_indx)
 
-        # Now on these masks re-check for valid patch indices
-        vox_indx = self._get_valid_indices(tmasks, inpN, bgval=0)
+            # Split into validation and training sets:
+            self._val_pindlistI = pindlistI[:self._valsize, ...]
+            self._val_pindlistO = self._val_pindlistI
 
-        # From these new patch indices that are free of validation
-        # patches now select patches for training
-        self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
-        self._train_pindlistO = self._train_pindlistI
+            self._train_pindlistI = pindlistI[self._valsize:, ...]
+            self._train_pindlistO = self._train_pindlistI
 
-        if whiten != '0':
-            raise RuntimeError('Cannot whiten patches in Patchlib Data now, ' + 
-                                'not collecting patches')
-        #inp_patches, out_patches = self._collect_patches(inpN, outM,
-        #                                                 inp_images,
-        #                                                 out_images,
-        #                                                 pindlist)
-        #if whiten == flags.NORM_WHITEN_PAT:
-        #    #inp1 = inp_patches[..., 0]
-        #    dwh.whiten_patchlib_channels(inp_patches)
-        #    self._sparams.mean, self._sparams.std = \
-        #                            dwh.whiten_patchlib_channels(out_patches)
-        #if whiten == flags.NORM_MINMAX_PAT:
-        #    dwh.minmax_patchlib_channels(inp_patches)
-        #    self._sparams.M1, self._sparams.M2 = \
-        #                            dwh.minmax_patchlib_channels(out_patches)
-        #if whiten == flags.NORM_SCALE_PAT:
-        #    raise RuntimeError('Not implemented yet')
+        elif method=='segregate':
+            # Now collect validation patch indices
+            self._val_pindlistI = self._select_patch_indices_ryu(self._valsize, vox_indx)
+            self._val_pindlistO = self._val_pindlistI
 
+            # segregate validation and training patch sets by
+            # creating masks of regions chosen for validation patches
+            tmasks = self._segregate_trainvalid_masks(inp_images, inpN,
+                                                      self._val_pindlistI)
 
-        print ('Patch-lib size:', size, 
-               'Train size:', self._size, 
-               'Valid size:', self._valsize)
+            # Now on these masks re-check for valid patch indices
+            vox_indx = self._get_valid_indices(tmasks, inpN, bgval=0)
+
+            # From these new patch indices that are free of validation
+            # patches now select patches for training
+            self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
+            self._train_pindlistO = self._train_pindlistI
+
+        print('Patch-lib size:', size,
+              'Train size:', self._size,
+              'Valid size:', self._valsize)
+
         return self
-
 
     def save(self, filename):
         """
@@ -174,7 +168,6 @@ class Data(object):
         """
         with open(filename, 'wb') as handle:
             pickle.dump(self, handle)
-
 
     def load(self, filename):
         """
@@ -220,14 +213,13 @@ class Data(object):
         self._inp_images = tmp_inp
         self._out_images = tmp_out
 
+    # def load_patch_indices(self, filename, inp_images, out_images):
+    #     self.load(filename)
+    #     self._inp_images = inp_images
+    #     self._out_images = out_images
+    #     return self
 
-    def load_patch_indices(self, filename, inp_images, out_images):
-        self.load(filename)
-        self._inp_images = inp_images
-        self._out_images = out_images
-        return self
-
-    def load_patch_indices_ryu(self, filename, inp_images, out_images, inpN, ds):
+    def load_patch_indices(self, filename, inp_images, out_images, inpN, ds):
         self.load(filename)
 
         # Pad:
@@ -366,7 +358,6 @@ class Data(object):
                                          pindlist1, pindlist2)
         return inp, out
 
-
     def _get_valid_indices(self, img_list, psz, bgval=0):
         """
         Finds voxels that are not in the background, then parses the list
@@ -410,7 +401,6 @@ class Data(object):
             index_list.append(ijk[rowlist, :])
             cnt += 1
         return index_list
-
 
     def _collect_patches(self, inpN, outM, inp_images, out_images, 
                          pindlistI, pindlistO):
@@ -512,13 +502,13 @@ class Data(object):
         """ Select the indices of patches to be extracted
         Args:
             size (int): the total number of patches to be extracted
-            sample_sz (int): the number of patches sampled each time
             vox_indx (list): list of 2d np arrays. Each array stores the indices
                             (i,j,k) of all valid patches in each subject.
                             Each row is an instance of patch location (i, j, k).
                             len(vox_idx) = number of subjects.
         Returns:
-            pindlist (np array):
+            pindlist (np array): 4D array which stores the patch identifiers:
+                                 Each row is of form [subject_idx, i, j, k].
 
         """
         print('Selecting random patch-indices...')

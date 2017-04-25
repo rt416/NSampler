@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 import tensorflow as tf
 
 # Options
@@ -15,11 +16,9 @@ opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 
 # Training
-opt['overwrite'] = False  # restart the training completely.
+opt['overwrite'] = True  # restart the training completely.
 opt['continue'] = True  # set True if you want to continue training from the previous experiment
 if opt['continue']: opt['overwrite'] = False
-
-
 
 opt['optimizer'] = tf.train.AdamOptimizer
 opt['dropout_rate'] = 0.0

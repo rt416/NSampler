@@ -85,7 +85,7 @@ def prepare_data(size,
         patchlib_name (str): name of the patchlib subdir to save patchlib indices and transformation.
 
         train_index (list): subject list to include in the training data
-        bgval (float): Background value: voxels outside the mask
+        bgval (float): background value: voxels outside the mask
         inp_channels (int): Number of input data channels
         whiten (whiten type): Whiten data or not
         is_reset (bool): if set will recompute patchlib even if file exists and
@@ -115,7 +115,7 @@ def prepare_data(size,
         os.makedirs(train_folder)
 
 
-    # load the images into memory
+    # load the images into memory (as a list of numpy arrays):
     inp_channels = range(3,9)
     out_channels = range(3,9)
     inp_images, out_images = load_data(data_dir_root,
@@ -151,11 +151,11 @@ def prepare_data(size,
     # Feed the data into patch extractor:
     if os.path.isfile(patfile) and not is_reset:
         print ('Loading patch indices...')
-        dataset = patch_sampler.Data().load_patch_indices_ryu(patfile,
-                                                              inp_images,
-                                                              out_images,
-                                                              inpN,
-                                                              ds=us_rate)
+        dataset = patch_sampler.Data().load_patch_indices(patfile,
+                                                          inp_images,
+                                                          out_images,
+                                                          inpN,
+                                                          ds=us_rate)
     else:
         print ('Computing patch library...')
         print(us_rate)
@@ -168,7 +168,7 @@ def prepare_data(size,
                                                        ds=us_rate,
                                                        whiten=new_whiten,
                                                        bgval=bgval,
-                                                       sample_sz=sample_sz)
+                                                       method='default')
         # if whiten == flags.NORM_SCALE_IMG:
         #     dataset._sparams.med2 = med2
         # spfile = train_folder + patchlib_name.replace('.p', '_') + ext + '_spars.p'
@@ -201,6 +201,7 @@ def load_data(data_dir_root,
     out_images = [0,] * len(train_index)
     ind = 0
 
+    # todo: need to make the naming more general - currently specific to DTIs
     for subject in train_index:
         inp_file = (data_dir_root + subject + '/dt_b1000_lowres_2_{0:d}.nii')
         out_file = (data_dir_root + subject + '/dt_b1000_{0:d}.nii')
