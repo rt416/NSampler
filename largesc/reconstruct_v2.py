@@ -271,8 +271,8 @@ def sr_reconstruct(opt):
     __, recon_file = os.path.split(output_file)
     print('\nSave each estimated dti separately as a nii file ...')
     sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir, subject, nn_dir),
-                             os.path.join(gt_dir, subject, subpath),
+                             recon_dir+subject+'/'+nn_dir,
+                             gt_dir+subject+subpath,
                              no_channels=no_channels,
                              gt_header=opt['gt_header'])
 
@@ -284,10 +284,10 @@ def sr_reconstruct(opt):
     mask_dir = opt['mask_dir']
     rmse, rmse_whole, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
-                                  recon_dir=os.path.join(recon_dir, subject, nn_dir),
-                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  recon_dir=recon_dir+subject+'/'+nn_dir,
+                                  gt_dir=gt_dir+subject+subpath,
                                   mask_choose=True,
-                                  mask_dir=os.path.join(mask_dir, subject, 'masks'),
+                                  mask_dir=mask_dir+subject+'/masks',
                                   mask_file=mask_file,
                                   no_channels=no_channels,
                                   gt_header=opt['gt_header'])
