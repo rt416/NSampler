@@ -26,9 +26,9 @@ opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
 
-opt['train_size'] = 100  # total number of patch pairs (train + valid set)
+opt['train_size'] = 17431  # 100  # total number of patch pairs (train + valid set)
 opt['n_epochs'] = 200
-opt['batch_size'] = 5  # 12
+opt['batch_size'] = 12
 opt['validation_fraction'] = 0.5
 opt['patch_sampling_opt']='separate'  # by default, train and valid sets are separated.
 opt['shuffle'] = True
@@ -61,32 +61,30 @@ opt['output_radius'] = output_radius
 opt['no_channels'] = 6
 opt['transform_opt'] = '0'  #'standard'  # preprocessing of input/output variables
 
-# Dir:
-opt['data_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
-opt['save_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
-opt['log_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/log/'
-opt['save_train_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
-
-opt['gt_dir'] = '/Users/ryutarotanno/DeepLearning/nsampler/data/HCP/'  # ground truth dir
-opt['subpath'] = 'T1w/Diffusion'
-
-opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
+# # Local dir:
+# opt['data_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
+# opt['save_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
+# opt['log_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/log/'
+# opt['save_train_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
+#
+# opt['gt_dir'] = '/Users/ryutarotanno/DeepLearning/nsampler/data/HCP/'  # ground truth dir
+# opt['subpath'] = ''
+#
+# opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
 
 # cluster directories:
-# opt['data_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/' # '../data/'
-# opt['save_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/models'
-# opt['log_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/log'
-# opt['recon_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/comparison_v2/recon'
-# opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
-#
-# opt['save_train_dir_tmp'] = '/SAN/vision/hcp/Ryu/IPMI2016/HCP'
-# opt['save_train_dir'] = '/SAN/vision/hcp/Ryu/IPMI2016/TrainingSet/'
-#
-# opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
-# opt['subpath'] = 'T1w/Diffusion'
-#
-# opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
+base_dir = '/SAN/vision/hcp/Ryu/miccai2017/25Apr2017/'
+opt['data_dir'] = base_dir + 'data/'
+opt['save_dir'] = base_dir + 'models/'
+opt['log_dir'] = base_dir + 'log/'
+opt['recon_dir'] = base_dir + 'recon/'
+
+opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon'
+opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
+opt['subpath'] = 'T1w/Diffusion'
+
+opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
 # Choose the experiment option:
 # choose = input("Press 1 for training or 2 or 3 for normal/MC-based reconstruction ")

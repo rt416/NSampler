@@ -62,7 +62,8 @@ def prepare_data(size,
                  sample_sz=10,
                  us_rate = 2,
                  data_dir_root='',
-                 save_dir_root=''):
+                 save_dir_root='',
+                 subpath=''):
     """
     Data preparation and patch generation for diffusion data.
     Outputs the Data class that provides a next_batch function to call for training.
@@ -119,6 +120,7 @@ def prepare_data(size,
     inp_channels = range(3,9)
     out_channels = range(3,9)
     inp_images, out_images = load_data(data_dir_root,
+                                       subpath,
                                        train_index,
                                        inp_channels,
                                        out_channels)
@@ -180,6 +182,7 @@ def prepare_data(size,
 
 
 def load_data(data_dir_root,
+              subpath,
               train_index,
               inp_channels,
               out_channels):
@@ -203,8 +206,10 @@ def load_data(data_dir_root,
 
     # todo: need to make the naming more general - currently specific to DTIs
     for subject in train_index:
-        inp_file = (data_dir_root + subject + '/dt_b1000_lowres_2_{0:d}.nii')
-        out_file = (data_dir_root + subject + '/dt_b1000_{0:d}.nii')
+        inp_file = (data_dir_root + subject + subpath +
+                    '/dt_b1000_lowres_2_{0:d}.nii')
+        out_file = (data_dir_root + subject + subpath +
+                    '/dt_b1000_{0:d}.nii')
         inp_images[ind], hdr = dutils.load_series_nii(inp_file,
                                                       inp_channels,
                                                       dtype='float32')

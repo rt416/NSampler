@@ -169,7 +169,8 @@ def train_cnn(opt):
                                                         sample_sz=10,
                                                         us_rate=opt['upsampling_rate'],
                                                         data_dir_root=opt['gt_dir'],
-                                                        save_dir_root=opt['data_dir']
+                                                        save_dir_root=opt['data_dir'],
+                                                        subpath=opt['subpath'],
                                                         )
 
     opt['train_noexamples'] = dataset.size
