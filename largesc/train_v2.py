@@ -232,8 +232,8 @@ def train_cnn(opt):
         valid_writer = tf.train.SummaryWriter(log_dir + '/valid')
 
         # Compute number of minibatches for training, validation and testing
-        n_train_batches = opt['train_noexamples'] // opt['batch_size'] + 1
-        n_valid_batches = opt['valid_noexamples'] // opt['batch_size'] + 1
+        n_train_batches = opt['train_noexamples'] // opt['batch_size']
+        n_valid_batches = opt['valid_noexamples'] // opt['batch_size']
 
         # Compute the trade-off values:
         tradeoff_list = models.get_tradeoff_values(opt)
