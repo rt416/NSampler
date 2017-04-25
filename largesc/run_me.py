@@ -26,7 +26,7 @@ opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
 
-opt['train_size'] = 9000 #17431  # 100  # total number of patch pairs (train + valid set)
+opt['train_size'] = 17431 # 9000  # 100  # total number of patch pairs (train + valid set)
 opt['n_epochs'] = 200
 opt['batch_size'] = 12
 opt['validation_fraction'] = 0.5
@@ -94,11 +94,18 @@ from largesc.train_v2 import train_cnn
 tf.reset_default_graph()
 train_cnn(opt)
 
-    # # Reconstruct (optional):
-    # subjects_list = ['904044', '165840', '889579', '713239',
-    #                  '899885', '117324', '214423', '857263']
-    # rmse_average = 0
-    #
+# Reconstruct:
+subjects_list = ['904044', '165840', '889579', '713239',
+                 '899885', '117324', '214423', '857263']
+rmse_average = 0
+import largesc.reconstruct_v2 as reconstruct
+for subject in subjects_list:
+    opt['subject'] = subject
+    rmse, _ = reconstruct.sr_reconstruct(opt)
+    rmse_average += rmse
+print('\n Average RMSE on Diverse dataset is %.15f.'
+      % (rmse_average / len(subjects_list),))
+
     # if choose_rec==1:
     #     import reconstruct
     #     for subject in subjects_list:
