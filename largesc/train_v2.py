@@ -280,6 +280,9 @@ def train_cnn(opt):
                 # Initialise the best parameters dict with the previous training:
                 bests.update(model_details)
 
+                # Set the initial epoch:
+                epoch_init = model_details['last_epoch']
+
                 # Restore the previous model parameters:
                 saver.restore(sess, nn_file)
             else:
@@ -287,6 +290,7 @@ def train_cnn(opt):
                 print('intialise and start training from scratch.')
                 #init = tf.initialize_all_variables()
                 init = tf.global_variables_initializer()
+                epoch_init = 0
                 sess.run(init)
         else:
             if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
@@ -301,6 +305,7 @@ def train_cnn(opt):
 
             #init = tf.initialize_all_variables()
             init = tf.global_variables_initializer()
+            epoch_init = 0
             sess.run(init)
 
         # Start training!
@@ -310,8 +315,8 @@ def train_cnn(opt):
             lr_ = opt['learning_rate']
 
             # gradually reduce learning rate every 50 epochs:
-            if (epoch+1) % 50 == 0:
-                lr_ = lr_ / 10.
+            # if (epoch+1) % 50 == 0:
+            #     lr_ = lr_ / 10.
 
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
@@ -379,7 +384,7 @@ def train_cnn(opt):
                           '\ttraining cost : %.2f \n'\
                           '\tvalidation cost : %.2f \n'\
                           '\ttook %f secs'
-                          % (epoch + 1 , #+  model_details['last_epoch'],
+                          % (epoch + 1 + epoch_init,
                              mi + 1, n_train_batches,
                              np.sqrt(this_tr_mse*10**10),
                              np.sqrt(this_val_mse*10**10),
