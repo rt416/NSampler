@@ -16,7 +16,7 @@ opt['n_h2'] = 2*opt['n_h1']
 opt['n_h3'] = 10
 
 # Training
-opt['overwrite'] = True  # restart the training completely.
+opt['overwrite'] = False  # restart the training completely.
 opt['continue'] = False  # set True if you want to continue training from the previous experiment
 if opt['continue']: opt['overwrite'] = False
 
