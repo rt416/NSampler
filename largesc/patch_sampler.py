@@ -47,6 +47,9 @@ class Data(object):
     @property
     def epochs_completed(self):
         return self._epochs_completed
+    @@property
+    def index(self):
+        return self._index
 
     def create_patch_lib(self, 
                          size, 

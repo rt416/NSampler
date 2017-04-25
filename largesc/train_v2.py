@@ -321,7 +321,7 @@ def train_cnn(opt):
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
 
                 print(mi)
-                print(dataset._index)
+                print(dataset.index)
 
                 # xt = pp.dict_whiten(data, 'in', 'train', idx)
                 # yt = pp.dict_whiten(data, 'out', 'train', idx)
