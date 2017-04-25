@@ -8,7 +8,7 @@ import tensorflow as tf
 opt = {}
 
 # Network:
-opt['method'] = 'cnn_simple_L1'
+opt['method'] = 'cnn_simple'
 opt['valid'] = False
 opt['n_h1'] = 50
 opt['n_h2'] = 2*opt['n_h1']
