@@ -166,7 +166,6 @@ def train_cnn(opt):
                                                         train_index=opt['train_subjects'],
                                                         bgval=opt['background_value'],
                                                         is_reset=False,
-                                                        sample_sz=10,
                                                         us_rate=opt['upsampling_rate'],
                                                         data_dir_root=opt['gt_dir'],
                                                         save_dir_root=opt['data_dir'],
@@ -176,8 +175,8 @@ def train_cnn(opt):
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
     print ('\nPatch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
-           'Train size:',     opt['train_noexamples'],
-           'Valid size:',     opt['valid_noexamples'])
+           'Train size:', opt['train_noexamples'],
+           'Valid size:', opt['valid_noexamples'])
 
     # --------------------------- Define the model--------------------------:
     #  define input and output:
@@ -217,8 +216,10 @@ def train_cnn(opt):
 
     with tf.name_scope('accuracy'):
         # todo: introduce proper scaling
-        # mse = tf.reduce_mean(tf.square(data['out']['std'] * (y - y_pred)))
-        mse = tf.reduce_mean(tf.square(y - y_pred))
+        transform = dataset._transform
+        print(transform)
+        mse = tf.reduce_mean(tf.square(transform['output_std']*(y - y_pred)))
+        # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
 
     # -------------------------- Start training -----------------------------:

@@ -12,7 +12,7 @@ import tensorflow as tf
 import sr_preprocess as pp
 import sr_utility
 import models
-from largesc.train_v2 import define_checkpoint, name_network
+from largesc.train_v2 import define_checkpoint, name_network, name_patchlib
 from sr_datageneration import forward_periodic_shuffle
 
 
@@ -164,12 +164,14 @@ def super_resolve(dt_lowres, opt):
 
     # Load normalisation parameters and define prediction:
     # todo: include normalisation option
-    # transform = pkl.load(open(os.path.join(network_dir, 'transforms.pkl'), 'rb'))
-    transform = dict()
-    transform['input_mean']=.0
-    transform['input_std']=1.0
-    transform['output_mean'] = .0
-    transform['output_std'] = 1.0
+    transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
+    transform = pkl.load(open(transfile, 'rb'))
+    print(transform)
+    # transform = dict()
+    # transform['input_mean']=.0
+    # transform['input_std']=1.0
+    # transform['output_mean'] = .0
+    # transform['output_std'] = 1.0
     y_pred, y_pred_std = models.scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off)
 
     # Specify the network parameters to be restored:

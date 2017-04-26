@@ -59,7 +59,7 @@ opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius
 opt['no_channels'] = 6
-opt['transform_opt'] = '0'  #'standard'  # preprocessing of input/output variables
+opt['transform_opt'] = 'scaling'  #'standard'  # preprocessing of input/output variables
 
 # # Local dir:
 # opt['data_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'

@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import pickle
+import cPickle as pickle
 import copy
 import largesc.data_utils as du
 import largesc.math_utils as mu
@@ -32,6 +32,7 @@ class Data(object):
         self._epochs_completed = 0
         self._index_in_epoch = 0
         self._index = 0
+        self._transform = dict()
 
     @property
     def scale_params(self):
@@ -55,6 +56,41 @@ class Data(object):
     def index(self):
         return self._index
 
+    def whiten_imgs(self, whiten, inp_images, out_images, compute_tfm):
+
+        # Compute the normalisation parameters:
+        if compute_tfm:
+            if whiten == 'none':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1.0
+                transform['output_mean'] = .0
+                transform['output_std'] = 1.0
+
+            elif whiten == 'scaling':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1e-4
+                transform['output_mean'] = .0
+                transform['output_std'] = 1e-4
+            elif whiten == 'whiten_channel':
+                transform = dict()
+                print('Whiten each channel independently.')
+
+            self._transform = transform
+
+        # Normalise each image/volume sequentially:
+        for idx in range(len(inp_images)):
+            inp_images[idx] = (inp_images[idx]-self._transform['input_mean'])\
+                              /self._transform['input_std']
+            out_images[idx] = (out_images[idx]-self._transform['output_mean']) \
+                              /self._transform['output_std']
+
+        return inp_images, out_images
+
+
     def create_patch_lib(self, 
                          size, 
                          eval_frac,
@@ -63,7 +99,7 @@ class Data(object):
                          inp_images, 
                          out_images, 
                          ds,
-                         whiten='0',
+                         whiten='none',
                          bgval=0,
                          method='default'):
 
@@ -100,29 +136,18 @@ class Data(object):
         self._valid_index      = 0
         self._ds               = ds
 
-        inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
-
         # ------------------ Preprocess --------------------------------
+        # todo: need to include normalisation step.
+        inp_images, out_images = \
+            self.whiten_imgs(whiten, inp_images, out_images, True)
+
+        # pad images:
+        inp_images, out_images = self._pad_images(inp_images, out_images,
+                                                  ds, inpN)
         # bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)
         # reverse-shuffle output images
         out_images = du.backward_shuffle_img(out_images, ds)
-
-        # todo: need to include normalisation step.
-        if whiten != '0':
-            raise RuntimeError('No whiteining implemented yet, stop.')
-
-        #  if whiten == flags.NORM_WHITEN_IMG:
-        #    dwh.whiten_image_channels(inp_images)
-        #    self._sparams.mean, self._sparams.std = \
-        #                dwh.whiten_image_channels(out_images)
-        # if whiten == flags.NORM_MINMAX_IMG:
-        #    dwh.minmax_image_channels(inp_images)
-        #    self._sparams.M1, self._sparams.M2 = \
-        #                dwh.minmax_image_channels(out_images)
-        # if whiten == flags.NORM_SCALE_IMG:
-        #    self._sparams.med2 = dwh.scale_images(inp_images, out_images,
-        #                                            bgval=bgval)
 
         # store input and output for patch collection
         self._inp_images = inp_images
@@ -201,17 +226,19 @@ class Data(object):
         return self
 
 
-    def save_scale_params(self, filename):
-        with open(filename, 'wb') as handle:
-            pickle.dump(self._sparams, handle)
-
-
     def load_scale_params(self, filename):
         sparams = ScaleParams()
         with open(filename, 'rb') as handle:
             sparams.__dict__.update(pickle.load(handle).__dict__)
         return sparams
 
+    def save_transform(self, filename):
+        with open(filename, 'wb') as handle:
+            pickle.dump(self._transform, handle)
+
+    def load_transform(self, filename):
+        with open(filename, 'rb') as handle:
+            self._transform = pickle.load(handle)
 
     def save_patch_indices(self, filename):
         # just save the indices but the data.
@@ -229,8 +256,16 @@ class Data(object):
     #     self._out_images = out_images
     #     return self
 
-    def load_patch_indices(self, filename, inp_images, out_images, inpN, ds):
+    def load_patch_indices(self, filename, transname,
+                           inp_images, out_images, inpN, ds, whiten):
+
+        # Load the indices:
         self.load(filename)
+        self.load_transform(transname)
+
+        # Normalise:
+        inp_images, out_images = \
+            self.whiten_imgs(whiten, inp_images, out_images, False)
 
         # Pad:
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)

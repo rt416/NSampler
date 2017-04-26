@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import pickle
+import cPickle as pkl
 import os
 import largesc.patch_sampler as patch_sampler
 import largesc.data_utils as dutils
@@ -59,8 +59,7 @@ def prepare_data(size,
                  train_index=[],
                  bgval=0,
                  is_reset=False,
-                 sample_sz=10,
-                 us_rate = 2,
+                 us_rate=2,
                  data_dir_root='',
                  save_dir_root='',
                  subpath=''):
@@ -131,33 +130,19 @@ def prepare_data(size,
         dutils.sanitise_imgdata(inp_images[i])
         dutils.sanitise_imgdata(out_images[i])
 
-    new_whiten = whiten
-    # normalise the image.
-    # if whiten == flags.NORM_SCALE_IMG:
-    #     inp = []
-    #     for img in inp_images:
-    #         inp.append(img[...,0])
-    #     med2 = dwh.scale_images(inp, out_images, bgval=bgval)
-    #     for it in range(1, inp_channels):
-    #         inp = []
-    #         for img in inp_images:
-    #             inp.append(img[...,it])
-    #         dwh.normalise_minmax(inp, maxval=1000, minval=0, bgval=bgval)
-    #         dwh.scale_src_image(inp, med2, bgval=bgval)
-    #     new_whiten = flags.NORM_NONE
-    # ext = sub_path.replace('/', '')
-    # patfile = train_folder + patchlib_name.replace('.p', '_') + ext + '_patches.p'
-
-    patfile = train_folder + '/patchlib_indices.p'
-
     # Feed the data into patch extractor:
-    if os.path.isfile(patfile) and not is_reset:
+    patfile = train_folder + '/patchlib_indices.pkl'
+    transfile = train_folder + '/transforms.pkl'
+
+    if os.path.isfile(patfile) and os.path.isfile(transfile) and not is_reset:
         print ('Loading patch indices...')
         dataset = patch_sampler.Data().load_patch_indices(patfile,
+                                                          transfile,
                                                           inp_images,
                                                           out_images,
                                                           inpN,
-                                                          ds=us_rate)
+                                                          ds=us_rate,
+                                                          whiten=whiten)
     else:
         print ('Computing patch library...')
         print(us_rate)
@@ -168,15 +153,13 @@ def prepare_data(size,
                                                        inp_images,
                                                        out_images,
                                                        ds=us_rate,
-                                                       whiten=new_whiten,
+                                                       whiten=whiten,
                                                        bgval=bgval,
                                                        method='default')
-        # if whiten == flags.NORM_SCALE_IMG:
-        #     dataset._sparams.med2 = med2
-        # spfile = train_folder + patchlib_name.replace('.p', '_') + ext + '_spars.p'
         print ('Saving patch indices:' + patfile)
-        # dataset.save_scale_params(spfile)
         dataset.save_patch_indices(patfile)
+        print('Saving transformation:' + transfile)
+        dataset.save_transform(transfile)
 
     return dataset, train_folder
 
