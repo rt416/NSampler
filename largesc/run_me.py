@@ -26,7 +26,7 @@ opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
 
-opt['train_size'] = 17431 # 9000  # 100  # total number of patch pairs (train + valid set)
+opt['train_size'] = 72000  #17431 # 9000  # 100  # total number of patch pairs (train + valid set)
 opt['n_epochs'] = 200
 opt['batch_size'] = 12
 opt['validation_fraction'] = 0.5
@@ -38,7 +38,11 @@ opt['shuffle'] = True
 opt['background_value'] = 0  # background value in the images
 #opt['train_subjects']=['117324', '904044']
 opt['train_subjects'] = ['992774', '125525', '205119', '133928',
-                         '570243', '448347', '654754', '153025']
+                         '570243', '448347', '654754', '153025',
+                         '101915', '106016', '120111', '122317',
+                         '130316', '148335', '153025', '159340',
+                         '351938', '390645', '545345', '586460',
+                         '705341', '749361', '765056', '951457']
 opt['test_subjects'] = ['904044', '165840', '889579', '713239',
                         '899885', '117324', '214423', '857263']
 

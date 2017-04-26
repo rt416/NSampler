@@ -217,7 +217,7 @@ def train_cnn(opt):
     with tf.name_scope('accuracy'):
         # todo: introduce proper scaling
         transform = dataset._transform
-        print(transform)
+        print(transform )
         mse = tf.reduce_mean(tf.square(transform['output_std']*(y - y_pred)))
         # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
