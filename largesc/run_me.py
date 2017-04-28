@@ -26,7 +26,7 @@ opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00
 opt['L2_reg'] = 1e-5
 
-opt['train_size'] = 72000  #17431 # 9000  # 100  # total number of patch pairs (train + valid set)
+opt['train_size'] = 17431 #72000  #17431 # 9000  # 100  # total number of patch pairs (train + valid set)
 opt['n_epochs'] = 200
 opt['batch_size'] = 12
 opt['validation_fraction'] = 0.5
