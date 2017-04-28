@@ -53,7 +53,7 @@ opt['test_subjects'] = ['904044', '165840', '889579', '713239',
 
 # Data/task:
 opt['cohort'] ='Diverse'
-opt['no_subjects'] = 8
+opt['no_subjects'] = len(opt['train_subjects'])
 opt['b_value'] = 1000
 opt['patchlib_idx'] = 1
 opt['no_randomisation'] = 1

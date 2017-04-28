@@ -75,9 +75,22 @@ class Data(object):
                 transform['input_std'] = 1e-4
                 transform['output_mean'] = .0
                 transform['output_std'] = 1e-4
-            elif whiten == 'whiten_channel':
-                transform = dict()
+            elif whiten == 'standard':
                 print('Whiten each channel independently.')
+                transform = dict()
+                in_m, in_s, out_m, out_s = 0, 0, 0, 0
+                for img in inp_images:
+                    in_m += np.mean(img[img[...,0] != 0.0], axis=0)
+                    in_s += np.std(img[img[..., 0] != 0.0], axis=0)
+
+                for img in out_images:
+                    out_m += np.mean(img[img[..., 0] != 0.0], axis=0)
+                    out_s += np.std(img[img[..., 0] != 0.0], axis=0)
+
+                transform['input_mean']= in_m/len(inp_images)
+                transform['input_std'] = in_s/len(inp_images)
+                transform['output_mean'] = out_m/len(out_images)
+                transform['output_std'] = out_m/len(out_images)
 
             self._transform = transform
 
