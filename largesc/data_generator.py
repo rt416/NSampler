@@ -143,6 +143,8 @@ def prepare_data(size,
                                                           inpN,
                                                           ds=us_rate,
                                                           whiten=whiten)
+        print('Save transformation:' + transfile)
+        dataset.save_transform(transfile)
     else:
         print ('Computing patch library...')
         print(us_rate)
