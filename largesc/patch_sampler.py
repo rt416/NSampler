@@ -90,7 +90,7 @@ class Data(object):
                 transform['input_mean']= in_m/len(inp_images)
                 transform['input_std'] = in_s/len(inp_images)
                 transform['output_mean'] = out_m/len(out_images)
-                transform['output_std'] = out_m/len(out_images)
+                transform['output_std'] = out_s/len(out_images)
 
             # Assign to the object.
             self._transform = transform
