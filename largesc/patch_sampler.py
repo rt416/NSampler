@@ -56,7 +56,7 @@ class Data(object):
     def index(self):
         return self._index
 
-    def whiten_imgs(self, whiten, inp_images, out_images, compute_tfm):
+    def whiten_imgs(self, whiten, inp_images, out_images, compute_tfm, ds):
 
         # Compute the normalisation parameters:
         if compute_tfm:
@@ -96,11 +96,20 @@ class Data(object):
 
         # Normalise each image/volume sequentially:
         for idx in range(len(inp_images)):
-            inp_images[idx] = (inp_images[idx]-self._transform['input_mean'])\
-                              /self._transform['input_std']
-            out_images[idx] = (out_images[idx]-self._transform['output_mean']) \
-                              /self._transform['output_std']
+            inp_images[idx] = (inp_images[idx]-transform['input_mean'])/transform['input_std']
+            out_images[idx] = (out_images[idx]-transform['output_mean'])/transform['output_std']
 
+        # Reverse shuffle the output mean and std:
+        if whiten == 'standard':
+            out_m = np.zeros((ds**3)*len(inp_images))
+            out_s = out_m.copy()
+            for idx in range(len(inp_images)):
+                out_m[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_mean'][idx]
+                out_s[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_std'][idx]
+            transform['output_mean'] = out_m
+            transform['output_std'] = out_s
+
+        self._transform = transform
         return inp_images, out_images
 
 
@@ -152,7 +161,7 @@ class Data(object):
         # ------------------ Preprocess --------------------------------
         # todo: need to include normalisation step.
         inp_images, out_images = \
-            self.whiten_imgs(whiten, inp_images, out_images, True)
+            self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # pad images:
         inp_images, out_images = self._pad_images(inp_images, out_images,
@@ -278,7 +287,7 @@ class Data(object):
 
         # Normalise:
         inp_images, out_images = \
-            self.whiten_imgs(whiten, inp_images, out_images, False)
+            self.whiten_imgs(whiten, inp_images, out_images, False, ds)
 
         # Pad:
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)

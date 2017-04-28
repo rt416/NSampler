@@ -389,7 +389,6 @@ def backward_shuffle_img(imglist, ds):
     return shuff_images
 
 
-
 def forward_shuffle_img(imglist, us):
     """
     Bring low-res multi-channel images to hi-res dimension through forward
