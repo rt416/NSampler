@@ -94,9 +94,12 @@ class Data(object):
 
             # Reverse shuffle the output mean and std:
             if whiten == 'standard':
-                out_m = np.zeros((ds**3)*len(inp_images))
+                no_channels = 6
+                out_m = np.zeros((ds**3)*no_channels)
                 out_s = out_m.copy()
-                for idx in range(len(inp_images)):
+
+                # todo: currently DTI specific
+                for idx in range(no_channels):
                     out_m[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_mean'][idx]
                     out_s[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_std'][idx]
                 transform['output_mean'] = out_m
