@@ -92,24 +92,26 @@ class Data(object):
                 transform['output_mean'] = out_m/len(out_images)
                 transform['output_std'] = out_m/len(out_images)
 
+            # Reverse shuffle the output mean and std:
+            if whiten == 'standard':
+                out_m = np.zeros((ds**3)*len(inp_images))
+                out_s = out_m.copy()
+                for idx in range(len(inp_images)):
+                    out_m[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_mean'][idx]
+                    out_s[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_std'][idx]
+                transform['output_mean'] = out_m
+                transform['output_std'] = out_s
+
+            # Assign to the object.
             self._transform = transform
 
         # Normalise each image/volume sequentially:
         for idx in range(len(inp_images)):
-            inp_images[idx] = (inp_images[idx]-transform['input_mean'])/transform['input_std']
-            out_images[idx] = (out_images[idx]-transform['output_mean'])/transform['output_std']
+            inp_images[idx] = (inp_images[idx] - self._transform['input_mean']) / \
+                              self._transform['input_std']
+            out_images[idx] = (out_images[idx] - self._transform['output_mean']) / \
+                              self._transform['output_std']
 
-        # Reverse shuffle the output mean and std:
-        if whiten == 'standard':
-            out_m = np.zeros((ds**3)*len(inp_images))
-            out_s = out_m.copy()
-            for idx in range(len(inp_images)):
-                out_m[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_mean'][idx]
-                out_s[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_std'][idx]
-            transform['output_mean'] = out_m
-            transform['output_std'] = out_s
-
-        self._transform = transform
         return inp_images, out_images
 
 
