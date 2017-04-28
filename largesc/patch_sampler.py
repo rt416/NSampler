@@ -294,7 +294,7 @@ class Data(object):
 
         # Normalise:
         inp_images, out_images = \
-            self.whiten_imgs(whiten, inp_images, out_images, False, ds)
+            self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # Pad:
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
