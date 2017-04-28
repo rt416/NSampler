@@ -92,19 +92,6 @@ class Data(object):
                 transform['output_mean'] = out_m/len(out_images)
                 transform['output_std'] = out_m/len(out_images)
 
-            # Reverse shuffle the output mean and std:
-            if whiten == 'standard':
-                no_channels = 6
-                out_m = np.zeros((ds**3)*no_channels)
-                out_s = out_m.copy()
-
-                # todo: currently DTI specific
-                for idx in range(no_channels):
-                    out_m[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_mean'][idx]
-                    out_s[idx*(ds**3):(idx+1)*(ds**3)]=transform['output_std'][idx]
-                transform['output_mean'] = out_m
-                transform['output_std'] = out_s
-
             # Assign to the object.
             self._transform = transform
 
@@ -114,6 +101,21 @@ class Data(object):
                               self._transform['input_std']
             out_images[idx] = (out_images[idx] - self._transform['output_mean']) / \
                               self._transform['output_std']
+
+        # Reverse shuffle the output mean and std:
+        if whiten == 'standard' and compute_tfm:
+            no_channels = inp_images[0].shape[3]
+            out_m = np.zeros((ds ** 3) * no_channels)
+            out_s = out_m.copy()
+
+            for idx in range(no_channels):
+                out_m[idx * (ds ** 3):(idx + 1) * (ds ** 3)] = \
+                transform['output_mean'][idx]
+                out_s[idx * (ds ** 3):(idx + 1) * (ds ** 3)] = \
+                transform['output_std'][idx]
+            transform['output_mean'] = out_m
+            transform['output_std'] = out_s
+            self._transform = transform
 
         return inp_images, out_images
 
