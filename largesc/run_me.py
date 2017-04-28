@@ -38,13 +38,13 @@ opt['shuffle'] = True
 opt['background_value'] = 0  # background value in the images
 #opt['train_subjects']=['117324', '904044']
 opt['train_subjects'] = ['992774', '125525', '205119', '133928', # first 8 are the original Diverse  dataset
-                         '570243', '448347', '654754', '153025',
-                         '101915', '106016', '120111', '122317', # original 8 training subjects
-                         '130316', '148335', '153025', '159340',
-                         '162733', '163129', '178950', '188347', # original 8 test subjects
-                         '189450', '199655', '211720', '280739',
-                         '106319', '117122', '133827', '140824', # random 8 subjects
-                         '158540', '196750', '205826', '366446']
+                         '570243', '448347', '654754', '153025']
+                         # '101915', '106016', '120111', '122317', # original 8 training subjects
+                         # '130316', '148335', '153025', '159340',
+                         # '162733', '163129', '178950', '188347', # original 8 test subjects
+                         # '189450', '199655', '211720', '280739',
+                         # '106319', '117122', '133827', '140824', # random 8 subjects
+                         # '158540', '196750', '205826', '366446']
                          # '351938', '390645', '545345', '586460',
                          # '705341', '749361', '765056', '951457']
 opt['test_subjects'] = ['904044', '165840', '889579', '713239',
@@ -67,7 +67,7 @@ opt['receptive_field_radius'] = 2
 output_radius = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 opt['output_radius'] = output_radius
 opt['no_channels'] = 6
-opt['transform_opt'] = 'scaling'  #'standard'  # preprocessing of input/output variables
+opt['transform_opt'] = 'standard'  #'standard'  # preprocessing of input/output variables
 
 # # Local dir:
 # opt['data_dir'] = '/Users/ryutarotanno/tmp/iqt_DL/auro/TrainingData/'
