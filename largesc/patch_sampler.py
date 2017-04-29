@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
 import numpy as np
 import cPickle as pickle
 import copy
@@ -119,6 +120,84 @@ class Data(object):
 
         return inp_images, out_images
 
+    def whiten_imgs_v2(self, whiten, inp_images, out_images, compute_tfm, ds):
+
+        # Compute the normalisation parameters:
+        if compute_tfm:
+            if whiten == 'none':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1.0
+                transform['output_mean'] = .0
+                transform['output_std'] = 1.0
+
+            elif whiten == 'scaling':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1e-4
+                transform['output_mean'] = .0
+                transform['output_std'] = 1e-4
+            elif whiten == 'standard':
+                print('Whiten each channel independently.')
+                transform = dict()
+                in_m, in_s, out_m, out_s = self.compute_mean_and_std()
+
+                transform['input_mean'] = in_m
+                transform['input_std'] = in_s
+                transform['output_mean'] = out_m
+                transform['output_std'] = out_s
+
+            # Assign to the object.
+            self._transform = transform
+
+        # Normalise each image/volume sequentially:
+        for idx in range(len(inp_images)):
+            inp_images[idx] = (
+                              inp_images[idx] - self._transform['input_mean']) / \
+                              self._transform['input_std']
+            out_images[idx] = (out_images[idx] - self._transform[
+                'output_mean']) / \
+                              self._transform['output_std']
+
+        return inp_images, out_images
+
+    def compute_mean_and_std(self, n_chunks=100, chunk_size=100):
+        # # Get the indices of samples used for computing mean and std:
+        # perm = np.arange(self._size)
+        # np.random.shuffle(perm)
+        # samples_list = perm[:no_samples]
+
+        # Compute:
+        sum_in, sum_in2, sum_out, sum_out2 = 0, 0, 0, 0
+
+        for i in xrange(n_chunks):
+            sys.stdout.write('\tChunk progress: %d/%d\r' % (i + 1, n_chunks))
+            sys.stdout.flush()
+
+            pindlist1 = self._train_pindlistI[i*chunk_size:(i+1)*chunk_size, :]
+            pindlist2 = self._train_pindlistO[i*chunk_size:(i+1)*chunk_size, :]
+
+            inp_chunk, out_chunk = self._collect_patches(self._inpN,
+                                                         self._outM,
+                                                         self._inp_images,
+                                                         self._out_images,
+                                                         pindlist1, pindlist2)
+
+            sum_in += 1. * np.sum(inp_chunk, axis=0)
+            sum_in2 += 1. * np.sum(inp_chunk ** 2, axis=0)
+            sum_out += 1. * np.sum(out_chunk, axis=0)
+            sum_out2 += 1. * np.sum(out_chunk ** 2, axis=0)
+
+        in_m = sum_in/(n_chunks*chunk_size)
+        in_s = np.sqrt((sum_in2-2*in_m*sum_in+n_chunks*chunk_size*(in_m**2))\
+                        /(n_chunks*chunk_size))
+
+        out_m = sum_out/(n_chunks * chunk_size)
+        out_s = np.sqrt((sum_out2-2*out_m*sum_out+n_chunks*chunk_size*(out_m**2))\
+                        /(n_chunks * chunk_size))
+        return in_m, in_s, out_m, out_s
 
     def create_patch_lib(self, 
                          size, 
@@ -166,9 +245,9 @@ class Data(object):
         self._ds               = ds
 
         # ------------------ Preprocess --------------------------------
-        # todo: need to include normalisation step.
-        inp_images, out_images = \
-            self.whiten_imgs(whiten, inp_images, out_images, True, ds)
+        # # todo: need to include normalisation step.
+        # inp_images, out_images = \
+        #     self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # pad images:
         inp_images, out_images = self._pad_images(inp_images, out_images,
@@ -215,6 +294,10 @@ class Data(object):
             # patches now select patches for training
             self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
             self._train_pindlistO = self._train_pindlistI
+
+        # todo: normalise here?
+        self._inp_images, self._out_images = \
+                 self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
 
         print('Patch-lib size:', size,
               'Train size:', self._size,
@@ -290,11 +373,6 @@ class Data(object):
 
         # Load the indices:
         self.load(filename)
-        self.load_transform(transname)
-
-        # Normalise:
-        inp_images, out_images = \
-            self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # Pad:
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
@@ -303,8 +381,10 @@ class Data(object):
         inp_images = self._downsample_lowres(inp_images, ds)
         out_images = du.backward_shuffle_img(out_images, ds)
 
-        self._inp_images = inp_images
-        self._out_images = out_images
+        # Normalise:
+        self._inp_images, self._out_images = \
+            self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
+
         return self
 
     def visualise_patches(self, pindlist, iz2=-1, ic=0):
