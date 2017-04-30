@@ -316,8 +316,8 @@ def train_cnn(opt):
 
             # todo: try with this.
             # gradually reduce learning rate every 50 epochs:
-            # if (epoch+1) % 50 == 0:
-            #     lr_ = lr_ / 10.
+            if (epoch+1) % 50 == 0:
+                lr_ = lr_ / 10.
 
             for mi in xrange(n_train_batches):
                 # Select minibatches using a slice object---consider
