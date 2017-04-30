@@ -242,9 +242,11 @@ class Data(object):
                                                   ds, inpN)
         # bring all images to low-res space
         # inp_images = self._downsample_lowres(inp_images, ds)
+        print('Reverse shuffling low-res images')
         inp_images = du.backward_shuffle_img(inp_images, ds)
 
         # reverse-shuffle output images
+        print('Reverse shuffling high-res images')
         out_images = du.backward_shuffle_img(out_images, ds)
 
         # store input and output for patch collection
@@ -564,10 +566,11 @@ class Data(object):
     def _collect_patches(self, inpN, outM, inp_images, out_images,
                          pindlistI, pindlistO):
         ds = self._ds
-        dimV = inp_images[0].shape[-1] if len(inp_images[0].shape)==4 else 1
+        dimV = inp_images[0].shape[-1]//(ds**3) if len(inp_images[0].shape)==4 else 1
+
         psz  = 2*inpN + 1
         N = pindlistI.shape[0]  # no of patches
-        inp_patches = np.zeros((N, psz, psz, psz, dimV / (ds**3)))
+        inp_patches = np.zeros((N, psz, psz, psz, dimV))
         dimV = out_images[0].shape[-1] if len(out_images[0].shape)==4 else 1
         psz  = 2*outM + 1
         out_patches = np.zeros((N, psz, psz, psz, dimV))

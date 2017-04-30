@@ -358,8 +358,7 @@ def backward_shuffle_img(imglist, ds):
     Returns:
         shuff_images (list): reverse shuffled images
     """
-    print ('Reverse shuffling hi-res images')
-    
+
     shuffle_indices = [(i, j, k) for k in range(ds)
                                  for j in range(ds)
                                  for i in range(ds)]
