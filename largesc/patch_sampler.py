@@ -541,7 +541,7 @@ class Data(object):
             s=np.ones((ijk.shape[0],1))
             for i in range(2, ds**3+1):
                 s = np.vstack((s, i * np.ones((ijk.shape[0],1))))
-            ijk = np.tile(ijk, (ds, 1))
+            ijk = np.tile(ijk, (ds**3, 1))
             ijk = np.concatenate((ijk, s), axis=1)
 
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
