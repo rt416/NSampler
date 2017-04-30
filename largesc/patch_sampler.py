@@ -142,7 +142,10 @@ class Data(object):
             elif whiten == 'standard':
                 print('Whiten each channel independently.')
                 transform = dict()
-                in_m, in_s, out_m, out_s = self.compute_mean_and_std()
+                chunk_size=100
+                n_chunk = self._size//chunk_size
+                in_m, in_s, out_m, out_s = \
+                    self.compute_mean_and_std(chunk_size, n_chunk)
 
                 transform['input_mean'] = in_m
                 transform['input_std'] = in_s
@@ -581,8 +584,8 @@ class Data(object):
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1,
                                                  r[2]-inpN:r[2]+inpN+1,
                                                  r[3]-inpN:r[3]+inpN+1,
-                                                 r[4]*6:(r[4]+1)*6])
-                                                 #r[4]::ds**3])
+                                                 # r[4]*6:(r[4]+1)*6])
+                                                 r[4]::ds**3])
             else:
                 inp_patches[cnt, ..., 0] = (
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
