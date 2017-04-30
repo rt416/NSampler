@@ -540,8 +540,8 @@ class Data(object):
                 raise ValueError('Cannot find any valid patch indices')
 
             # add all possible shifts, ds x ds x ds
-            s=np.ones((ijk.shape[0],1))
-            for i in range(2, ds**3+1):
+            s=np.zeros((ijk.shape[0],1))
+            for i in range(1, ds**3):
                 s = np.vstack((s, i * np.ones((ijk.shape[0],1))))
             ijk = np.tile(ijk, (ds**3, 1))
             ijk = np.concatenate((ijk, s), axis=1)
