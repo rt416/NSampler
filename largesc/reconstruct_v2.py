@@ -166,7 +166,7 @@ def super_resolve(dt_lowres, opt):
     # todo: include normalisation option
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    print(transform)
+    # print(transform)
     # transform = dict()
     # transform['input_mean']=.0
     # transform['input_std']=1.0
