@@ -241,7 +241,9 @@ class Data(object):
         inp_images, out_images = self._pad_images(inp_images, out_images,
                                                   ds, inpN)
         # bring all images to low-res space
-        inp_images = self._downsample_lowres(inp_images, ds)
+        # inp_images = self._downsample_lowres(inp_images, ds)
+        inp_images = du.backward_shuffle_img(inp_images, ds)
+
         # reverse-shuffle output images
         out_images = du.backward_shuffle_img(out_images, ds)
 
@@ -260,10 +262,10 @@ class Data(object):
 
             # Split into validation and training sets:
             self._val_pindlistI = pindlistI[:self._valsize, ...]
-            self._val_pindlistO = self._val_pindlistI
-
+            # the last element corresponds to the shift
+            self._val_pindlistO = self._val_pindlistI[:,:-1]
             self._train_pindlistI = pindlistI[self._valsize:, ...]
-            self._train_pindlistO = self._train_pindlistI
+            self._train_pindlistO = self._train_pindlistI[:,:-1]
 
         elif method=='segregate':
             # Now collect validation patch indices
@@ -517,9 +519,11 @@ class Data(object):
         Returns:
             index_list (list): list of valid voxel indices
         """
+        ds=self._ds
         index_list = []
         cnt = 1
         for img in img_list:
+            # get the mask:
             if len(img.shape)==3:
                 mask = img
             elif len(img.shape)==4:
@@ -527,9 +531,18 @@ class Data(object):
             else:
                 raise ValueError('Only 3D or 4D images handled.')
             dims = mask.shape
+
+            # compute ijk:
             ijk = np.array(np.where(mask != bgval), dtype=int).T
             if ijk.size == 0:
                 raise ValueError('Cannot find any valid patch indices')
+
+            # add all possible shifts, ds x ds x ds
+            s=np.ones((ijk.shape[0],1))
+            for i in range(2, ds**3+1): s = np.vstack((s, i * s))
+            ijk = np.tile(ijk, (ds, 1))
+            ijk = np.concatenate((ijk, s), axis=1)
+
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
             iskeep[:, 0] = (ijk[:, 0] - psz) >= 0 
             iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0] 
@@ -547,12 +560,13 @@ class Data(object):
             cnt += 1
         return index_list
 
-    def _collect_patches(self, inpN, outM, inp_images, out_images, 
+    def _collect_patches(self, inpN, outM, inp_images, out_images,
                          pindlistI, pindlistO):
+        ds = self._ds
         dimV = inp_images[0].shape[-1] if len(inp_images[0].shape)==4 else 1
         psz  = 2*inpN + 1
-        N = pindlistI.shape[0]
-        inp_patches = np.zeros((N, psz, psz, psz, dimV))
+        N = pindlistI.shape[0]  # no of patches
+        inp_patches = np.zeros((N, psz, psz, psz, dimV / (ds**3)))
         dimV = out_images[0].shape[-1] if len(out_images[0].shape)==4 else 1
         psz  = 2*outM + 1
         out_patches = np.zeros((N, psz, psz, psz, dimV))
@@ -560,9 +574,10 @@ class Data(object):
         for r in pindlistI:
             if len(inp_images[0].shape)==4:
                 inp_patches[cnt, ...] = (
-                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
-                                                 r[2]-inpN:r[2]+inpN+1, 
-                                                 r[3]-inpN:r[3]+inpN+1, ...])
+                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1,
+                                                 r[2]-inpN:r[2]+inpN+1,
+                                                 r[3]-inpN:r[3]+inpN+1,
+                                                 r[4]:ds**3:])
             else:
                 inp_patches[cnt, ..., 0] = (
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
@@ -643,17 +658,20 @@ class Data(object):
         pindlist = pindlist[perm,:]
         return pindlist
 
-    def _select_patch_indices_ryu(self, size, vox_indx):
+    def _select_patch_indices_ryu(self, size, vox_indx, shift=False):
         """ Select the indices of patches to be extracted
         Args:
             size (int): the total number of patches to be extracted
             vox_indx (list): list of 2d np arrays. Each array stores the indices
-                            (i,j,k) of all valid patches in each subject.
-                            Each row is an instance of patch location (i, j, k).
+                            (i,j,k,s) of all valid patches in each subject.
+                            Each row (i,j,k,s)  is an instance of patch location
+                             (i, j, k, s) with shift s.
+                            .
                             len(vox_idx) = number of subjects.
+            shift (logic): set True if you want to
         Returns:
-            pindlist (np array): 4D array which stores the patch identifiers:
-                                 Each row is of form [subject_idx, i, j, k].
+            pindlist (np array): 5D array which stores the patch identifiers:
+                                 Each row is of form [subject_idx, i, j, k, s].
 
         """
         print('Selecting random patch-indices...')
@@ -661,7 +679,7 @@ class Data(object):
         reminder = size % len(vox_indx)
         size_total = 0
 
-        pindlist = np.zeros((size, 4), dtype=int)
+        pindlist = np.zeros((size, 5), dtype=int)
 
         for idx in range(len(vox_indx)):
             if not(idx==(len(vox_indx)-1)):
