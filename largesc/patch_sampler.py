@@ -539,7 +539,8 @@ class Data(object):
 
             # add all possible shifts, ds x ds x ds
             s=np.ones((ijk.shape[0],1))
-            for i in range(2, ds**3+1): s = np.vstack((s, i * s))
+            for i in range(2, ds**3+1):
+                s = np.vstack((s, i * np.ones((ijk.shape[0],1))))
             ijk = np.tile(ijk, (ds, 1))
             ijk = np.concatenate((ijk, s), axis=1)
 
