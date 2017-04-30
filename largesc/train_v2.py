@@ -13,7 +13,6 @@ import sr_preprocess as pp
 import sr_utility
 import models
 
-
 def define_checkpoint(opt):
     nn_file = name_network(opt)
     checkpoint_dir = os.path.join(opt['save_dir'], nn_file)
@@ -315,6 +314,7 @@ def train_cnn(opt):
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
 
+            # todo: try with this.
             # gradually reduce learning rate every 50 epochs:
             # if (epoch+1) % 50 == 0:
             #     lr_ = lr_ / 10.
@@ -326,13 +326,14 @@ def train_cnn(opt):
                 xt, yt = dataset.next_batch(opt['batch_size'])
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
 
-                # xt = pp.dict_whiten(data, 'in', 'train', idx)
-                # yt = pp.dict_whiten(data, 'out', 'train', idx)
-                # xv = pp.dict_whiten(data, 'in', 'valid', idx)
-                # yv = pp.dict_whiten(data, 'out', 'valid', idx)
-                current_step = tf.train.global_step(sess, global_step)
+                # normalise:
+                xt = pp.diag_whiten(xt,transform['input_mean'],transform['input_std'])
+                yt = pp.diag_whiten(yt,transform['output_mean'],transform['output_std'])
+                xv = pp.diag_whiten(xv,transform['input_mean'],transform['input_std'])
+                yv = pp.diag_whiten(yv,transform['output_mean'],transform['output_std'])
 
                 # train op and loss
+                current_step = tf.train.global_step(sess, global_step)
                 fd_t={x: xt, y: yt, lr: lr_,
                       keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch]}
 
@@ -425,12 +426,6 @@ def train_cnn(opt):
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     model_details.update(bests)
                     save_model(opt, sess, saver, global_step, model_details)
-
-            # Update iteration counters:
-            # epoch_auro = dataset.epochs_completed
-            # epoch += 1
-            # print('epoch=%d \n'
-            #       'epoch_auro=%d' % (epoch, epoch_auro))
 
         # close the summary writers:
         train_writer.close()

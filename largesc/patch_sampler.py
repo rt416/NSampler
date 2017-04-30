@@ -149,19 +149,7 @@ class Data(object):
                 transform['output_mean'] = out_m
                 transform['output_std'] = out_s
 
-            # Assign to the object.
-            self._transform = transform
-
-        # Normalise each image/volume sequentially:
-        for idx in range(len(inp_images)):
-            inp_images[idx] = (
-                              inp_images[idx] - self._transform['input_mean']) / \
-                              self._transform['input_std']
-            out_images[idx] = (out_images[idx] - self._transform[
-                'output_mean']) / \
-                              self._transform['output_std']
-
-        return inp_images, out_images
+        return transform
 
     def compute_mean_and_std(self, n_chunks=100, chunk_size=100):
         # # Get the indices of samples used for computing mean and std:
@@ -295,9 +283,8 @@ class Data(object):
             self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
             self._train_pindlistO = self._train_pindlistI
 
-        # todo: normalise here?
-        self._inp_images, self._out_images = \
-                 self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
+        # Compute normalisation transform:
+        self._transform=self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
 
         print('Patch-lib size:', size,
               'Train size:', self._size,
@@ -382,8 +369,9 @@ class Data(object):
         out_images = du.backward_shuffle_img(out_images, ds)
 
         # Normalise:
-        self._inp_images, self._out_images = \
-            self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
+        self._inp_images = inp_images
+        self._out_images = out_images
+        self._transform = self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
 
         return self
 
@@ -641,7 +629,7 @@ class Data(object):
             pindlist[cnt:cnt+sample_sz, 1:] = vox_indx[sind][vind, :]
             cnt += sample_sz
         if REMND>0:
-            #print ('Patch creation (remainder):', REMND)
+            # print ('Patch creation (remainder):', REMND)
             sind = subind[-1, ITERS]
             vind = np.random.randint(0, ptch_szlist[sind], (REMND))
             pindlist[cnt:cnt+REMND, 0]  = sind
