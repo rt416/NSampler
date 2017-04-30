@@ -581,7 +581,7 @@ class Data(object):
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1,
                                                  r[2]-inpN:r[2]+inpN+1,
                                                  r[3]-inpN:r[3]+inpN+1,
-                                                 r[4]:ds**3:])
+                                                 r[4]::ds**3])
             else:
                 inp_patches[cnt, ..., 0] = (
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
