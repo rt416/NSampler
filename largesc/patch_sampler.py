@@ -252,18 +252,19 @@ class Data(object):
         # --------------- Prepare a patch library ----------------------
         print('Checking valid voxels...')
         print('Sampling method: ' + method)
-        vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
+        vox_indx = self._get_valid_indices(out_images, outM, bgval)
+        # vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
 
         if method=='default':
             # randomly sample patch indices
             pindlistI = self._select_patch_indices_ryu(size, vox_indx)
-
+            print(pindlistI[:10,...])
             # Split into validation and training sets:
             self._val_pindlistI = pindlistI[:self._valsize, ...]
-            self._val_pindlistO = self._val_pindlistI
+            self._val_pindlistO = self._val_pindlistI[:,:-1]
 
             self._train_pindlistI = pindlistI[self._valsize:, ...]
-            self._train_pindlistO = self._train_pindlistI
+            self._train_pindlistO = self._train_pindlistI[:,:-1]
 
         elif method=='segregate':
             # Now collect validation patch indices
@@ -530,6 +531,15 @@ class Data(object):
             ijk = np.array(np.where(mask != bgval), dtype=int).T
             if ijk.size == 0:
                 raise ValueError('Cannot find any valid patch indices')
+
+            # add all possible shifts, ds x ds x ds
+            ds = self._ds
+            s = np.zeros((ijk.shape[0], 1))
+            for i in range(1, ds ** 3):
+                s = np.vstack((s, i * np.ones((ijk.shape[0], 1))))
+            ijk = np.tile(ijk, (ds ** 3, 1))
+            ijk = np.concatenate((ijk, s), axis=1)
+
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
             iskeep[:, 0] = (ijk[:, 0] - psz) >= 0 
             iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0] 
@@ -549,6 +559,7 @@ class Data(object):
 
     def _collect_patches(self, inpN, outM, inp_images, out_images, 
                          pindlistI, pindlistO):
+        ds=self._ds
         dimV = inp_images[0].shape[-1] if len(inp_images[0].shape)==4 else 1
         psz  = 2*inpN + 1
         N = pindlistI.shape[0]
@@ -560,9 +571,9 @@ class Data(object):
         for r in pindlistI:
             if len(inp_images[0].shape)==4:
                 inp_patches[cnt, ...] = (
-                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
-                                                 r[2]-inpN:r[2]+inpN+1, 
-                                                 r[3]-inpN:r[3]+inpN+1, ...])
+                            inp_images[r[0]*(ds**3)+r[4]][r[1]-inpN:r[1]+inpN+1,
+                                                          r[2]-inpN:r[2]+inpN+1,
+                                                          r[3]-inpN:r[3]+inpN+1, ...])
             else:
                 inp_patches[cnt, ..., 0] = (
                                 inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
@@ -648,20 +659,19 @@ class Data(object):
         Args:
             size (int): the total number of patches to be extracted
             vox_indx (list): list of 2d np arrays. Each array stores the indices
-                            (i,j,k) of all valid patches in each subject.
-                            Each row is an instance of patch location (i, j, k).
-                            len(vox_idx) = number of subjects.
+                             (i,j,k,s) of all valid patches in each subject.
+                             Each row (i,j,k,s)  is an instance of patch location
+                             (i, j, k, s) with shift s.
         Returns:
-            pindlist (np array): 4D array which stores the patch identifiers:
-                                 Each row is of form [subject_idx, i, j, k].
-
+             pindlist (np array): 5D array which stores the patch identifiers:
+                                  Each row is of form [subject_idx, i, j, k, s].
         """
         print('Selecting random patch-indices...')
         no_samples = size//len(vox_indx)
         reminder = size % len(vox_indx)
         size_total = 0
 
-        pindlist = np.zeros((size, 4), dtype=int)
+        pindlist = np.zeros((size, 5), dtype=int)
 
         for idx in range(len(vox_indx)):
             if not(idx==(len(vox_indx)-1)):
@@ -765,8 +775,14 @@ class Data(object):
         Returns:
             ds_images: downsampled images
         """
+
         print ('Downsampling low-res images')
-        is3D = True 
+
+        shuffle_indices = [(i, j, k) for k in range(ds)
+                                     for j in range(ds)
+                                     for i in range(ds)]
+
+        is3D = True
         if len(lr_images[0].shape) == 3: pass
         elif len(lr_images[0].shape) == 4:
             is3D = False
@@ -775,11 +791,14 @@ class Data(object):
 
         ds_images = []
         for img in lr_images:
-            if is3D:
-                img = img[::ds, ::ds, ::ds]
-            else:
-                img = img[::ds, ::ds, ::ds, ...]
-            ds_images.append(img)
+            for (i, j, k) in shuffle_indices:
+                if is3D:
+                    ds_images.append(img[i::ds, j::ds, k::ds])
+                    # img = img[::ds, ::ds, ::ds]
+                else:
+                    ds_images.append(img[i::ds, j::ds, k::ds, ...])
+                    # img = img[::ds, ::ds, ::ds, ...]
+        print('Total %i volumes. ' % (len(ds_images),))
 
         return ds_images
 
