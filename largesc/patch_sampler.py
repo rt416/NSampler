@@ -662,7 +662,9 @@ class Data(object):
         Args:
             size (int): the total number of patches to be extracted
             vox_indx (list): list of 2d np arrays. Each array stores the indices
-                             (i,j,k,s) of all valid patches in each subject.
+                             (i,j,k,s) of all valid patches in each subject instance.
+                             In the case of ds=2, every 8 instances come from the same
+                             subject due to supixel redundancies.
                              Each row (i,j,k,s)  is an instance of patch location
                              (i, j, k, s) with shift s.
         Returns:
@@ -675,14 +677,15 @@ class Data(object):
         size_total = 0
 
         pindlist = np.zeros((size, 5), dtype=int)
+        ds = self._self
 
         for idx in range(len(vox_indx)):
             if not(idx==(len(vox_indx)-1)):
-                pindlist[idx*no_samples:(idx+1)*no_samples,0]=idx # subject idx
+                pindlist[idx*no_samples:(idx+1)*no_samples,0]=idx//(ds**3) # subject idx
                 pindlist[idx*no_samples:(idx+1)*no_samples,1:]\
                     = np.random.permutation(vox_indx[idx])[:no_samples,:]
             else:
-                pindlist[idx*no_samples:,0]= idx
+                pindlist[idx*no_samples:,0]= idx//(ds**3)
                 pindlist[idx*no_samples:,1:] \
                     = np.random.permutation(vox_indx[idx])[:(no_samples+reminder),:]
             size_total += vox_indx[idx].shape[0]
