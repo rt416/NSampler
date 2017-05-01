@@ -677,7 +677,7 @@ class Data(object):
         size_total = 0
 
         pindlist = np.zeros((size, 5), dtype=int)
-        ds = self._self
+        ds = self._ds
 
         for idx in range(len(vox_indx)):
             if not(idx==(len(vox_indx)-1)):
