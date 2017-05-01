@@ -534,7 +534,7 @@ class Data(object):
 
             # add all possible shifts, ds x ds x ds
             ds = self._ds
-            s = 0*np.ones((ijk.shape[0], 1))
+            s = np.random.randint(ds**3, size=(ijk.shape[0], 1))
             # s = np.zeros((ijk.shape[0], 1))
             # for i in range(1, ds ** 3):
             #     s = np.vstack((s, i * np.ones((ijk.shape[0], 1))))
