@@ -252,8 +252,8 @@ class Data(object):
         # --------------- Prepare a patch library ----------------------
         print('Checking valid voxels...')
         print('Sampling method: ' + method)
-        vox_indx = self._get_valid_indices(out_images, outM, bgval)
-        # vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
+        #vox_indx = self._get_valid_indices(out_images, outM, bgval)
+        vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
 
         if method=='default':
             # randomly sample patch indices
@@ -520,7 +520,8 @@ class Data(object):
         """
         index_list = []
         cnt = 1
-        for img in img_list:
+
+        for idx, img in enumerate(img_list):
             if len(img.shape)==3:
                 mask = img
             elif len(img.shape)==4:
@@ -534,7 +535,8 @@ class Data(object):
 
             # add all possible shifts, ds x ds x ds
             ds = self._ds
-            s = np.random.randint(ds**3, size=(ijk.shape[0], 1))
+            s = (idx%(ds**3)) * np.ones((ijk.shape[0], 1))
+            # s = np.random.randint(ds**3, size=(ijk.shape[0], 1))
             # s = np.zeros((ijk.shape[0], 1))
             # for i in range(1, ds ** 3):
             #     s = np.vstack((s, i * np.ones((ijk.shape[0], 1))))
@@ -542,16 +544,16 @@ class Data(object):
             ijk = np.concatenate((ijk, s), axis=1)
 
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
-            iskeep[:, 0] = (ijk[:, 0] - psz) >= 0 
-            iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0] 
-            iskeep[:, 2] = (ijk[:, 1] - psz) >= 0 
+            iskeep[:, 0] = (ijk[:, 0] - psz) >= 0
+            iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0]
+            iskeep[:, 2] = (ijk[:, 1] - psz) >= 0
             iskeep[:, 3] = (ijk[:, 1] + psz) < dims[1]
             iskeep[:, 4] = (ijk[:, 2] - psz) >= 0
             iskeep[:, 5] = (ijk[:, 2] + psz) < dims[2]
             iskeep = np.all(iskeep, axis=1)
             neg_indx = np.where(iskeep == False)
             if neg_indx[0].size > 0:
-                print ('Warning: Image', cnt, 
+                print ('Warning: Image', cnt,
                        'has some voxels that cannot be used:', len(neg_indx[0]))
             rowlist = np.delete(np.array(range(ijk.shape[0])), neg_indx, 0)
             index_list.append(ijk[rowlist, :])
