@@ -534,10 +534,11 @@ class Data(object):
 
             # add all possible shifts, ds x ds x ds
             ds = self._ds
-            s = np.zeros((ijk.shape[0], 1))
-            for i in range(1, ds ** 3):
-                s = np.vstack((s, i * np.ones((ijk.shape[0], 1))))
-            ijk = np.tile(ijk, (ds ** 3, 1))
+            s = 0*np.ones((ijk.shape[0], 1))
+            # s = np.zeros((ijk.shape[0], 1))
+            # for i in range(1, ds ** 3):
+            #     s = np.vstack((s, i * np.ones((ijk.shape[0], 1))))
+            # ijk = np.tile(ijk, (ds ** 3, 1))
             ijk = np.concatenate((ijk, s), axis=1)
 
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
