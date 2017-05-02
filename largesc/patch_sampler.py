@@ -238,8 +238,9 @@ class Data(object):
         #     self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # pad images:
-        inp_images, out_images = self._pad_images(inp_images, out_images,
-                                                  ds, inpN)
+        # inp_images, out_images = self._pad_images(inp_images, out_images,
+        #                                           ds, inpN)
+
         # bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)
         # reverse-shuffle output images
