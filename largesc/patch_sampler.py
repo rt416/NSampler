@@ -661,6 +661,9 @@ class Data(object):
         reminder = size % len(vox_indx)
         size_total = 0
 
+        print(no_samples)
+        print(vox_indx[0].shape)
+
         pindlist = np.zeros((size, 4), dtype=int)
 
         for idx in range(len(vox_indx)):
@@ -669,7 +672,7 @@ class Data(object):
                 pindlist[idx*no_samples:(idx+1)*no_samples,1:]\
                     = np.random.permutation(vox_indx[idx])[:no_samples,:]
             else:
-                pindlist[idx*no_samples:,0]= idx
+                pindlist[idx*no_samples:,0]=idx
                 pindlist[idx*no_samples:,1:] \
                     = np.random.permutation(vox_indx[idx])[:(no_samples+reminder),:]
             size_total += vox_indx[idx].shape[0]
