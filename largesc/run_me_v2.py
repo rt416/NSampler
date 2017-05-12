@@ -69,6 +69,10 @@ opt['output_radius'] = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
 if os.path.exists(base_dir):
     os.makedirs(base_dir)
+    os.makedirs(base_dir + 'data/')
+    os.makedirs(base_dir + 'log/')
+    os.makedirs(base_dir + 'models/')
+    os.makedirs(base_dir + 'recon/')
 
 # ''/SAN/vision/hcp/Ryu/miccai2017/25Apr2017/'
 opt['data_dir'] = base_dir + 'data/'
