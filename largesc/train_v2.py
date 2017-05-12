@@ -120,7 +120,7 @@ def train_cnn(opt):
     log_dir = define_logdir(opt)
     opt["checkpoint_dir"] = checkpoint_dir
     with open(checkpoint_dir+'/config.txt', 'w') as fp:
-        for p in opt.items():
+        for p in opt.iteritems():
             fp.write("%s:%s\n" % p)
 
     # exit if the network has already been trained:
