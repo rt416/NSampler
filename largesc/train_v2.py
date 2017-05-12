@@ -210,8 +210,8 @@ def train_cnn(opt):
 
         # Merge all the summaries and write them out to ../network_name/log
         merged = tf.summary.merge_all()
-        train_writer = tf.train.SummaryWriter(log_dir + '/train', sess.graph)
-        valid_writer = tf.train.SummaryWriter(log_dir + '/valid')
+        train_writer = tf.summary.FileWriter(log_dir + '/train', sess.graph)
+        valid_writer = tf.summary.FileWriter(log_dir + '/valid')
 
         # Compute number of minibatches for training, validation and testing
         n_train_batches = opt['train_noexamples'] // opt['batch_size']
