@@ -4,6 +4,7 @@ import os
 import sys
 import timeit
 import glob
+import shutil
 import cPickle as pkl
 import numpy as np
 import tensorflow as tf
@@ -118,6 +119,9 @@ def train_cnn(opt):
     checkpoint_dir = define_checkpoint(opt)
     log_dir = define_logdir(opt)
     opt["checkpoint_dir"] = checkpoint_dir
+    with open(checkpoint_dir+'/config.txt', 'w') as fp:
+        for p in opt.items():
+            fp.write("%s:%s\n" % p)
 
     # exit if the network has already been trained:
     if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
@@ -126,10 +130,8 @@ def train_cnn(opt):
             return
         elif opt['overwrite']:
             print('Overwriting: delete the previous results')
-            files = glob.glob(opt['save_dir']+'/'+name_network(opt)+'/*')
-            for f in files: os.remove(f)
-            files = glob.glob(opt['log_dir'] + '/' + name_network(opt) + '/*')
-            for f in files: os.remove(f)
+            shutil.rmtree(opt['save_dir']+'/'+name_network(opt))
+            shutil.rmtree(opt['log_dir']+'/'+name_network(opt))
 
     # -------------------------load data---------------------------------------:
     filename_patchlib = name_patchlib(opt)
