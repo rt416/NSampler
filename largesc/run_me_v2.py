@@ -45,7 +45,7 @@ if opt['continue']==True or opt['overwrite'] ==True:
 # Other micellaneous parameters:
 opt['n_h1'] = 50
 opt['n_h2'] = 2 * opt['n_h1']
-# opt['n_h3'] = 10
+opt['n_h3'] = 10
 # opt['L1_reg'] = 0.00
 # opt['L2_reg'] = 1e-5
 
