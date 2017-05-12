@@ -67,7 +67,7 @@ opt['output_radius'] = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1
 
 # directories:
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
-if os.path.exists(base_dir):
+if not(os.path.exists(base_dir)):
     os.makedirs(base_dir)
     os.makedirs(base_dir + 'data/')
     os.makedirs(base_dir + 'log/')
