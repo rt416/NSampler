@@ -16,7 +16,7 @@ opt['overwrite'] = False  # restart the training completely.
 opt['continue'] = False  # set True if you want to continue training from the previous experiment
 if opt['continue']: opt['overwrite'] = False
 
-opt['optimizer'] = tf.train.AdamOptimizer
+opt['optimizer'] = 'adam'
 opt['dropout_rate'] = 0.0
 opt['learning_rate'] = 1e-3
 opt['L1_reg'] = 0.00

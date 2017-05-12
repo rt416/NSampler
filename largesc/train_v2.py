@@ -3,14 +3,12 @@
 import os
 import sys
 import timeit
-
+import glob
 import cPickle as pkl
-import h5py
 import numpy as np
 import tensorflow as tf
 import largesc.data_generator as data_generator
 import sr_preprocess as pp
-import sr_utility
 import models
 
 def define_checkpoint(opt):
@@ -32,7 +30,7 @@ def define_logdir(opt):
 
 def name_network(opt):
     """given inputs, return the model name."""
-    optim = opt['optimizer'].__name__
+    optim = opt['optimizer']
 
     nn_header = opt['method'] if opt['dropout_rate']==0 \
     else opt['method'] + str(opt['dropout_rate'])
@@ -116,55 +114,35 @@ def save_model(opt, sess, saver, global_step, model_details):
 
 
 def train_cnn(opt):
-    # ------------------ Load inputs from op ------------------------:
-    # Network details:
-    dropout_rate = opt['dropout_rate']
-    L1_reg = opt['L1_reg']
-    L2_reg = opt['L2_reg']
-    n_epochs = opt['n_epochs']
-    batch_size = opt['batch_size']
-    validation_fraction = opt['validation_fraction']
-    train_fraction = int(1.0 - validation_fraction)
-    shuffle = opt['shuffle']
-
-    method = opt['method']
-    n_h1 = opt['n_h1']
-    n_h2 = opt['n_h2']
-    n_h3 = opt['n_h3']
-    cohort = opt['cohort']
-
-    # Input/Output details:
-    upsampling_rate = opt['upsampling_rate']
-    no_channels = opt['no_channels']
-    input_radius = opt['input_radius']
-    receptive_field_radius = opt['receptive_field_radius']
-    output_radius = ((2*input_radius - 2*receptive_field_radius + 1) // 2)
-    opt['output_radius'] = output_radius
-    transform_opt = opt['transform_opt']
-
-
     # Set the directory for saving checkpoints:
     checkpoint_dir = define_checkpoint(opt)
     log_dir = define_logdir(opt)
     opt["checkpoint_dir"] = checkpoint_dir
 
     # exit if the network has already been trained:
-    if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')) \
-       and not(opt['continue']) and not(opt['overwrite']):
-        print('Network already trained. Move on to next.')
-        return
+    if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
+        if not(opt['continue']) and not(opt['overwrite']):
+            print('Network already trained. Move on to next.')
+            return
+        elif opt['overwrite']:
+            print('Overwriting: delete the previous results')
+            files = glob.glob(opt['save_dir']+'/'+name_network(opt)+'/*')
+            for f in files: os.remove(f)
+            files = glob.glob(opt['log_dir'] + '/' + name_network(opt) + '/*')
+            for f in files: os.remove(f)
 
     # -------------------------load data---------------------------------------:
     filename_patchlib = name_patchlib(opt)
     dataset, train_folder = data_generator.prepare_data(opt['train_size'],
                                                         opt['validation_fraction'],
-                                                        input_radius,
-                                                        output_radius,
+                                                        opt['input_radius'],
+                                                        opt['output_radius'],
                                                         patchlib_name=filename_patchlib,
+                                                        method=opt['patch_sampling_opt'],
                                                         whiten=opt['transform_opt'],
                                                         train_index=opt['train_subjects'],
                                                         bgval=opt['background_value'],
-                                                        is_reset=False,
+                                                        is_reset=opt['is_reset'],
                                                         us_rate=opt['upsampling_rate'],
                                                         data_dir_root=opt['gt_dir'],
                                                         save_dir_root=opt['data_dir'],
@@ -181,17 +159,17 @@ def train_cnn(opt):
     #  define input and output:
     with tf.name_scope('input'):
         x = tf.placeholder(tf.float32, [None,
-                                        2*input_radius+1,
-                                        2*input_radius+1,
-                                        2*input_radius+1,
-                                        no_channels],
+                                        2*opt['input_radius']+1,
+                                        2*opt['input_radius']+1,
+                                        2*opt['input_radius']+1,
+                                        opt['no_channels']],
                                         name='lo_res')
 
         y = tf.placeholder(tf.float32, [None,
-                                        2*output_radius+1,
-                                        2*output_radius+1,
-                                        2*output_radius+1,
-                                        no_channels*(upsampling_rate**3)],
+                                        2*opt['output_radius']+1,
+                                        2*opt['output_radius']+1,
+                                        2*opt['output_radius']+1,
+                                        opt['no_channels']*(opt['upsampling_rate']**3)],
                                         name='hi_res')
 
     with tf.name_scope('learning_rate'):
@@ -206,11 +184,15 @@ def train_cnn(opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Build model and loss function
-    y_pred, y_std, cost = models.inference(method, x, y, keep_prob, opt, trade_off)
+    y_pred, y_std, cost = models.inference(opt['method'], x, y, keep_prob, opt, trade_off)
 
     # Define gradient descent op
     with tf.name_scope('train'):
-        optim = opt['optimizer'](learning_rate=lr)
+        if opt['optimizer']=='adam':
+            optim = tf.train.AdamOptimizer(learning_rate=lr)
+        else:
+            raise Exception('Specified optimizer not available.')
+
         train_step = optim.minimize(cost, global_step=global_step)
 
     with tf.name_scope('accuracy'):
@@ -309,7 +291,7 @@ def train_cnn(opt):
             sess.run(init)
 
         # Start training!
-        while (epoch < n_epochs) and (not done_looping):
+        while (epoch < opt['n_epochs']) and (not done_looping):
 
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
@@ -335,7 +317,7 @@ def train_cnn(opt):
                 # train op and loss
                 current_step = tf.train.global_step(sess, global_step)
                 fd_t={x: xt, y: yt, lr: lr_,
-                      keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch]}
+                      keep_prob: 1.-opt['dropout_rate'], trade_off:tradeoff_list[epoch]}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -343,7 +325,7 @@ def train_cnn(opt):
 
                 # valid loss
                 fd_v = {x: xv, y: yv,
-                        keep_prob: 1.-dropout_rate, trade_off:tradeoff_list[epoch]}
+                        keep_prob: 1.-opt['dropout_rate'], trade_off:tradeoff_list[epoch]}
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
                 total_val_cost_epoch += va_cost

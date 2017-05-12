@@ -56,6 +56,7 @@ def prepare_data(size,
                  outM,
                  patchlib_name,
                  whiten,
+                 method='default',
                  train_index=[],
                  bgval=0,
                  is_reset=False,
@@ -157,7 +158,7 @@ def prepare_data(size,
                                                        ds=us_rate,
                                                        whiten=whiten,
                                                        bgval=bgval,
-                                                       method='default')
+                                                       method=method)
         print ('Saving patch indices:' + patfile)
         dataset.save_patch_indices(patfile)
         print('Saving transformation:' + transfile)
