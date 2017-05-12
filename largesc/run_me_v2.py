@@ -4,6 +4,8 @@ import argparse
 import os
 from largesc.train_v2 import train_cnn
 import largesc.reconstruct_v2 as reconstruct
+import sys
+from train_v2 import name_network
 
 # Training settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
@@ -43,9 +45,9 @@ if opt['continue']==True or opt['overwrite'] ==True:
 # Other micellaneous parameters:
 opt['n_h1'] = 50
 opt['n_h2'] = 2 * opt['n_h1']
-opt['n_h3'] = 10
-opt['L1_reg'] = 0.00
-opt['L2_reg'] = 1e-5
+# opt['n_h3'] = 10
+# opt['L1_reg'] = 0.00
+# opt['L2_reg'] = 1e-5
 
 # data/task:
 opt['train_subjects']=['117324', '904044']
@@ -86,17 +88,21 @@ opt['subpath'] = '/T1w/Diffusion/'
 opt['input_file_name'] = 'dt_b1000_lowres_' + str(opt['upsampling_rate']) + '_'
 
 
-# Train:
-print(opt)
-train_cnn(opt)
+with open(opt['save_dir']+name_network(opt)+'/output.txt', 'w') as f:
+    # Redirect all the outputs to the text file:
+    sys.stdout = f
 
-# Reconstruct:
-subjects_list = ['904044', '165840', '889579', '713239',
-                 '899885', '117324', '214423', '857263']
-rmse_average = 0
-for subject in subjects_list:
-    opt['subject'] = subject
-    rmse, _ = reconstruct.sr_reconstruct(opt)
-    rmse_average += rmse
-print('\n Average RMSE on Diverse dataset is %.15f.'
-      % (rmse_average / len(subjects_list),))
+    # Train:
+    print(opt)
+    train_cnn(opt)
+
+    # Reconstruct:
+    subjects_list = ['904044', '165840', '889579', '713239',
+                     '899885', '117324', '214423', '857263']
+    rmse_average = 0
+    for subject in subjects_list:
+        opt['subject'] = subject
+        rmse, _ = reconstruct.sr_reconstruct(opt)
+        rmse_average += rmse
+    print('\n Average RMSE on Diverse dataset is %.15f.'
+          % (rmse_average / len(subjects_list),))

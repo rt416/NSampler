@@ -120,7 +120,7 @@ def train_cnn(opt):
     log_dir = define_logdir(opt)
     opt["checkpoint_dir"] = checkpoint_dir
     with open(checkpoint_dir+'/config.txt', 'w') as fp:
-        for p in opt.iteritems():
+        for p in sorted(opt.iteritems(), key=lambda (k,v): (v,k)):
             fp.write("%s:%s\n" % p)
 
     # exit if the network has already been trained:
@@ -198,9 +198,7 @@ def train_cnn(opt):
         train_step = optim.minimize(cost, global_step=global_step)
 
     with tf.name_scope('accuracy'):
-        # todo: introduce proper scaling
         transform = dataset._transform
-        print(transform )
         mse = tf.reduce_mean(tf.square(transform['output_std']*(y - y_pred)))
         # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
