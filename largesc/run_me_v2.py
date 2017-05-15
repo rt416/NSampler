@@ -10,8 +10,8 @@ from train_v2 import name_network
 
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
-parser.add_argument('-e', '--experiment', type=str, default='25Apr2017', help='name of the experiment')
-parser.add_argument('-m', '--method', type=str, default='cnn_simple', help='network type')
+parser.add_argument('-e', '--experiment', dest='experiment', type=str, default='25Apr2017', help='name of the experiment')
+parser.add_argument('-m', '--method', dest='method', type=str, default='cnn_simple', help='network type')
 parser.add_argument('--valid', action='store_true', help='pick the best model based on the loss, not the MSE?')
 parser.add_argument('--overwrite', action='store_true', help='restart the training completelu')
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
@@ -19,8 +19,8 @@ parser.add_argument('--is_reset', action='store_true', help='reset the patch lib
 parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
-parser.add_argument('-lr', '--learning_rate', type=float, default='1e-3', help='learning rate')
-parser.add_argument('-dr', '--dropout_rate', type=float, default='0.0', help='drop-out rate')
+parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float, default='1e-3', help='learning rate')
+parser.add_argument('-dr', '--dropout_rate', dest='dropout_rate', type=float, default='0.0', help='drop-out rate')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')
@@ -30,11 +30,11 @@ parser.add_argument('--transform_opt', type=str, default='standard', help='norma
 
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
-parser.add_argument('-ts', '--no_subjects', type=float, default='0', help='background value')
+parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=float, default='8', help='background value')
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
-parser.add_argument('-us', '--upsampling_rate', type=int, default=2, help='upsampling rate')
-parser.add_argument('-ir', '--input_radius', type=int, default=5, help='input radius')
-parser.add_argument('-rr', '--receptive_field_radius', type=int, default=2, help='receptive field radius')
+parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=2, help='upsampling rate')
+parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, default=5, help='input radius')
+parser.add_argument('-rr', '--receptive_field_radius', dest="receptive_field_radius", type=int, default=2, help='receptive field radius')
 
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')

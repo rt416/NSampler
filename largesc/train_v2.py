@@ -143,7 +143,7 @@ def train_cnn(opt):
                                                         patchlib_name=filename_patchlib,
                                                         method=opt['patch_sampling_opt'],
                                                         whiten=opt['transform_opt'],
-                                                        inp_header=opt['inp_header'],
+                                                        inp_header=opt['input_file_name'],
                                                         out_header=opt['gt_header'],
                                                         train_index=opt['train_subjects'],
                                                         bgval=opt['background_value'],
