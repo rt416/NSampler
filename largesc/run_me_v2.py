@@ -65,6 +65,7 @@ if not(os.path.exists(base_dir)):
     os.makedirs(base_dir + 'data/')
     os.makedirs(base_dir + 'log/')
     os.makedirs(base_dir + 'models/')
+    os.makedirs(base_dir + 'models/' + name_network(opt))
     os.makedirs(base_dir + 'recon/')
 
 opt['data_dir'] = base_dir + 'data/'
