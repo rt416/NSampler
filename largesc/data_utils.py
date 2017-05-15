@@ -10,8 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import shutil
-# from debug import set_trace
+import random
 
+# from debug import set_trace
 
 
 def gendata_centroid(mask, bgval=0):
@@ -423,3 +424,23 @@ def forward_shuffle_img(imglist, us):
         shuff_images.append(img2)
 
     return shuff_images
+
+
+def fetch_subjects(no_subjects=8, shuffle=False, test=False):
+    if test:
+        subj_list = ['992774', '125525', '205119', '133928', # first 8 are the original Diverse  dataset
+                     '570243', '448347', '654754', '153025',
+                     '101915', '106016', '120111', '122317', # original 8 training subjects
+                     '130316', '148335', '153025', '159340',
+                     '162733', '163129', '178950', '188347', # original 8 test subjects
+                     '189450', '199655', '211720', '280739',
+                     '106319', '117122', '133827', '140824', # random 8 subjects
+                     '158540', '196750', '205826', '366446']
+    else:
+        subj_list = ['904044', '165840', '889579', '713239',
+                     '899885', '117324', '214423', '857263']
+
+    assert no_subjects <= len(subj_list)
+
+    if shuffle: random.shuffle(subj_list)
+    return subj_list[:no_subjects]

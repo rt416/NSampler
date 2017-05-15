@@ -54,8 +54,11 @@ def prepare_data(size,
                  eval_frac,
                  inpN,
                  outM,
+                 no_channels,
                  patchlib_name,
                  whiten,
+                 inp_header='dt_b1000_lowres_2_',
+                 out_header='dt_b1000_',
                  method='default',
                  train_index=[],
                  bgval=0,
@@ -117,13 +120,15 @@ def prepare_data(size,
 
 
     # load the images into memory (as a list of numpy arrays):
-    inp_channels = range(3,9)
-    out_channels = range(3,9)
+    inp_channels = range(3,no_channels+3)
+    out_channels = range(3,no_channels+3)
     inp_images, out_images = load_data(data_dir_root,
                                        subpath,
                                        train_index,
                                        inp_channels,
-                                       out_channels)
+                                       out_channels,
+                                       inp_header,
+                                       out_header)
 
     # Check if there're any nan/inf
     print ('Sanitising data...')
@@ -171,7 +176,9 @@ def load_data(data_dir_root,
               subpath,
               train_index,
               inp_channels,
-              out_channels):
+              out_channels,
+              inp_header,
+              out_header):
     """ load a sequence of nii files.
 
     Args:
@@ -179,6 +186,8 @@ def load_data(data_dir_root,
         train_index: subjects list e.g. ['117324', '904044']
         inp_channels (list of indices): for DTI e.g. [3,4,5,6,7,8]
         out_channels (list of int): for DTI e.g. [3,4,5,6,7,8]
+        inp_header (str): header of input nii files e.g. 'dt_b1000_lowres_2_'
+        out_header (str): header of output nii files e.g. 'dt_b1000_'
 
     Returns:
         inp_images (list): list of numpy arrays
@@ -193,9 +202,9 @@ def load_data(data_dir_root,
     # todo: need to make the naming more general - currently specific to DTIs
     for subject in train_index:
         inp_file = (data_dir_root + subject + subpath +
-                    '/dt_b1000_lowres_2_{0:d}.nii')
+                    '/'+inp_header+'{0:d}.nii')
         out_file = (data_dir_root + subject + subpath +
-                    '/dt_b1000_{0:d}.nii')
+                    '/'+out_header+'{0:d}.nii')
         inp_images[ind], hdr = dutils.load_series_nii(inp_file,
                                                       inp_channels,
                                                       dtype='float32')
