@@ -39,8 +39,6 @@ parser.add_argument('-rr', '--receptive_field_radius', dest="receptive_field_rad
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
 
-
-
 arg = parser.parse_args()
 opt = vars(arg)
 if opt['continue']==True or opt['overwrite'] ==True:
@@ -92,6 +90,8 @@ else:
 # -------------------- Train and test --------------------------------:
 with open(opt['save_dir']+name_network(opt)+'/output.txt', 'w') as f:
     # Redirect all the outputs to the text file:
+    print("Redirecting the output to: "
+          +opt['save_dir']+name_network(opt)+"/output.txt")
     sys.stdout = f
 
     # Train:
