@@ -79,13 +79,13 @@ opt['subpath'] = '/T1w/Diffusion/'
 
 # Mean Apparent Propagater MRI
 if opt['is_map']:
-    opt['input_file_name'] = 'h4_all_lowres_'+str(opt['upsampling_rate'])+'_'
+    opt['input_file_name'] = 'h4_all_lowres_'+str(opt['upsampling_rate'])+'_{02:d}.nii'
     opt['output_file_name'] = 'h4_recon.npy'
-    opt['gt_header'] = 'h4_all_'
+    opt['gt_header'] = 'h4_all_{02:d}.nii'
     opt['no_channels'] = 22
 else:
-    opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_'
-    opt['gt_header'] = 'dt_b1000_'
+    opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{0:d}.nii'
+    opt['gt_header'] = 'dt_b1000_{0:d}.nii'
 
 
 # -------------------- Train and test --------------------------------:

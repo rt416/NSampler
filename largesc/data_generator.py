@@ -202,9 +202,9 @@ def load_data(data_dir_root,
     # todo: need to make the naming more general - currently specific to DTIs
     for subject in train_index:
         inp_file = (data_dir_root + subject + subpath +
-                    '/'+inp_header+'{0:d}.nii')
+                    '/'+inp_header)
         out_file = (data_dir_root + subject + subpath +
-                    '/'+out_header+'{0:d}.nii')
+                    '/'+out_header)
         inp_images[ind], hdr = dutils.load_series_nii(inp_file,
                                                       inp_channels,
                                                       dtype='float32')
