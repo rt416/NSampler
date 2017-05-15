@@ -55,7 +55,8 @@ def name_network(opt):
 
     nn_body = nn_str % nn_var
 
-    if opt['is_map']: nn_header += 'MAP_' + nn_header
+    if opt['is_map']:
+        nn_header = 'MAP_' + nn_header
 
     if opt['valid']:
         # Validate on the cost:
