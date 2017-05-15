@@ -31,6 +31,7 @@ parser.add_argument('--transform_opt', type=str, default='standard', help='norma
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
 parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='8', help='background value')
+parser.add_argument('-bgval', '--background_value', dest="background_value", type=float, default='0', help='background value')
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
 parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=2, help='upsampling rate')
 parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, default=5, help='input radius')
