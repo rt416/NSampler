@@ -237,7 +237,7 @@ def sr_reconstruct(opt):
     no_channels = opt['no_channels']
 
     input_file_name, _ = opt['input_file_name'].split('{')
-    opt['gt_header'], _ = opt['gt_header'].split('{')
+    gt_header, _ = opt['gt_header'].split('{')
     if not('output_file_name' in opt):
         opt['output_file_name'] = 'dt_recon_b1000.npy'
 
@@ -277,7 +277,7 @@ def sr_reconstruct(opt):
                              recon_dir+subject+'/'+nn_dir,
                              gt_dir+subject+subpath,
                              no_channels=no_channels,
-                             gt_header=opt['gt_header'])
+                             gt_header=gt_header)
 
     # Compute the reconstruction error:
     mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
@@ -293,7 +293,7 @@ def sr_reconstruct(opt):
                                   mask_dir=mask_dir+subject+'/masks',
                                   mask_file=mask_file,
                                   no_channels=no_channels,
-                                  gt_header=opt['gt_header'])
+                                  gt_header=gt_header)
 
     print('\nRMSE (no edge) is %f.' % rmse)
     print('\nRMSE (whole) is %f.' % rmse_whole)
