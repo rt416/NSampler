@@ -17,11 +17,13 @@ parser.add_argument('--overwrite', action='store_true', help='restart the traini
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
 parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
+parser.add_argument('--disp', action='store_true', help='display outputs?')
+
 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
 parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float, default='1e-3', help='learning rate')
 parser.add_argument('-dr', '--dropout_rate', dest='dropout_rate', type=float, default='0.0', help='drop-out rate')
-parser.add_argument('--no_epochs', type=int, default=2, help='number of epochs to train for')
+parser.add_argument('--no_epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')
 parser.add_argument('--patch_sampling_opt', type=str, default='default', help='sampling scheme for patche extraction')
@@ -90,22 +92,23 @@ else:
 if not(os.path.exists(opt['save_dir']+name_network(opt))):
     os.makedirs(opt['save_dir'] + name_network(opt))
 
-with open(opt['save_dir']+name_network(opt)+'/output.txt', 'w') as f:
+if opt['disp']:
+    f = open(opt['save_dir']+name_network(opt)+'/output.txt', 'w')
     # Redirect all the outputs to the text file:
     print("Redirecting the output to: "
           +opt['save_dir']+name_network(opt)+"/output.txt")
     sys.stdout = f
 
-    # Train:
-    print(opt)
-    train_cnn(opt)
+# Train:
+print(opt)
+train_cnn(opt)
 
-    # Reconstruct:
-    subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
-    rmse_average = 0
-    for subject in subjects_list:
-        opt['subject'] = subject
-        rmse, _ = reconstruct.sr_reconstruct(opt)
-        rmse_average += rmse
-    print('\n Average RMSE on Diverse dataset is %.15f.'
-          % (rmse_average / len(subjects_list),))
+# Reconstruct:
+subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
+rmse_average = 0
+for subject in subjects_list:
+    opt['subject'] = subject
+    rmse, _ = reconstruct.sr_reconstruct(opt)
+    rmse_average += rmse
+print('\n Average RMSE on Diverse dataset is %.15f.'
+      % (rmse_average / len(subjects_list),))

@@ -428,17 +428,21 @@ def forward_shuffle_img(imglist, us):
 
 def fetch_subjects(no_subjects=8, shuffle=False, test=False):
     if test:
-        subj_list = ['992774', '125525', '205119', '133928', # first 8 are the original Diverse  dataset
-                     '570243', '448347', '654754', '153025',
-                     '101915', '106016', '120111', '122317', # original 8 training subjects
-                     '130316', '148335', '153025', '159340',
-                     '162733', '163129', '178950', '188347', # original 8 test subjects
-                     '189450', '199655', '211720', '280739',
-                     '106319', '117122', '133827', '140824', # random 8 subjects
-                     '158540', '196750', '205826', '366446']
-    else:
         subj_list = ['904044', '165840', '889579', '713239',
                      '899885', '117324', '214423', '857263']
+    else:
+        subj_list = ['992774', '125525', '205119', '133928',
+                     # first 8 are the original Diverse  dataset
+                     '570243', '448347', '654754', '153025',
+                     '101915', '106016', '120111', '122317',
+                     # original 8 training subjects
+                     '130316', '148335', '153025', '159340',
+                     '162733', '163129', '178950', '188347',
+                     # original 8 test subjects
+                     '189450', '199655', '211720', '280739',
+                     '106319', '117122', '133827', '140824',
+                     # random 8 subjects
+                     '158540', '196750', '205826', '366446']
 
     assert no_subjects <= len(subj_list)
 
