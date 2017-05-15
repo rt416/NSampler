@@ -65,7 +65,6 @@ if not(os.path.exists(base_dir)):
     os.makedirs(base_dir + 'data/')
     os.makedirs(base_dir + 'log/')
     os.makedirs(base_dir + 'models/')
-    os.makedirs(base_dir + 'models/' + name_network(opt))
     os.makedirs(base_dir + 'recon/')
 
 opt['data_dir'] = base_dir + 'data/'
@@ -91,6 +90,8 @@ else:
 # -------------------- Train and test --------------------------------:
 with open(opt['save_dir']+name_network(opt)+'/output.txt', 'w') as f:
     # Redirect all the outputs to the text file:
+    if not(os.path.exists(opt['save_dir']+name_network(opt))):
+        os.makedirs(opt['save_dir']+name_network(opt))
     print("Redirecting the output to: "
           +opt['save_dir']+name_network(opt)+"/output.txt")
     sys.stdout = f
