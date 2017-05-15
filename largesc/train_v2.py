@@ -226,7 +226,7 @@ def train_cnn(opt):
         n_valid_batches = opt['valid_noexamples'] // opt['batch_size']
 
         # Compute the trade-off values:
-        tradeoff_list = models.get_tradeoff_values(opt)
+        tradeoff_list = models.get_tradeoff_values_v2(opt['method'], opt['no_epochs'])
 
         # Define some counters
         start_time = timeit.default_timer()

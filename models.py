@@ -944,3 +944,28 @@ def get_tradeoff_values(opt):
     else:
         print('no trade off needed!')
     return tradeoff_list
+
+def get_tradeoff_values_v2(method, n_epochs):
+    tradeoff_list = np.zeros(n_epochs)
+    if method == 'cnn_heteroscedastic_variational_hybrid_control' or \
+       method== 'cnn_heteroscedastic_variational_channelwise_hybrid_control' or \
+       method == 'cnn_heteroscedastic_variational_cov_hybrid' or \
+       method == 'cnn_heteroscedastic_variational_layerwise_cov_hybrid' or \
+       method == 'cnn_heteroscedastic_variational_channelwise_cov_hybrid':
+
+        print('apply trade-off!')
+        init_idx = n_epochs//4  # intial stable training with std variational dropout loss
+        freq = 1
+        counter = 0
+        rate  = 1./(len(range(init_idx,3*init_idx))//freq)
+        for idx in range(init_idx,3*init_idx):
+            if (counter+1)%freq==0:
+                tradeoff_list[idx] = tradeoff_list[idx-1] + rate
+                counter=0
+            else:
+                tradeoff_list[idx] = tradeoff_list[idx-1]
+                counter+=1
+        tradeoff_list[3*init_idx:]=1.  # fine-tune with the true cost function.
+    else:
+        print('no trade off needed!')
+    return tradeoff_list
