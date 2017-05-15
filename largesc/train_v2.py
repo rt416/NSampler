@@ -55,16 +55,18 @@ def name_network(opt):
 
     nn_body = nn_str % nn_var
 
+    if opt['is_map']: nn_header += 'MAP_' + nn_header
+
     if opt['valid']:
         # Validate on the cost:
-        nn_header += '_valid_cost'
+        nn_header += '_validcost'
 
     return nn_header + '_' + nn_body
 
 def name_patchlib(opt):
     """given inputs, return the patchlib name """
-
-    header = 'patchlib_'
+    header = 'patchlib'
+    if opt['is_map']: header = 'MAP_' + header
 
     # problem definition:
     nn_var = (opt['upsampling_rate'],
@@ -84,7 +86,7 @@ def name_patchlib(opt):
     # nn_str +='opt=%s_drop=%s_prep=%s_'
 
     nn_body = nn_str % nn_var
-    return header+nn_body
+    return header+'_'+nn_body
 
 
 def update_best_loss(this_loss, bests, iter_, current_step):
@@ -130,7 +132,9 @@ def train_cnn(opt):
             return
         elif opt['overwrite']:
             print('Overwriting: delete the previous results')
-            shutil.rmtree(opt['save_dir']+'/'+name_network(opt))
+            files = glob.glob(opt['save_dir']+'/'+name_network(opt) + '/model*')
+            files.extend(glob.glob(opt['save_dir']+'/'+name_network(opt) + '/checkpoint*'))
+            for f in files: os.remove(f)
             shutil.rmtree(opt['log_dir']+'/'+name_network(opt))
 
     # -------------------------load data---------------------------------------:
