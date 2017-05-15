@@ -234,12 +234,12 @@ def sr_reconstruct(opt):
     gt_dir = opt['gt_dir']
     subpath = opt['subpath']
     subject = opt['subject']
-    input_file_name = opt['input_file_name']
     no_channels = opt['no_channels']
+
+    input_file_name, _ = opt['input_file_name'].split('{')
+    opt['gt_header'], _ = opt['gt_header'].split('{')
     if not('output_file_name' in opt):
-        opt['output_file_name']='dt_recon_b1000.npy'
-    if not('gt_header' in opt):
-        opt['gt_header']='dt_b1000_'
+        opt['output_file_name'] = 'dt_recon_b1000.npy'
 
     # Load the input low-res DT image:
     input_file = gt_dir + subject + subpath + input_file_name
