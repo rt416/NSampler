@@ -114,20 +114,12 @@ def super_resolve(dt_lowres, opt):
 
     # Network details:
     method = opt['method']
-    dropout_rate = opt['dropout_rate']
-    n_h1 = opt['n_h1']
-    n_h2 = opt['n_h2']
-    n_h3 = opt['n_h3']
 
     # Training set details:
-    cohort = opt['cohort']
-    no_subjects = opt['no_subjects']
     no_channels = opt['no_channels']
-    subsampling_rate = opt['subsampling_rate']
 
     # Input/Output details:
     upsampling_rate = opt['upsampling_rate']
-    receptive_field_radius = opt['receptive_field_radius']
     input_radius = opt['input_radius']
     output_radius = opt['output_radius']
 
@@ -163,15 +155,8 @@ def super_resolve(dt_lowres, opt):
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # Load normalisation parameters and define prediction:
-    # todo: include normalisation option
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    # print(transform)
-    # transform = dict()
-    # transform['input_mean']=.0
-    # transform['input_std']=1.0
-    # transform['output_mean'] = .0
-    # transform['output_std'] = 1.0
     y_pred, y_pred_std = models.scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off)
 
     # Specify the network parameters to be restored:
