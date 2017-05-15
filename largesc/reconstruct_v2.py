@@ -110,14 +110,8 @@ def super_resolve(dt_lowres, opt):
     Returns:
         the estimated high-res volume
     """
-    # ------------------ Load in the parameters ------------------:
 
-    # Network details:
-    method = opt['method']
-
-    # Training set details:
-    no_channels = opt['no_channels']
-
+    # --------------------------- Define the model--------------------------:
     # Input/Output details:
     upsampling_rate = opt['upsampling_rate']
     input_radius = opt['input_radius']
@@ -126,21 +120,19 @@ def super_resolve(dt_lowres, opt):
     # get the dir where the network is saved
     network_dir = define_checkpoint(opt)
 
-    # --------------------------- Define the model--------------------------:
-
-    print('... defining the network model %s .' % method)
+    print('... defining the network model %s .' % opt['method'])
     with tf.name_scope('input'):
         x = tf.placeholder(tf.float32, [None,
                                         2 * input_radius + 1,
                                         2 * input_radius + 1,
                                         2 * input_radius + 1,
-                                        no_channels],
+                                        opt['no_channels']],
                            name='lo_res')
         y = tf.placeholder(tf.float32, [None,
                                         2 * output_radius + 1,
                                         2 * output_radius + 1,
                                         2 * output_radius + 1,
-                                        no_channels * (upsampling_rate ** 3)],
+                                        opt['no_channels'] * (upsampling_rate ** 3)],
                            name='hi_res')
 
     with tf.name_scope('learning_rate'):
@@ -157,7 +149,7 @@ def super_resolve(dt_lowres, opt):
     # Load normalisation parameters and define prediction:
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    y_pred, y_pred_std = models.scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off)
+    y_pred, y_pred_std = models.scaled_prediction(opt['method'], x, y, keep_prob, transform, opt, trade_off)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))

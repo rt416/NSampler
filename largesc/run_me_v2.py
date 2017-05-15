@@ -21,15 +21,15 @@ parser.add_argument('--save', action='store_true', help='save the reconstructed 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
 parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float, default='1e-3', help='learning rate')
 parser.add_argument('-dr', '--dropout_rate', dest='dropout_rate', type=float, default='0.0', help='drop-out rate')
-parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train for')
+parser.add_argument('--no_epochs', type=int, default=2, help='number of epochs to train for')
 parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')
-parser.add_argument('--train_size', type=int, default=18000, help='total number of patches')
 parser.add_argument('--patch_sampling_opt', type=str, default='default', help='sampling scheme for patche extraction')
 parser.add_argument('--transform_opt', type=str, default='standard', help='normalisation transform')
 
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
+parser.add_argument('--no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
 parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='8', help='background value')
 parser.add_argument('-bgval', '--background_value', dest="background_value", type=float, default='0', help='background value')
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
@@ -42,8 +42,7 @@ parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2
 
 arg = parser.parse_args()
 opt = vars(arg)
-if opt['continue']==True or opt['overwrite'] ==True:
-    assert opt['continue']!= opt['overwrite']
+if opt['continue']==True or opt['overwrite'] ==True: assert opt['continue']!= opt['overwrite']
 
 # Other micellaneous parameters:
 opt['n_h1'] = 50
@@ -53,10 +52,9 @@ opt['n_h3'] = 10
 # opt['L2_reg'] = 1e-5
 
 # data/task:
+opt['train_size']=int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
-opt['b_value'] = 1000
 opt['patchlib_idx'] = 1
-opt['no_randomisation'] = 1
 opt['output_radius'] = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 
 # directories:
@@ -89,7 +87,7 @@ else:
 
 
 # -------------------- Train and test --------------------------------:
-if not (os.path.exists(opt['save_dir'] + name_network(opt))):
+if not(os.path.exists(opt['save_dir']+name_network(opt))):
     os.makedirs(opt['save_dir'] + name_network(opt))
 
 with open(opt['save_dir']+name_network(opt)+'/output.txt', 'w') as f:

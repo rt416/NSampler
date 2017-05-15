@@ -44,7 +44,7 @@ def name_network(opt):
     nn_str = 'us=%i_in=%i_rec=%i_out=%i_'
 
     nn_var += (opt['no_subjects'],
-               opt['train_size'],
+               opt['no_patches'],
                opt['transform_opt'],
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
@@ -77,7 +77,7 @@ def name_patchlib(opt):
     nn_str = 'us=%i_in=%i_rec=%i_out=%i_'
 
     nn_var += (opt['no_subjects'],
-               opt['train_size'],
+               opt['no_patches'],
                opt['transform_opt'],
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
@@ -299,7 +299,7 @@ def train_cnn(opt):
             sess.run(init)
 
         # Start training!
-        while (epoch < opt['n_epochs']) and (not done_looping):
+        while (epoch < opt['no_epochs']) and (not done_looping):
 
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
