@@ -16,6 +16,7 @@ parser.add_argument('--valid', action='store_true', help='pick the best model ba
 parser.add_argument('--overwrite', action='store_true', help='restart the training completelu')
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
+parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
 parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
 parser.add_argument('--disp', action='store_true', help='display outputs?')
 
@@ -45,6 +46,11 @@ parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2
 arg = parser.parse_args()
 opt = vars(arg)
 if opt['continue']==True or opt['overwrite'] ==True: assert opt['continue']!= opt['overwrite']
+
+# GPUs devices:
+os.environ["CUDA_VISIBLE_DEVICES"]=opt["gpu"]
+from tensorflow.python.client import device_lib
+print device_lib.list_local_devices()
 
 # Other micellaneous parameters:
 opt['n_h1'] = 50
