@@ -30,6 +30,9 @@ parser.add_argument('--validation_fraction', type=float, default=0.5, help='frac
 parser.add_argument('--patch_sampling_opt', type=str, default='default', help='sampling scheme for patche extraction')
 parser.add_argument('--transform_opt', type=str, default='standard', help='normalisation transform')
 
+parser.add_argument('--n_h1', type=int, default=50, help='n1')
+parser.add_argument('--n_h2', type=int, default=100, help='n2')
+
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
 parser.add_argument('--no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
@@ -53,8 +56,8 @@ from tensorflow.python.client import device_lib
 print device_lib.list_local_devices()
 
 # Other micellaneous parameters:
-opt['n_h1'] = 50
-opt['n_h2'] = 2 * opt['n_h1']
+# opt['n_h1'] = 50
+# opt['n_h2'] = 2 * opt['n_h1']
 opt['n_h3'] = 10
 # opt['L1_reg'] = 0.00
 # opt['L2_reg'] = 1e-5
