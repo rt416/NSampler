@@ -45,6 +45,9 @@ parser.add_argument('-rr', '--receptive_field_radius', dest="receptive_field_rad
 
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
+parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc/', help='ground truth directory')
+parser.add_argument('--subpath', type=str, default='/T1w/Diffusion/', help='ground truth directory')
+
 
 arg = parser.parse_args()
 opt = vars(arg)
@@ -83,8 +86,8 @@ opt['log_dir'] = base_dir + 'log/'
 opt['recon_dir'] = base_dir + 'recon/'
 
 opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
-opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
-opt['subpath'] = '/T1w/Diffusion/'
+# opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
+# opt['subpath'] = '/T1w/Diffusion/'
 
 # Mean Apparent Propagater MRI
 if opt['is_map']:
