@@ -125,6 +125,35 @@ def residual_block(x, n_in, n_out, name):
     return tf.nn.relu(tf.nn.bias_add(h3, b))
 
 
+def cnn_simple(opt, input):
+    """A simple CNN"""
+    h1_1 = conv3d(x, [3, 3, 3, args.no_channels, n_h1], [n_h1], 'conv_1')
+
+    if opt['receptive_field_radius'] == 2:
+        h1_2 = conv3d(tf.nn.relu(h1_1), [1, 1, 1, n_h1, n_h2], [n_h2],
+                      'conv_2')
+    elif opt['receptive_field_radius'] == 3:
+        h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2],
+                      'conv_2')
+    elif opt['receptive_field_radius'] == 4:
+        h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2],
+                      'conv_2')
+        h1_2 = conv3d(tf.nn.relu(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2],
+                      'conv_3')
+    elif opt['receptive_field_radius'] == 5:
+        h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2],
+                      'conv_2')
+        h1_2 = conv3d(tf.nn.relu(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2],
+                      'conv_3')
+        h1_2 = conv3d(tf.nn.relu(h1_2), [3, 3, 3, n_h2, n_h2], [n_h2],
+                      'conv_4')
+
+    y_pred = conv3d(tf.nn.relu(h1_2),
+                    [3, 3, 3, n_h2, no_channels * (upsampling_rate ** 3)],
+                    [no_channels * (upsampling_rate ** 3)],
+                    'conv_last')
+
+
 def inference(method, x, y, keep_prob, opt, trade_off=None):
     """ Define the model up to where it may be used for inference.
     Args:
