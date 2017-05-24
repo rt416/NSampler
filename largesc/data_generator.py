@@ -63,6 +63,7 @@ def prepare_data(size,
                  train_index=[],
                  bgval=0,
                  is_reset=False,
+                 clip=False,
                  us_rate=2,
                  data_dir_root='',
                  save_dir_root='',
@@ -148,7 +149,8 @@ def prepare_data(size,
                                                           out_images,
                                                           inpN,
                                                           ds=us_rate,
-                                                          whiten=whiten)
+                                                          whiten=whiten,
+                                                          clip=clip)
         print('Save transformation:' + transfile)
         dataset.save_transform(transfile)
     else:
@@ -163,7 +165,8 @@ def prepare_data(size,
                                                        ds=us_rate,
                                                        whiten=whiten,
                                                        bgval=bgval,
-                                                       method=method)
+                                                       method=method,
+                                                       clip=clip)
         print ('Saving patch indices:' + patfile)
         dataset.save_patch_indices(patfile)
         print('Saving transformation:' + transfile)

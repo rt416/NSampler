@@ -197,7 +197,8 @@ class Data(object):
                          ds,
                          whiten='none',
                          bgval=0,
-                         method='default'):
+                         method='default',
+                         clip=False):
 
         """
         Generates the patchlib, which is equivalent to creating the randomised
@@ -241,7 +242,8 @@ class Data(object):
                                                   ds, inpN)
 
         # clip images at 0.1% and 99.9% percentile:
-        inp_images, out_images = self._clip_images(inp_images, out_images)
+        if clip:
+            inp_images, out_images = self._clip_images(inp_images, out_images)
 
         # bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)
@@ -359,13 +361,17 @@ class Data(object):
     #     return self
 
     def load_patch_indices(self, filename, transname,
-                           inp_images, out_images, inpN, ds, whiten):
+                           inp_images, out_images, inpN, ds, whiten,clip=False):
 
         # Load the indices:
         self.load(filename)
 
         # Pad:
         inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
+
+        # Clip
+        if clip:
+            inp_images, out_images = self._clip_images(inp_images, out_images)
 
         # Bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)

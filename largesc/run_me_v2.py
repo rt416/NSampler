@@ -29,6 +29,8 @@ parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')
 parser.add_argument('--patch_sampling_opt', type=str, default='default', help='sampling scheme for patche extraction')
 parser.add_argument('--transform_opt', type=str, default='standard', help='normalisation transform')
+parser.add_argument('--is_clip', action='store_true', help='want to clip the images for preprocessing?')
+
 
 parser.add_argument('--n_h1', type=int, default=50, help='n1')
 parser.add_argument('--n_h2', type=int, default=100, help='n2')

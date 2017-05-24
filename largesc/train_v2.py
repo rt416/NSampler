@@ -153,6 +153,7 @@ def train_cnn(opt):
                                                         train_index=opt['train_subjects'],
                                                         bgval=opt['background_value'],
                                                         is_reset=opt['is_reset'],
+                                                        clip=opt['is_clip'],
                                                         us_rate=opt['upsampling_rate'],
                                                         data_dir_root=opt['gt_dir'],
                                                         save_dir_root=opt['data_dir'],
