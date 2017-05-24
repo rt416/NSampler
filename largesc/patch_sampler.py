@@ -233,13 +233,16 @@ class Data(object):
         self._ds               = ds
 
         # ------------------ Preprocess --------------------------------
-        # # todo: need to include normalisation step.
         # inp_images, out_images = \
         #     self.whiten_imgs(whiten, inp_images, out_images, True, ds)
 
         # pad images:
         inp_images, out_images = self._pad_images(inp_images, out_images,
                                                   ds, inpN)
+
+        # clip images at 0.1% and 99.9% percentile:
+        inp_images, out_images = self._clip_images(inp_images, out_images)
+
         # bring all images to low-res space
         inp_images = self._downsample_lowres(inp_images, ds)
         # reverse-shuffle output images
@@ -785,4 +788,44 @@ class Data(object):
             ds_images.append(img)
 
         return ds_images
+
+
+    def _clip_images(self, inp_images, out_images, tail_perc=0.1, head_perc=99.9):
+        """ Clip input/ouput images
+        Assumptions: out_images are in the original form (with no shuffling).
+
+        """
+        print("Clipping input/output images")
+        inp_perc_list, out_perc_list=[],[]
+
+        for idx, (inp, out) in enumerate(zip(inp_images, out_images)):
+            assert inp.shape == out.shape
+            inp_mask = inp[..., 0] != 0
+            out_mask = out[..., 0] != 0
+
+            for ch_idx in range(inp.shape[-1]):
+                v_ch = inp[..., ch_idx][inp_mask]
+                inp_perc_tail = np.percentile(v_ch,tail_perc)
+                inp_perc_head = np.percentile(v_ch,head_perc)
+                inp_perc_list.append((inp_perc_tail,inp_perc_head))
+                inp_images[idx][...,ch_idx][inp_mask]=np.clip(v_ch,
+                                                              inp_perc_tail,
+                                                              inp_perc_head)
+
+                v_ch = out[..., ch_idx][out_mask]
+                out_perc_tail = np.percentile(v_ch, tail_perc)
+                out_perc_head = np.percentile(v_ch, head_perc)
+                out_perc_list.append((out_perc_tail, out_perc_head))
+                out_images[idx][..., ch_idx][out_mask] = np.clip(v_ch,
+                                                                 out_perc_tail,
+                                                                 out_perc_head)
+        assert len(inp_perc_list)==len(out_perc_list)
+        return inp_images, out_images
+
+
+
+
+
+
+
 

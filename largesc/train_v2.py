@@ -161,7 +161,7 @@ def train_cnn(opt):
 
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
-    print ('\nPatch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
+    print ('Patch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
            'Train size:', opt['train_noexamples'],
            'Valid size:', opt['valid_noexamples'])
 
