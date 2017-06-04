@@ -76,7 +76,7 @@ def name_patchlib(opt):
               2 * opt['receptive_field_radius'] + 1,
               (2 * opt['output_radius'] + 1) * opt['upsampling_rate'],
               opt['pad_size'])
-    nn_str = 'us=%i_in=%i_rec=%i_out=%i_pad=%i'
+    nn_str = 'us=%i_in=%i_rec=%i_out=%i_pad=%i_'
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
