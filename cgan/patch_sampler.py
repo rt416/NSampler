@@ -8,7 +8,7 @@ import sys
 import numpy as np
 import cPickle as pickle
 import copy
-import largesc.data_utils as du
+import cgan.data_utils as du
 import largesc.math_utils as mu
 # import data_whiten as dwh
 # import pepys.flags as flags
@@ -57,148 +57,21 @@ class Data(object):
     def index(self):
         return self._index
 
-    def whiten_imgs(self, whiten, inp_images, out_images, compute_tfm, ds):
 
-        # Compute the normalisation parameters:
-        if compute_tfm:
-            if whiten == 'none':
-                print("No normalisation is applied to data.")
-                transform = dict()
-                transform['input_mean'] = .0
-                transform['input_std'] = 1.0
-                transform['output_mean'] = .0
-                transform['output_std'] = 1.0
-
-            elif whiten == 'scaling':
-                print("No normalisation is applied to data.")
-                transform = dict()
-                transform['input_mean'] = .0
-                transform['input_std'] = 1e-4
-                transform['output_mean'] = .0
-                transform['output_std'] = 1e-4
-            elif whiten == 'standard':
-                print('Whiten each channel independently.')
-                transform = dict()
-                in_m, in_s, out_m, out_s = 0, 0, 0, 0
-                for img in inp_images:
-                    in_m += np.mean(img[img[...,0] != 0.0], axis=0)
-                    in_s += np.std(img[img[..., 0] != 0.0], axis=0)
-
-                for img in out_images:
-                    out_m += np.mean(img[img[..., 0] != 0.0], axis=0)
-                    out_s += np.std(img[img[..., 0] != 0.0], axis=0)
-
-                transform['input_mean']= in_m/len(inp_images)
-                transform['input_std'] = in_s/len(inp_images)
-                transform['output_mean'] = out_m/len(out_images)
-                transform['output_std'] = out_s/len(out_images)
-
-            # Assign to the object.
-            self._transform = transform
-
-        # Normalise each image/volume sequentially:
-        for idx in range(len(inp_images)):
-            inp_images[idx] = (inp_images[idx] - self._transform['input_mean']) / \
-                              self._transform['input_std']
-            out_images[idx] = (out_images[idx] - self._transform['output_mean']) / \
-                              self._transform['output_std']
-
-        # Reverse shuffle the output mean and std:
-        if whiten == 'standard' and compute_tfm:
-            no_channels = inp_images[0].shape[3]
-            out_m = np.zeros((ds ** 3) * no_channels)
-            out_s = out_m.copy()
-
-            for idx in range(no_channels):
-                out_m[idx * (ds ** 3):(idx + 1) * (ds ** 3)] = \
-                transform['output_mean'][idx]
-                out_s[idx * (ds ** 3):(idx + 1) * (ds ** 3)] = \
-                transform['output_std'][idx]
-            transform['output_mean'] = out_m
-            transform['output_std'] = out_s
-            self._transform = transform
-
-        return inp_images, out_images
-
-    def whiten_imgs_v2(self, whiten, inp_images, out_images, compute_tfm, ds):
-
-        # Compute the normalisation parameters:
-        if compute_tfm:
-            if whiten == 'none':
-                print("No normalisation is applied to data.")
-                transform = dict()
-                transform['input_mean'] = .0
-                transform['input_std'] = 1.0
-                transform['output_mean'] = .0
-                transform['output_std'] = 1.0
-
-            elif whiten == 'scaling':
-                print("No normalisation is applied to data.")
-                transform = dict()
-                transform['input_mean'] = .0
-                transform['input_std'] = 1e-4
-                transform['output_mean'] = .0
-                transform['output_std'] = 1e-4
-            elif whiten == 'standard':
-                print('Whiten each channel independently.')
-                transform = dict()
-                in_m, in_s, out_m, out_s = self.compute_mean_and_std()
-
-                transform['input_mean'] = in_m
-                transform['input_std'] = in_s
-                transform['output_mean'] = out_m
-                transform['output_std'] = out_s
-
-        return transform
-
-    def compute_mean_and_std(self, n_chunks=100, chunk_size=100):
-        # # Get the indices of samples used for computing mean and std:
-        # perm = np.arange(self._size)
-        # np.random.shuffle(perm)
-        # samples_list = perm[:no_samples]
-
-        # Compute:
-        sum_in, sum_in2, sum_out, sum_out2 = 0, 0, 0, 0
-
-        for i in xrange(n_chunks):
-            sys.stdout.write('\tChunk progress: %d/%d\r' % (i + 1, n_chunks))
-            sys.stdout.flush()
-
-            pindlist1 = self._train_pindlistI[i*chunk_size:(i+1)*chunk_size, :]
-            pindlist2 = self._train_pindlistO[i*chunk_size:(i+1)*chunk_size, :]
-
-            inp_chunk, out_chunk = self._collect_patches(self._inpN,
-                                                         self._outM,
-                                                         self._inp_images,
-                                                         self._out_images,
-                                                         pindlist1, pindlist2)
-
-            sum_in += 1. * np.sum(inp_chunk, axis=0)
-            sum_in2 += 1. * np.sum(inp_chunk ** 2, axis=0)
-            sum_out += 1. * np.sum(out_chunk, axis=0)
-            sum_out2 += 1. * np.sum(out_chunk ** 2, axis=0)
-
-        in_m = sum_in/(n_chunks*chunk_size)
-        in_s = np.sqrt((sum_in2-2*in_m*sum_in+n_chunks*chunk_size*(in_m**2))\
-                        /(n_chunks*chunk_size))
-
-        out_m = sum_out/(n_chunks * chunk_size)
-        out_s = np.sqrt((sum_out2-2*out_m*sum_out+n_chunks*chunk_size*(out_m**2))\
-                        /(n_chunks * chunk_size))
-        return in_m, in_s, out_m, out_s
-
-    def create_patch_lib(self, 
-                         size, 
+    def create_patch_lib(self,
+                         size,
                          eval_frac,
-                         inpN, 
-                         outM, 
-                         inp_images, 
-                         out_images, 
-                         ds,
+                         inpN,
+                         outM,
+                         inp_images,
+                         out_images,
+                         us_rate,
                          whiten='none',
                          bgval=0,
                          method='default',
-                         clip=False):
+                         pad_size=-1,
+                         clip=True,
+                         shuffle=True):
 
         """
         Generates the patchlib, which is equivalent to creating the randomised
@@ -211,9 +84,10 @@ class Data(object):
             outM (int): output patch size = (2*outM + 1)
             inp_images (list): Images that form the sources
             out_images (list): Images that form the output
-            ds (int): Downsampling rate
+            us_rate (int): Downsampling rate
             whiten (whiten type): Whiten data or not
             bgval (float): Background value: voxels outside the mask
+            method (str): how to
             sample_size (int): Used internally to sample the voxles randomly
                                  within the list of subjects
 
@@ -221,7 +95,7 @@ class Data(object):
             self: The class instance itself
         """
         # ------------------- Set up config --------------------------------
-        trainlen = int((1-eval_frac) * size)
+        trainlen = int((1-eval_frac)*size)
         self._size = trainlen
         self._valsize = size - trainlen
         self._inpN    = inpN
@@ -231,26 +105,18 @@ class Data(object):
         self._index_in_epoch   = 0
         self._index            = 0
         self._valid_index      = 0
-        self._ds               = ds
+        self._us_rate          = us_rate
+        self._shuffle          = shuffle
+        self._pad_size         = pad_size
 
         # ------------------ Preprocess --------------------------------
-        # inp_images, out_images = \
-        #     self.whiten_imgs(whiten, inp_images, out_images, True, ds)
-
-        # pad images:
-        inp_images, out_images = self._pad_images(inp_images, out_images,
-                                                  ds, inpN)
-
-        # clip images at 0.1% and 99.9% percentile:
-        if clip:
-            inp_images, out_images = self._clip_images(inp_images, out_images)
-
-        # bring all images to low-res space
-        inp_images = self._downsample_lowres(inp_images, ds)
-        # reverse-shuffle output images
-        out_images = du.backward_shuffle_img(out_images, ds)
-
         # store input and output for patch collection
+        inp_images, out_images = self._preprocess(inp_images, out_images,
+                                                  inpN,
+                                                  us_rate,
+                                                  pad_size=pad_size,
+                                                  clip=clip,
+                                                  shuffle=shuffle)
         self._inp_images = inp_images
         self._out_images = out_images
 
@@ -259,37 +125,20 @@ class Data(object):
         print('Sampling method: ' + method)
         vox_indx = self._get_valid_indices(inp_images, inpN, bgval)
 
-        if method=='default':
-            # randomly sample patch indices
-            pindlistI = self._select_patch_indices_ryu(size, vox_indx)
+        # randomly sample patch indices
+        pindlistI = self._select_patch_indices(size, vox_indx)
 
-            # Split into validation and training sets:
-            self._val_pindlistI = pindlistI[:self._valsize, ...]
-            self._val_pindlistO = self._val_pindlistI
+        # Split into validation and training sets:
+        self._val_pindlistI = pindlistI[:self._valsize, ...]
+        self._train_pindlistI = pindlistI[self._valsize:, ...]
 
-            self._train_pindlistI = pindlistI[self._valsize:, ...]
-            self._train_pindlistO = self._train_pindlistI
+        self._val_pindlistO = self._val_pindlistI
+        self._train_pindlistO = self._train_pindlistI
 
-        elif method=='segregate':
-            # Now collect validation patch indices
-            self._val_pindlistI = self._select_patch_indices_ryu(self._valsize, vox_indx)
-            self._val_pindlistO = self._val_pindlistI
-
-            # segregate validation and training patch sets by
-            # creating masks of regions chosen for validation patches
-            tmasks = self._segregate_trainvalid_masks(inp_images, inpN,
-                                                      self._val_pindlistI)
-
-            # Now on these masks re-check for valid patch indices
-            vox_indx = self._get_valid_indices(tmasks, inpN, bgval=0)
-
-            # From these new patch indices that are free of validation
-            # patches now select patches for training
-            self._train_pindlistI = self._select_patch_indices_ryu(self._size, vox_indx)
-            self._train_pindlistO = self._train_pindlistI
 
         # Compute normalisation transform:
-        self._transform=self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
+        # todo: need to include normalisation in the preprocessing function.
+        self._transform=self._whiten_imgs(whiten, inp_images, out_images, True, us_rate)
 
         print('Patch-lib size:', size,
               'Train size:', self._size,
@@ -354,37 +203,29 @@ class Data(object):
         self._inp_images = tmp_inp
         self._out_images = tmp_out
 
-    # def load_patch_indices(self, filename, inp_images, out_images):
-    #     self.load(filename)
-    #     self._inp_images = inp_images
-    #     self._out_images = out_images
-    #     return self
-
     def load_patch_indices(self, filename, transname,
-                           inp_images, out_images, inpN, ds, whiten,clip=False):
+                           inp_images, out_images, inpN, us_rate, whiten,
+                           pad_size=-1, clip=False, shuffle=True):
 
         # Load the indices:
         self.load(filename)
 
-        # Pad:
-        inp_images, out_images = self._pad_images(inp_images, out_images, ds, inpN)
-
-        # Clip
-        if clip:
-            inp_images, out_images = self._clip_images(inp_images, out_images)
-
-        # Bring all images to low-res space
-        inp_images = self._downsample_lowres(inp_images, ds)
-        out_images = du.backward_shuffle_img(out_images, ds)
+        # Preprocess:
+        inp_images, out_images = self._preprocess(inp_images, out_images,
+                                                  inpN,
+                                                  us_rate,
+                                                  pad_size=pad_size,
+                                                  clip=clip,
+                                                  shuffle=shuffle)
 
         # Normalise:
         self._inp_images = inp_images
         self._out_images = out_images
-        self._transform = self.whiten_imgs_v2(whiten, inp_images, out_images, True, ds)
+        self._transform = self._whiten_imgs(whiten, inp_images, out_images, True, us_rate)
 
         return self
 
-    def visualise_patches(self, pindlist, iz2=-1, ic=0):
+    def visualise_patches(self, pindlist, iz2=-1, ic=0, figsize=(6,6)):
         """
         Visualise a list of patches (input and output pairs)
         Only the z-axis = iz and channel = ic is visualised
@@ -395,18 +236,20 @@ class Data(object):
         """
         df = self._inpN - self._outM
         if iz2 < 0:
-            iz2 = self._outM 
+            iz2 = self._outM if self._shuffle else self._outM*self._us_rate
         voxindlist1 = self._train_pindlistI[pindlist,:]
         voxindlist2 = self._train_pindlistO[pindlist,:]
         inp_patches, out_patches = (
                 self._collect_patches(self._inpN, self._outM,
-                                     self._inp_images, self._out_images,
-                                     voxindlist1, voxindlist2) )
+                                      self._inp_images, self._out_images,
+                                      voxindlist1, voxindlist2,
+                                      us_rate=self._us_rate,
+                                      shuffle=self._shuffle))
         plist = [] 
         for i in range(len(pindlist)):
-            plist.append(inp_patches[i, :, :, iz2 + df, ic])
-            plist.append(out_patches[i, :, :, iz2, 0])
-        du.show_slices(plist, sz=self._outM)
+            plist.append(inp_patches[i, :, :, self._inpN, ic])
+            plist.append(out_patches[i, :, :, iz2, ic])
+        du.show_slices(plist, sz=self._outM, sz_2=iz2, figsize=figsize)
         du.plt.show()
 
 
@@ -425,8 +268,10 @@ class Data(object):
         for i, r in enumerate(indexlist):
             pindlist[i, ...] = np.array(r)
         inp_patches, out_patches = self._collect_patches(inpN, outM,
-                                         self._inp_images, self._out_images,
-                                         pindlist, pindlist)
+                                                         self._inp_images, self._out_images,
+                                                         pindlist, pindlist,
+                                                         us_rate=self._us_rate,
+                                                         shuffle=self._shuffle)
         plist = [] 
         for i in range(len(pindlist)):
             plist.append(inp_patches[i, :, :, iz2 + df, ic])
@@ -472,9 +317,11 @@ class Data(object):
         end = self._index_in_epoch
         pindlist1 = self._train_pindlistI[start:end,:]
         pindlist2 = self._train_pindlistO[start:end,:]
-        inp, out = self._collect_patches(self._inpN, self._outM, 
+        inp, out = self._collect_patches(self._inpN, self._outM,
                                          self._inp_images, self._out_images,
-                                         pindlist1, pindlist2)
+                                         pindlist1, pindlist2,
+                                         us_rate=self._us_rate,
+                                         shuffle=self._shuffle)
         self._index += 1
         return inp, out
 
@@ -507,10 +354,14 @@ class Data(object):
         end = self._valid_index
         pindlist1 = self._val_pindlistI[start:end,:]
         pindlist2 = self._val_pindlistO[start:end,:]
-        inp, out = self._collect_patches(self._inpN, self._outM, 
+        inp, out = self._collect_patches(self._inpN, self._outM,
                                          self._inp_images, self._out_images,
-                                         pindlist1, pindlist2)
+                                         pindlist1, pindlist2,
+                                         us_rate=self._us_rate,
+                                         shuffle=self._shuffle
+                                         )
         return inp, out
+
 
     def _get_valid_indices(self, img_list, psz, bgval=0):
         """
@@ -557,14 +408,17 @@ class Data(object):
         return index_list
 
     def _collect_patches(self, inpN, outM, inp_images, out_images, 
-                         pindlistI, pindlistO):
+                         pindlistI, pindlistO,
+                         us_rate=2, shuffle=True):
         dimV = inp_images[0].shape[-1] if len(inp_images[0].shape)==4 else 1
         psz  = 2*inpN + 1
         N = pindlistI.shape[0]
         inp_patches = np.zeros((N, psz, psz, psz, dimV))
         dimV = out_images[0].shape[-1] if len(out_images[0].shape)==4 else 1
-        psz  = 2*outM + 1
+        psz  = 2*outM + 1 if shuffle else us_rate*(2*outM + 1)
         out_patches = np.zeros((N, psz, psz, psz, dimV))
+
+        # input patches
         cnt = 0
         for r in pindlistI:
             if len(inp_images[0].shape)==4:
@@ -578,81 +432,27 @@ class Data(object):
                                                  r[2]-inpN:r[2]+inpN+1, 
                                                  r[3]-inpN:r[3]+inpN+1, ...])
             cnt += 1
+
+        # output patches:
+        c = 1 if shuffle else us_rate
         cnt = 0
+
         for r in pindlistO:
             if len(out_images[0].shape)==4:
                 out_patches[cnt, ...] = (
-                                out_images[r[0]][r[1]-outM:r[1]+outM+1, 
-                                                 r[2]-outM:r[2]+outM+1, 
-                                                 r[3]-outM:r[3]+outM+1, ...])
+                                out_images[r[0]][c*(r[1]-outM):c*(r[1]+outM+1),
+                                                 c*(r[2]-outM):c*(r[2]+outM+1),
+                                                 c*(r[3]-outM):c*(r[3]+outM+1), ...])
             else:
                 out_patches[cnt, ..., 0] = (
-                                out_images[r[0]][r[1]-outM:r[1]+outM+1, 
-                                                 r[2]-outM:r[2]+outM+1, 
-                                                 r[3]-outM:r[3]+outM+1, ...])
+                                out_images[r[0]][c*(r[1]-outM):c*(r[1]+outM+1),
+                                                 c*(r[2]-outM):c*(r[2]+outM+1),
+                                                 c*(r[3]-outM):c*(r[3]+outM+1), ...])
             cnt += 1
+
         return inp_patches, out_patches
 
-
-    def _select_patch_indices(self, size, sample_sz, vox_indx, N):
-        """ Select the indices of patches to be extracted
-        Args:
-            size (int): the total number of patches to be extracted
-            sample_sz (int): the number of patches sampled each time
-            vox_indx (list): list of 2d np arrays. Each array stores the indices
-                            (i,j,k) of all valid patches in each subject.
-                            Each row is an instance of patch location (i, j, k).
-            N (int): number of subjects
-
-        Returns:
-            pindlist (list ?)
-
-        """
-        print ('Selecting random patch-indices...')
-        ITERS = size // (N * sample_sz)
-        REMND = size %  (N * sample_sz)
-        subind = np.random.randint(0, N, (ITERS+1, N))
-        ptch_szlist = []
-
-        # get the number of all patches in each subject.
-        for indx in vox_indx:
-            ptch_szlist.append(indx.shape[0])
-
-        cnt = 0
-        pindlist= np.zeros((size, 4), dtype=int)
-        for itind in subind[:-1, :]:
-            for sind in itind:
-                # todo: FIX. vind random sampling with relacement => potential duplicates!
-                vind = np.random.randint(0, ptch_szlist[sind], (sample_sz))
-                pindlist[cnt:cnt+sample_sz, 0]  = sind
-                pindlist[cnt:cnt+sample_sz, 1:] = vox_indx[sind][vind, :]
-                cnt += sample_sz
-
-        # extract the remaining patches.
-        ITERS = REMND // sample_sz
-        REMND = REMND % sample_sz
-        itind = subind[-1, 0:ITERS]
-        for sind in itind:
-            vind = np.random.randint(0, ptch_szlist[sind], (sample_sz))
-            pindlist[cnt:cnt+sample_sz, 0]  = sind
-            pindlist[cnt:cnt+sample_sz, 1:] = vox_indx[sind][vind, :]
-            cnt += sample_sz
-        if REMND>0:
-            # print ('Patch creation (remainder):', REMND)
-            sind = subind[-1, ITERS]
-            vind = np.random.randint(0, ptch_szlist[sind], (REMND))
-            pindlist[cnt:cnt+REMND, 0]  = sind
-            pindlist[cnt:cnt+REMND, 1:] = vox_indx[sind][vind, :]
-
-        uniq = mu.unique_rows(pindlist)
-        print ('Duplicate patches:', size - uniq.shape[0])
-
-        perm = np.arange(pindlist.shape[0])
-        np.random.shuffle(perm)
-        pindlist = pindlist[perm,:]
-        return pindlist
-
-    def _select_patch_indices_ryu(self, size, vox_indx):
+    def _select_patch_indices(self, size, vox_indx):
         """ Select the indices of patches to be extracted
         Args:
             size (int): the total number of patches to be extracted
@@ -713,8 +513,102 @@ class Data(object):
                         r[3]-inpN:r[3]+inpN+1] = 0
         return masks
 
+    # -------------------- Preprocess the data ---------------------------------
+    def _preprocess(self,
+                    inp_images, out_images,
+                    inpN,
+                    us_rate,
+                    pad_size=-1,
+                    clip=True,
+                    shuffle=True):
 
-    def _pad_images(self, inp_images, out_images, ds, inpN):
+        # pad images:
+        padding = None if pad_size < 0 else pad_size
+        inp_images, out_images = self._pad_images(inp_images, out_images,
+                                                  us_rate, inpN,
+                                                  padding=padding)
+
+        # clip images at 0.1% and 99.9% percentile:
+        if clip: inp_images, out_images = self._clip_images(inp_images,
+                                                            out_images)
+
+        # bring all images to low-res space
+        inp_images = self._downsample_lowres(inp_images, us_rate)
+
+        # reverse-shuffle output images
+        if shuffle: out_images = du.backward_shuffle_img(out_images, us_rate)
+
+        return inp_images, out_images
+
+    def _whiten_imgs(self, whiten, inp_images, out_images, compute_tfm,us_rate):
+        # Compute the normalisation parameters:
+        if compute_tfm:
+            if whiten == 'none':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1.0
+                transform['output_mean'] = .0
+                transform['output_std'] = 1.0
+            elif whiten == 'scaling':
+                print("No normalisation is applied to data.")
+                transform = dict()
+                transform['input_mean'] = .0
+                transform['input_std'] = 1e-4
+                transform['output_mean'] = .0
+                transform['output_std'] = 1e-4
+            elif whiten == 'standard':
+                print('Whiten each channel independently.')
+                transform = dict()
+                in_m, in_s, out_m, out_s = self._compute_mean_and_std()
+                transform['input_mean'] = in_m
+                transform['input_std'] = in_s
+                transform['output_mean'] = out_m
+                transform['output_std'] = out_s
+        return transform
+
+    def _compute_mean_and_std(self, n_chunks=100, chunk_size=100):
+        # # Get the indices of samples used for computing mean and std:
+        # perm = np.arange(self._size)
+        # np.random.shuffle(perm)
+        # samples_list = perm[:no_samples]
+
+        # Compute:
+        sum_in, sum_in2, sum_out, sum_out2 = 0, 0, 0, 0
+
+        for i in xrange(n_chunks):
+            sys.stdout.write('\tChunk progress: %d/%d\r' % (i + 1, n_chunks))
+            sys.stdout.flush()
+
+            pindlist1 = self._train_pindlistI[
+                        i * chunk_size:(i + 1) * chunk_size, :]
+            pindlist2 = self._train_pindlistO[
+                        i * chunk_size:(i + 1) * chunk_size, :]
+
+            inp_chunk, out_chunk = self._collect_patches(self._inpN,
+                                                         self._outM,
+                                                         self._inp_images,
+                                                         self._out_images,
+                                                         pindlist1, pindlist2)
+
+            sum_in += 1. * np.sum(inp_chunk, axis=0)
+            sum_in2 += 1. * np.sum(inp_chunk ** 2, axis=0)
+            sum_out += 1. * np.sum(out_chunk, axis=0)
+            sum_out2 += 1. * np.sum(out_chunk ** 2, axis=0)
+
+        in_m = sum_in / (n_chunks * chunk_size)
+        in_s = np.sqrt(
+            (sum_in2 - 2 * in_m * sum_in + n_chunks * chunk_size * (in_m ** 2)) \
+            / (n_chunks * chunk_size))
+
+        out_m = sum_out / (n_chunks * chunk_size)
+        out_s = np.sqrt((
+                        sum_out2 - 2 * out_m * sum_out + n_chunks * chunk_size * (
+                        out_m ** 2)) \
+                        / (n_chunks * chunk_size))
+        return in_m, in_s, out_m, out_s
+
+    def _pad_images(self, inp_images, out_images, us_rate, inpN, padding=None):
         """
         Pad images with zeros if required.
 
@@ -726,27 +620,39 @@ class Data(object):
         out_pad = []
         for inp, out in zip(inp_images, out_images):
             sh = inp.shape
-            pad_min = (inpN + 1) * ds
-            pad_x = pad_min if np.mod(2 * pad_min + sh[0], ds) == 0 \
-                else pad_min + (ds - np.mod(2 * pad_min + sh[0], ds))
 
-            pad_y = pad_min if np.mod(2 * pad_min + sh[1], ds) == 0 \
-                else pad_min + (ds - np.mod(2 * pad_min + sh[1], ds))
+            # set the padding
+            if padding==None:
+                print("Apply maximal padding ...")
+                pad_min_x, pad_min_y, pad_min_z = (inpN+1) * us_rate, (inpN + 1) * us_rate, (inpN + 1) * us_rate
+            else:
+                if type(padding)==int: padding = (padding,)*3
+                print("Pad by: %s" % (padding,))
+                pad_min_x, pad_min_y, pad_min_z = padding
 
-            pad_z = pad_min if np.mod(2 * pad_min + sh[2], ds) == 0 \
-                else pad_min + (ds - np.mod(2 * pad_min + sh[2], ds))
+            # add extra padding so padded images are divisible
+            # by upsampling factor in all dimns
+            pad_x = pad_min_x if np.mod(2 * pad_min_x + sh[0], us_rate) == 0 \
+                else pad_min_x + (us_rate - np.mod(2 * pad_min_x + sh[0], us_rate))
 
+            pad_y = pad_min_y if np.mod(2 * pad_min_y + sh[1], us_rate) == 0 \
+                else pad_min_y + (us_rate - np.mod(2 * pad_min_y + sh[1], us_rate))
+
+            pad_z = pad_min_z if np.mod(2 * pad_min_z + sh[2], us_rate) == 0 \
+                else pad_min_z + (us_rate - np.mod(2 * pad_min_z + sh[2], us_rate))
+
+            # padd the images:
             if len(sh)==3:
                 inp = np.pad(inp,
-                             pad_width=((pad_min, pad_x),
-                                        (pad_min, pad_y),
-                                        (pad_min, pad_z)),
+                             pad_width=((pad_min_x, pad_x),
+                                        (pad_min_y, pad_y),
+                                        (pad_min_z, pad_z)),
                              mode='constant', constant_values=0)
             elif len(sh)==4:
                 inp = np.pad(inp,
-                             pad_width=((pad_min, pad_x),
-                                        (pad_min, pad_y),
-                                        (pad_min, pad_z), (0, 0)),
+                             pad_width=((pad_min_x, pad_x),
+                                        (pad_min_y, pad_y),
+                                        (pad_min_z, pad_z), (0, 0)),
                              mode='constant', constant_values=0)
             else:
                 raise ValueError('Only 3D or 4D images')
@@ -755,15 +661,15 @@ class Data(object):
             sh = out.shape
             if len(sh)==3:
                 out = np.pad(out,
-                             pad_width=((pad_min, pad_x),
-                                        (pad_min, pad_y),
-                                        (pad_min, pad_z)),
+                             pad_width=((pad_min_x, pad_x),
+                                        (pad_min_y, pad_y),
+                                        (pad_min_z, pad_z)),
                              mode='constant', constant_values=0)
             elif len(sh)==4:
                 out = np.pad(out,
-                             pad_width=((pad_min, pad_x),
-                                        (pad_min, pad_y),
-                                        (pad_min, pad_z), (0, 0)),
+                             pad_width=((pad_min_x, pad_x),
+                                        (pad_min_y, pad_y),
+                                        (pad_min_z, pad_z), (0, 0)),
                              mode='constant', constant_values=0)
             else:
                 raise ValueError('Only 3D or 4D images')
@@ -772,8 +678,8 @@ class Data(object):
         return inp_pad, out_pad
 
             
-    def _downsample_lowres(self, lr_images, ds):
-        """
+    def _downsample_lowres(self, lr_images, us_rate):
+        """ Down-sample
         Returns:
             ds_images: downsampled images
         """
@@ -788,18 +694,24 @@ class Data(object):
         ds_images = []
         for img in lr_images:
             if is3D:
-                img = img[::ds, ::ds, ::ds]
+                img = img[::us_rate, ::us_rate, ::us_rate]
             else:
-                img = img[::ds, ::ds, ::ds, ...]
+                img = img[::us_rate, ::us_rate, ::us_rate, ...]
             ds_images.append(img)
 
         return ds_images
 
 
     def _clip_images(self, inp_images, out_images, tail_perc=0.1, head_perc=99.9):
-        """ Clip input/ouput images
-        Assumptions: out_images are in the original form (with no shuffling).
+        """ Clip inp_images, out_images according to the specified percentile.
 
+        Assumptions:
+            input_images, out_images are in the original form (with no shuffling).
+        Args:
+            inp_images (list): list of input images as numpy arrays
+            out_images (list): list of output images
+            tail_perc (float): lower percentile
+            head_perc (float): upper percentile
         """
         print("Clipping input/output images")
         inp_perc_list, out_perc_list=[],[]

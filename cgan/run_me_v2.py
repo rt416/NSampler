@@ -2,11 +2,11 @@
 
 import argparse
 import os
-from largesc.train_v2 import train_cnn
-import largesc.reconstruct_v2 as reconstruct
+from cgan.train_v2 import train_cnn
+import cgan.reconstruct_v2 as reconstruct
 import sys
-from data_utils import fetch_subjects
-from train_v2 import name_network
+from cgan.data_utils import fetch_subjects
+from cgan.train_v2 import name_network
 
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
@@ -29,7 +29,9 @@ parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')
 parser.add_argument('--patch_sampling_opt', type=str, default='default', help='sampling scheme for patche extraction')
 parser.add_argument('--transform_opt', type=str, default='standard', help='normalisation transform')
+parser.add_argument('--pad_size', type=int, default=-1, help='size of padding. Set -1 to apply maximal padding.')
 parser.add_argument('--is_clip', action='store_true', help='want to clip the images for preprocessing?')
+parser.add_argument('--is_shuffle', action='store_true', help='want to reverse shuffle the HR output into LR space?')
 
 
 parser.add_argument('--n_h1', type=int, default=50, help='n1')

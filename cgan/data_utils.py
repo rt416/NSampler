@@ -128,16 +128,22 @@ def sanitise_imgdata(imgdat, val=0., neg=False, nan=True, inf=True):
 
 
 
-def show_slices(slices, sz=0):
-    """ Function to display row of image slices """
-    fig, axes = plt.subplots(1, len(slices))
+def show_slices(slices, sz=0, sz_2=0, figsize=(6,6)):
+    """ Function to display row of image slices
+    Args:
+        slices (list): list of 2d numpy arrays alternating between input/output
+        sz (int): radius of the central rectangle in LR space
+        sz_hr (int): radius of the cen
+    """
+    fig, axes = plt.subplots(1, len(slices), figsize=figsize)
     for i, slice in enumerate(slices):
         axes[i].imshow(slice.T, cmap="gray", origin="lower")
-        if sz>0:
+        if sz>0 and sz_2>2:
             bgz = slice.shape[0]//2
-            off = bgz - sz
+            sz_tmp = sz if i%2==0 else sz_2
+            off = bgz - sz_tmp
             axes[i].add_patch(patches.Rectangle(
-                    (off, off), 2*sz+1, 2*sz+1, fill=False, edgecolor='red'))
+                    (off, off), 2*sz_tmp+1, 2*sz_tmp+1, fill=False, edgecolor='red'))
     fig.show()
 
 

@@ -8,7 +8,7 @@ import shutil
 import cPickle as pkl
 import numpy as np
 import tensorflow as tf
-import largesc.data_generator as data_generator
+import cgan.data_generator as data_generator
 import sr_preprocess as pp
 import models
 
@@ -45,10 +45,11 @@ def name_network(opt):
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
+               opt['pad_size'],
                opt['transform_opt'],
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
-    nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
+    nn_str += 'ts=%d_pl=%d_pad=%d_nrm=%s_smpl=%s_%03i'
 
     # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
     # nn_str +='opt=%s_drop=%s_prep=%s_'
@@ -73,8 +74,9 @@ def name_patchlib(opt):
     nn_var = (opt['upsampling_rate'],
               2 * opt['input_radius'] + 1,
               2 * opt['receptive_field_radius'] + 1,
-              (2 * opt['output_radius'] + 1) * opt['upsampling_rate'])
-    nn_str = 'us=%i_in=%i_rec=%i_out=%i_'
+              (2 * opt['output_radius'] + 1) * opt['upsampling_rate'],
+              opt['pad_size'])
+    nn_str = 'us=%i_in=%i_rec=%i_out=%i_pad=%i'
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
@@ -154,6 +156,8 @@ def train_cnn(opt):
                                                         bgval=opt['background_value'],
                                                         is_reset=opt['is_reset'],
                                                         clip=opt['is_clip'],
+                                                        shuffle=opt['is_shuffle'],
+                                                        pad_size=opt['pad_size'],
                                                         us_rate=opt['upsampling_rate'],
                                                         data_dir_root=opt['gt_dir'],
                                                         save_dir_root=opt['data_dir'],

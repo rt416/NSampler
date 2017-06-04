@@ -196,9 +196,9 @@ def super_resolve(dt_lowres, opt):
             sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
 
             ipatch_tmp = dt_lowres[(i - input_radius - 1):(i + input_radius),
-                               (j - input_radius - 1):(j + input_radius),
-                               (k - input_radius - 1):(k + input_radius),
-                               2:comp]
+                                   (j - input_radius - 1):(j + input_radius),
+                                   (k - input_radius - 1):(k + input_radius),
+                                    2:comp]
 
             ipatch = ipatch_tmp[np.newaxis, ...]
 
