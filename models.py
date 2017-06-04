@@ -255,6 +255,36 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
 
         with tf.name_scope('loss'):
             cost = tf.reduce_mean(tf.square(y - y_pred))
+
+    elif method == 'baseline_transcon':
+        h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], 'conv_1')
+
+        if opt['receptive_field_radius'] == 2:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], 'conv_2')
+        elif opt['receptive_field_radius'] == 3:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+        elif opt['receptive_field_radius'] == 4:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_3')
+        elif opt['receptive_field_radius'] == 5:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_3')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_4')
+        elif opt['receptive_field_radius'] > 5:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2],'conv_2')
+            lyr=3
+            while lyr<(opt['receptive_field_radius']):
+                h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_'+str(lyr+1))
+                lyr+=1
+
+        y_pred = conv3d(tf.nn.relu(h1_2),
+                        [3,3,3,n_h2,no_channels*(upsampling_rate**3)],
+                        [no_channels*(upsampling_rate**3)],
+                        'conv_last')
+
+        with tf.name_scope('loss'):
+            cost = tf.reduce_mean(tf.square(y - y_pred))
+
     elif method=='cnn_simple_L1':
         h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
