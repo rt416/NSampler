@@ -13,204 +13,84 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from largesc.ops import *
+from cgan.ops import *
+from collections import OrderedDict
 
 
-def get_weights(filter_shape, W_init=None, name=None):
-    if W_init == None:
-        # He/Xavier
-        prod_length = len(filter_shape) - 1
-        stddev = np.sqrt(2.0 / np.prod(filter_shape[:prod_length]))
-        W_init = tf.random_normal(filter_shape, stddev=stddev)
-    return tf.Variable(W_init, name=name)
+def unet(x, n_f=50, depth=3, n_ch=6, fsz=3):
+    net=[]; net=record_network(net, x)
+    inp_shape=get_tensor_shape(x)
+    tmp=x
+
+    for i in range(depth-1):
+        tmp=conv3d(tmp, [fsz,fsz,fsz, ])
 
 
-def conv3d(x, w_shape, b_shape=None, layer_name='', summary=True):
-    """Return the 3D convolution"""
-    with tf.name_scope(layer_name):
-        with tf.name_scope('weights'):
-            w = get_weights(w_shape)
-            variable_summaries(w, summary)
 
-        if b_shape is not None:
-            with tf.name_scope('biases'):
-                b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=b_shape))
-                variable_summaries(b, summary)
 
-            # b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
-            #                    initializer=tf.constant_initializer(1e-2))
-            with tf.name_scope('wxplusb'):
-                z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
-                z = tf.nn.bias_add(z, b)
-                variable_summaries(z, summary)
+
+
+def ESPCN_with_deconv(x,y, num_f_init=50, num_h_layers=1, upsampling_rate=2, num_channels=6):
+    n_h1 = num_f_init
+    n_h2 = 2*n_h1
+
+    net=[]
+    net=record_network(net, x)
+
+    # define the network:
+    h1_1 = conv3d(x, [3, 3, 3, num_channels, n_h1], [n_h1], 'conv_1')
+    net=record_network(net, h1_1)
+
+    lyr = 0
+    while lyr < num_h_layers:
+        if lyr==0:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2],[n_h2], 'conv_2')
         else:
-            with tf.name_scope('wx'):
-                z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding='VALID')
-                variable_summaries(z, summary)
-    return z
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2],[n_h2], 'conv_' + str(lyr + 1))
+        net=record_network(net, h1_2)
+        lyr += 1
 
+    y_pred = deconv3d(tf.nn.relu(h1_2),
+                      [3*upsampling_rate,3*upsampling_rate,3*upsampling_rate, num_channels, n_h2],
+                      upsampling_rate,
+                      with_w=False,
+                      layer_name='deconv')
 
-def normal_mult_noise(a, keep_prob, params, opt, name, summary=True):
-    """Gaussian dropout, Srivastava 2014 JMLR"""
-    with tf.name_scope(name):
-        if params==None:
-            sigma = (1.-keep_prob) / keep_prob
-            a_drop = a * (1. + sigma * tf.random_normal(tf.shape(a)))
-            kl = None
-        elif params=='weight':
-            # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
-            W_init = tf.constant(np.float32(1e-4*np.ones(get_tensor_shape(a)[1:])))
-            rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
-            sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
-            a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            kl = kl_log_uniform_prior(sigma, name='kl')
-            variable_summaries(sigma, summary)
-            variable_summaries(a_drop, summary)
-            # variable_summaries(kl, summary)
-        elif params=='channel':
-            # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
-            W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[4])))
-            rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
-            sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
-            a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            # kl = kl_log_uniform_prior(sigma, name='kl')
-            kl = np.prod(get_tensor_shape(a)[1:4]) * kl_log_uniform_prior(sigma, name='kl')
-            variable_summaries(a_drop, summary)
-            variable_summaries(sigma, summary)
-            variable_summaries(kl, summary)
-        elif params=='layer':
-            rho = get_weights(filter_shape=None, W_init=tf.constant(1e-4), name='rho')
-            sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
-            a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            # kl = kl_log_uniform_prior(sigma, name='kl')
-            kl = np.prod(get_tensor_shape(a)[1:]) * kl_log_uniform_prior(sigma, name='kl')
-            variable_summaries(a_drop, summary)
-            variable_summaries(kl, summary)
-        elif params=='weight_average':  # use average KL across the weights instead.
-            # W_init = tf.constant(1e-4, shape=tf.shape(a)[1:])
-            W_init = tf.constant(np.float32(1e-4 * np.ones(get_tensor_shape(a)[1:])))
-            rho = get_weights(filter_shape=None, W_init=W_init, name='rho')
-            sigma = tf.minimum(tf.nn.softplus(rho), 1., name='std')
-            a_drop = tf.mul(a, 1. + sigma * tf.random_normal(tf.shape(a)), name='a_drop')
-            kl = kl_log_uniform_prior(sigma, name='kl_mean', average=True)
-            variable_summaries(a_drop, summary)
-            # variable_summaries(kl, summary)
-        elif params=='no_noise': # do nothing
-            a_drop = a
-            kl = None
-    return a_drop, kl
+    net=record_network(net, y_pred)
+    print_network(net)
 
+    return y_pred
 
-def kl_log_uniform_prior(varQ, name=None, average=False):
-    """Compute the gaussian-log uniform KL-div from VDLRT"""
-    c1 = 1.16145124
-    c2 = -1.50204118
-    c3 = 0.58629921
-    kl_mtx = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
-    if average:
-        kl_div = tf.reduce_mean(kl_mtx, name=name)
-    else:
-        kl_div = tf.reduce_sum(kl_mtx, name=name)
-    return kl_div
+def ESPCN(x,y, num_f_init=50, num_h_layers=1, upsampling_rate=2, num_channels=6):
+    n_h1 = num_f_init
+    n_h2 = 2*n_h1
 
+    net=[]
 
-def residual_block(x, n_in, n_out, name):
-    """A residual block of constant spatial dimensions and 1x1 convs only"""
-    b = tf.get_variable(name+'_2b', dtype=tf.float32, shape=[n_out],
-                        initializer=tf.constant_initializer(1e-2))
-    assert n_out >= n_in
+    # define the network:
+    h1_1 = conv3d(x, [3, 3, 3, num_channels, n_h1], [n_h1], 'conv_1')
+    net=record_network(net, h1_1)
 
-    h1 = conv3d(x, [1,1,1,n_in,n_out], [n_out], name+'1')
-    h2 = conv3d(tf.nn.relu(h1), [1,1,1,n_out,n_out], None, name+'2')
-    h3 = tf.pad(x, [[0,0],[0,0],[0,0],[0,0],[0,n_out-n_in]]) + h2
-    return tf.nn.relu(tf.nn.bias_add(h3, b))
-
-
-def discriminator(self, image, y=None, reuse=False):
-    with tf.variable_scope("discriminator") as scope:
-
-        # image is 256 x 256 x (input_c_dim + output_c_dim)
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
+    lyr = 0
+    while lyr < num_h_layers:
+        if lyr==0:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2],[n_h2], 'conv_2')
         else:
-            assert tf.get_variable_scope().reuse == False
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2],[n_h2], 'conv_' + str(lyr + 1))
+        net=record_network(net, h1_2)
+        lyr += 1
 
-        h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
-        # h0 is (128 x 128 x self.df_dim)
-        h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim * 2, name='d_h1_conv')))
-        # h1 is (64 x 64 x self.df_dim*2)
-        h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim * 4, name='d_h2_conv')))
-        # h2 is (32x 32 x self.df_dim*4)
-        h3 = lrelu(self.d_bn3(
-            conv2d(h2, self.df_dim * 8, d_h=1, d_w=1, name='d_h3_conv')))
-        # h3 is (16 x 16 x self.df_dim*8)
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h3_lin')
+    y_pred = conv3d(tf.nn.relu(h1_2),
+                    [3, 3, 3, n_h2, num_channels * (upsampling_rate ** 3)],
+                    [num_channels * (upsampling_rate ** 3)],
+                    'conv_last')
+    net=record_network(net, y_pred)
+    print_network(net)
 
-        return tf.nn.sigmoid(h4), h4
+    cost = tf.reduce_mean(tf.square(y - y_pred))
 
+    return y_pred, cost
 
-def Unet(self, image, y=None):
-    with tf.variable_scope("generator") as scope:
-        s = self.output_size
-        s2, s4, s8, s16, s32, s64, s128 = int(s / 2), int(s / 4), int(
-            s / 8), int(s / 16), int(s / 32), int(s / 64), int(s / 128)
-
-        # image is (256 x 256 x input_c_dim)
-        e1 = conv2d(image, self.gf_dim, name='g_e1_conv')
-        # e1 is (128 x 128 x self.gf_dim)
-        e2 = self.g_bn_e2(conv2d(lrelu(e1), self.gf_dim * 2, name='g_e2_conv'))
-        # e2 is (64 x 64 x self.gf_dim*2)
-        e3 = self.g_bn_e3(conv2d(lrelu(e2), self.gf_dim * 4, name='g_e3_conv'))
-        # e3 is (32 x 32 x self.gf_dim*4)
-        e4 = self.g_bn_e4(conv2d(lrelu(e3), self.gf_dim * 8, name='g_e4_conv'))
-        # e4 is (16 x 16 x self.gf_dim*8)
-        e5 = self.g_bn_e5(conv2d(lrelu(e4), self.gf_dim * 8, name='g_e5_conv'))
-        # e5 is (8 x 8 x self.gf_dim*8)
-        e6 = self.g_bn_e6(conv2d(lrelu(e5), self.gf_dim * 8, name='g_e6_conv'))
-        # e6 is (4 x 4 x self.gf_dim*8)
-        e7 = self.g_bn_e7(conv2d(lrelu(e6), self.gf_dim * 8, name='g_e7_conv'))
-        # e7 is (2 x 2 x self.gf_dim*8)
-        e8 = self.g_bn_e8(conv2d(lrelu(e7), self.gf_dim * 8, name='g_e8_conv'))
-        # e8 is (1 x 1 x self.gf_dim*8)
-
-        self.d1, self.d1_w, self.d1_b = deconv2d(tf.nn.relu(e8), [self.batch_size, s128, s128,self.gf_dim * 8], name='g_d1',with_w=True)
-        d1 = tf.nn.dropout(self.g_bn_d1(self.d1), 0.5)
-        d1 = tf.concat(3, [d1, e7])
-        # d1 is (2 x 2 x self.gf_dim*8*2)
-
-        self.d2, self.d2_w, self.d2_b = deconv2d(tf.nn.relu(d1),[self.batch_size, s64, s64,self.gf_dim * 8], name='g_d2',with_w=True)
-        d2 = tf.nn.dropout(self.g_bn_d2(self.d2), 0.5)
-        d2 = tf.concat(3, [d2, e6])
-        # d2 is (4 x 4 x self.gf_dim*8*2)
-
-        self.d3, self.d3_w, self.d3_b = deconv2d(tf.nn.relu(d2),[self.batch_size, s32, s32,self.gf_dim * 8], name='g_d3',with_w=True)
-        d3 = tf.nn.dropout(self.g_bn_d3(self.d3), 0.5)
-        d3 = tf.concat(3, [d3, e5])
-        # d3 is (8 x 8 x self.gf_dim*8*2)
-
-        self.d4, self.d4_w, self.d4_b = deconv2d(tf.nn.relu(d3),[self.batch_size, s16, s16,self.gf_dim * 8], name='g_d4',with_w=True)
-        d4 = self.g_bn_d4(self.d4)
-        d4 = tf.concat(3, [d4, e4])
-        # d4 is (16 x 16 x self.gf_dim*8*2)
-
-        self.d5, self.d5_w, self.d5_b = deconv2d(tf.nn.relu(d4),[self.batch_size, s8, s8,self.gf_dim * 4], name='g_d5',with_w=True)
-        d5 = self.g_bn_d5(self.d5)
-        d5 = tf.concat(3, [d5, e3])
-        # d5 is (32 x 32 x self.gf_dim*4*2)
-
-        self.d6, self.d6_w, self.d6_b = deconv2d(tf.nn.relu(d5),[self.batch_size, s4, s4,self.gf_dim * 2], name='g_d6',with_w=True)
-        d6 = self.g_bn_d6(self.d6)
-        d6 = tf.concat(3, [d6, e2])
-        # d6 is (64 x 64 x self.gf_dim*2*2)
-
-        self.d7, self.d7_w, self.d7_b = deconv2d(tf.nn.relu(d6),[self.batch_size, s2, s2,self.gf_dim], name='g_d7',with_w=True)
-        d7 = self.g_bn_d7(self.d7)
-        d7 = tf.concat(3, [d7, e1])
-        # d7 is (128 x 128 x self.gf_dim*1*2)
-
-        self.d8, self.d8_w, self.d8_b = deconv2d(tf.nn.relu(d7),[self.batch_size, s, s,self.output_c_dim],name='g_d8', with_w=True)
-        # d8 is (256 x 256 x output_c_dim)
-        return tf.nn.tanh(self.d8)
 
 def inference(method, x, y, keep_prob, opt, trade_off=None):
     """ Define the model up to where it may be used for inference.
@@ -255,6 +135,36 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
 
         with tf.name_scope('loss'):
             cost = tf.reduce_mean(tf.square(y - y_pred))
+
+    elif method == 'espcn_with_deconv':
+        h1_1 = conv3d(x, [3,3,3,no_channels,n_h1], [n_h1], 'conv_1')
+
+        if opt['receptive_field_radius'] == 2:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [1,1,1,n_h1,n_h2], [n_h2], 'conv_2')
+        elif opt['receptive_field_radius'] == 3:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+        elif opt['receptive_field_radius'] == 4:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_3')
+        elif opt['receptive_field_radius'] == 5:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3,3,3,n_h1,n_h2], [n_h2], 'conv_2')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_3')
+            h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_4')
+        elif opt['receptive_field_radius'] > 5:
+            h1_2 = conv3d(tf.nn.relu(h1_1), [3, 3, 3, n_h1, n_h2], [n_h2],'conv_2')
+            lyr=3
+            while lyr<(opt['receptive_field_radius']):
+                h1_2 = conv3d(tf.nn.relu(h1_2), [3,3,3,n_h2,n_h2], [n_h2], 'conv_'+str(lyr+1))
+                lyr+=1
+
+        y_pred = conv3d(tf.nn.relu(h1_2),
+                        [3,3,3,n_h2,no_channels*(upsampling_rate**3)],
+                        [no_channels*(upsampling_rate**3)],
+                        'conv_last')
+
+        with tf.name_scope('loss'):
+            cost = tf.reduce_mean(tf.square(y - y_pred))
+
     elif method=='cnn_simple_L1':
         h1_1 = conv3d(x, [3, 3, 3, no_channels, n_h1], [n_h1], 'conv_1')
 
@@ -993,24 +903,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     return y_pred, y_pred_std
 
 
-def variable_summaries(var, default=False):
-    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-    if default:
-        with tf.name_scope('summaries'):
-            mean = tf.reduce_mean(var)
-            tf.summary.scalar('mean', mean)
-            with tf.name_scope('stddev'):
-                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-            tf.summary.scalar('stddev', stddev)
-            tf.summary.scalar('max', tf.reduce_max(var))
-            tf.summary.scalar('min', tf.reduce_min(var))
-            tf.summary.histogram('histogram', var)
 
-
-def get_tensor_shape(tensor):
-    """Return the shape of a tensor as a tuple"""
-    s = tensor.get_shape()
-    return tuple([s[i].value for i in range(0, len(s))])
 
 def get_tradeoff_values(opt):
     n_epochs = opt['n_epochs']

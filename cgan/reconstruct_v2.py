@@ -11,7 +11,7 @@ import tensorflow as tf
 
 import sr_preprocess as pp
 import sr_utility
-import models
+import cgan.models as models
 from cgan.train_v2 import define_checkpoint, name_network, name_patchlib
 from sr_datageneration import forward_periodic_shuffle
 

@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 import cgan.data_generator as data_generator
 import sr_preprocess as pp
-import models
+import cgan.models as models
 
 def define_checkpoint(opt):
     nn_file = name_network(opt)
