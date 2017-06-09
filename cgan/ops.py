@@ -40,6 +40,7 @@ def count_num_params():
         total_parameters += variable_parametes
     return total_parameters
 
+
 def get_weights(filter_shape, W_init=None, name=None):
     if W_init == None:
         # He/Xavier
@@ -48,46 +49,60 @@ def get_weights(filter_shape, W_init=None, name=None):
         W_init = tf.random_normal(filter_shape, stddev=stddev)
     return tf.Variable(W_init, name=name)
 
-def conv3d(x, w_shape, b_shape=None, layer_name='', summary=True, padding='VALID'):
+
+def conv3d(input_batch, out_channels, filter_size=3, stride=1, name='',
+           summary=True, padding='VALID'):
     """Return the 3D convolution"""
-    with tf.name_scope(layer_name):
-        with tf.name_scope('weights'):
-            w = get_weights(w_shape)
-            variable_summaries(w, summary)
+    with tf.name_scope(name):
+        in_channels=int(input_batch.get_shape()[-1])
+        w = get_weights([filter_size,filter_size,filter_size,in_channels,out_channels])
+        variable_summaries(w, summary)
 
-        if b_shape is not None:
-            with tf.name_scope('biases'):
-                b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=b_shape))
-                variable_summaries(b, summary)
+        b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=[out_channels]))
+        variable_summaries(b, summary)
 
-            # b = tf.get_variable('biases', dtype=tf.float32, shape=b_shape,
-            #                    initializer=tf.constant_initializer(1e-2))
-            with tf.name_scope('wxplusb'):
-                z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding=padding)
-                z = tf.nn.bias_add(z, b)
-                variable_summaries(z, summary)
-        else:
-            with tf.name_scope('wx'):
-                z = tf.nn.conv3d(x, w, strides=(1, 1, 1, 1, 1), padding=padding)
-                variable_summaries(z, summary)
+        z = tf.nn.conv3d(input_batch, w, strides=(1, stride, stride, stride, 1), padding=padding)
+        z = tf.nn.bias_add(z, b)
+        variable_summaries(z, summary)
     return z
 
-def get_output_shape_3d(x, filter_shape, strides, upsampling_rate, padding='VALID'):
+
+def deconv3d(input_batch, out_channels, filter_size=6, stride=2,
+             name="deconv", padding='VALID',with_w=False):
+
+    with tf.variable_scope(name):
+        in_channels = int(input_batch.get_shape()[-1])
+        w = get_weights([filter_size, filter_size, filter_size, out_channels, in_channels])
+
+        filter_shape=[filter_size, filter_size, filter_size]
+        strides=(1,stride,stride,stride,1)
+        output_shape=get_output_shape_3d(input_batch, filter_shape, strides[1:-1], out_channels, padding)
+        print(output_shape)
+        deconv = tf.nn.conv3d_transpose(input_batch, w, output_shape=output_shape, strides=strides, padding=padding)
+        biases = tf.get_variable('biases', [out_channels], initializer=tf.constant_initializer(0.0))
+        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
+
+        if with_w:
+            return deconv, w, biases
+        else:
+            return deconv
+
+def get_output_shape_3d(input_batch, filter_shape, strides, out_channels, padding='VALID'):
     """ Get the output shape of 3D de-convolution.
     Here it is assumed that the kernel size is divisible by stride in
     all dimensions.
 
     e.g. x is tf-tensor of shape (None, 9,9,9,50)
-         filter_shape=[2*3,2*3,2*3,6,50]
+         filter_shape=[2*3,2*3,2*3]
          strides = [2,2,2]
          upsampling_rate=2
 
     if padding='VALID", then output_shape = [
     """
 
-    shape = get_tensor_shape(x)[1:-1]
-    filter_shape_lr = [i/upsampling_rate for i in filter_shape[:3]
-                       if i%upsampling_rate==0]
+    shape = get_tensor_shape(input_batch)[1:-1]
+    filter_shape_lr = [i/strides[idx] for idx, i in enumerate(filter_shape)
+                       if i%strides[idx]==0]
     # print(shape, strides, filter_shape_lr)
     assert len(shape)==len(strides)
     assert len(filter_shape_lr)==len(strides)
@@ -95,38 +110,14 @@ def get_output_shape_3d(x, filter_shape, strides, upsampling_rate, padding='VALI
     output_shape=[]
     for i in range(3):
         if padding=='VALID':
-            output_shape.append(upsampling_rate*(shape[i]-filter_shape_lr[i]+1))
+            output_shape.append(strides[i]*(shape[i]-filter_shape_lr[i]+1))
         elif padding=='SAME':
-            output_shape.append(upsampling_rate*shape[i])
+            output_shape.append(strides[i]*shape[i])
         else:
             raise("the specified padding is available")
-    output_shape=[get_tensor_shape(x)[0]]+output_shape+[filter_shape[-2]]
+    output_shape= [get_tensor_shape(input_batch)[0]] + output_shape + [out_channels]
     return output_shape
 
-def deconv3d(x, w_shape, us_rate,
-             layer_name="deconv2d",
-             with_w=False,
-             padding='VALID'):
-
-    with tf.variable_scope(layer_name):
-        # filter : [height, width, output_channels, in_channels]
-        # w = tf.get_variable('w', [k_h, k_w, output_shape[-1], x.get_shape()[-1]],
-        #                     initializer=tf.random_normal_initializer(stddev=stddev))
-        w = get_weights(w_shape)
-        strides=(1,us_rate,us_rate,us_rate,1)
-        output_shape=get_output_shape_3d(x,w_shape,strides[1:-1],us_rate,padding)
-        deconv = tf.nn.conv3d_transpose(x, w,
-                                        output_shape=output_shape,
-                                        strides=strides,
-                                        padding=padding)
-        print(w_shape[-2],w_shape)
-        biases = tf.get_variable('biases', [w_shape[-2]], initializer=tf.constant_initializer(0.0))
-        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
-
-        if with_w:
-            return deconv, w, biases
-        else:
-            return deconv
 
 def variable_summaries(var, default=False):
     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -227,6 +218,41 @@ def residual_block(x, n_in, n_out, name):
 ###############################################################
 # ------------------------ New stuff --------------------------
 ###############################################################
+def batchnorm(x, phase_train, bn=True):
+    """
+    Batch normalization on convolutional maps.
+    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        phase_train: boolean tf.Varialbe, true indicates training phase
+        scope:       string, variable scope
+    Return:
+        normed:      batch-normalized maps
+    """
+    if not(bn): return input
+
+    n_out=int(x.get_shape()[-1])
+
+    with tf.variable_scope('bn'):
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
+                                     name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
+                                      name='gamma', trainable=True)
+        batch_mean, batch_var = tf.nn.moments(x, [0,1,2,3], name='moments')
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(phase_train,
+                            mean_var_with_update,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+    return normed
+
 
 class batch_norm(object):
             # h1 = lrelu(tf.contrib.layers.batch_norm(conv2d(h0, self.df_dim*2, name='d_h1_conv'),decay=0.9,updates_collections=None,epsilon=0.00001,scale=True,scope="d_h1_conv"))
@@ -237,7 +263,7 @@ class batch_norm(object):
             self.name = name
 
     def __call__(self, x, train=True):
-        return tf.contrib.layers.batch_norm(x, decay=self.momentum, updates_collections=None, epsilon=self.epsilon, scale=True, scope=self.name)
+         return tf.contrib.layers.batch_norm(x, decay=self.momentum, updates_collections=None, epsilon=self.epsilon, scale=True, scope=self.name)
 
 def binary_cross_entropy(preds, targets, name=None):
     """Computes binary cross entropy given `preds`.
@@ -317,3 +343,20 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
             return tf.matmul(input_, matrix) + bias, matrix, bias
         else:
             return tf.matmul(input_, matrix) + bias
+
+def max_pool(x,n):
+    return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
+
+
+def crop_and_concat(x1,x2):
+    x1_shape = tf.shape(x1)
+    x2_shape = tf.shape(x2)
+    # offsets for the top left corner of the crop
+    offsets = [0,
+               (x1_shape[1] - x2_shape[1]) // 2,
+               (x1_shape[2] - x2_shape[2]) // 2,
+               (x1_shape[3] - x2_shape[3]) // 2,
+               0]
+    size = [-1, x2_shape[1], x2_shape[2],x2_shape[3], -1]
+    x1_crop = tf.slice(x1, offsets, size)
+    return tf.concat([x1_crop, x2], 4)

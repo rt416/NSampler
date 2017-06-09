@@ -11,6 +11,7 @@ import tensorflow as tf
 import cgan.data_generator as data_generator
 import sr_preprocess as pp
 import cgan.models as models
+from cgan.ops import get_tensor_shape
 
 def define_checkpoint(opt):
     nn_file = name_network(opt)
@@ -140,7 +141,38 @@ def train_cnn(opt):
             for f in files: os.remove(f)
             shutil.rmtree(opt['log_dir']+'/'+name_network(opt))
 
-    # -------------------------load data---------------------------------------:
+
+    ################ DEFINE THE MODEL #####################
+
+    #  define input and output:
+    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1,2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
+
+    # define the network:
+    net=models.espcn(upsampling_rate=opt['upsampling_rate'],
+                     out_channels=opt['no_channels'],
+                     filters_num=50,
+                     layers=3)
+
+    y_pred = net.forwardpass(x)
+    y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
+    cost = net.cost(y,y_pred)
+    opt['output_radius']=get_tensor_shape(y_pred)[1]//2
+
+    lr = tf.placeholder(tf.float32, [], name='learning_rate')
+    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+    trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
+
+    global_step = tf.Variable(0, name="global_step", trainable=False)
+
+    # Define gradient descent op
+    if opt['optimizer']=='adam':
+        optim = tf.train.AdamOptimizer(learning_rate=lr)
+    else:
+        raise Exception('Specified optimizer not available.')
+
+    train_step = optim.minimize(cost, global_step=global_step)
+
+    # -------------------------load data--------------------------------------:
     filename_patchlib = name_patchlib(opt)
     dataset, train_folder = data_generator.prepare_data(opt['train_size'],
                                                         opt['validation_fraction'],
@@ -166,53 +198,15 @@ def train_cnn(opt):
 
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
-    print ('Patch-lib size:', opt['train_noexamples']+opt['valid_noexamples'],
-           'Train size:', opt['train_noexamples'],
-           'Valid size:', opt['valid_noexamples'])
+    print (
+    'Patch-lib size:', opt['train_noexamples'] + opt['valid_noexamples'],
+    'Train size:', opt['train_noexamples'],
+    'Valid size:', opt['valid_noexamples'])
 
-    # --------------------------- Define the model--------------------------:
-    #  define input and output:
-    with tf.name_scope('input'):
-        x = tf.placeholder(tf.float32, [None,
-                                        2*opt['input_radius']+1,
-                                        2*opt['input_radius']+1,
-                                        2*opt['input_radius']+1,
-                                        opt['no_channels']],
-                                        name='lo_res')
-
-        y = tf.placeholder(tf.float32, [None,
-                                        2*opt['output_radius']+1,
-                                        2*opt['output_radius']+1,
-                                        2*opt['output_radius']+1,
-                                        opt['no_channels']*(opt['upsampling_rate']**3)],
-                                        name='hi_res')
-
-    with tf.name_scope('learning_rate'):
-        lr = tf.placeholder(tf.float32, [], name='learning_rate')
-
-    with tf.name_scope('dropout'):
-        keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
-
-    with tf.name_scope('tradeoff'):
-        trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
-
-    global_step = tf.Variable(0, name="global_step", trainable=False)
-
-    # Build model and loss function
-    y_pred, y_std, cost = models.inference(opt['method'], x, y, keep_prob, opt, trade_off)
-
-    # Define gradient descent op
-    with tf.name_scope('train'):
-        if opt['optimizer']=='adam':
-            optim = tf.train.AdamOptimizer(learning_rate=lr)
-        else:
-            raise Exception('Specified optimizer not available.')
-
-        train_step = optim.minimize(cost, global_step=global_step)
-
+    # todo: need to move this to the section above:
     with tf.name_scope('accuracy'):
         transform = dataset._transform
-        mse = tf.reduce_mean(tf.square(transform['output_std']*(y - y_pred)))
+        mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
         # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
 
