@@ -115,7 +115,7 @@ def super_resolve(dt_lowres, opt):
         lr = tf.placeholder(tf.float32, [], name='learning_rate')
 
     with tf.name_scope('dropout'):
-        keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
+        keep_prob = tf.placeholder(tf.float32, name='dropout_rate')  # keep probability for dropout
 
     with tf.name_scope('tradeoff'):
         trade_off = tf.placeholder(tf.float32)  # keep probability for dropout

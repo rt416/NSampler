@@ -191,40 +191,38 @@ def train_cnn(opt):
     # Currently, the size of the output radius is only computed after defining
     # the model.
 
-    # define input and output:
-    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1,2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
-
-    # define the network:
+    # define place holders and network:
     # todo: need to define separately the number of input/output channels
+    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1,2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
     net = models.espcn(upsampling_rate=opt['upsampling_rate'],
                        out_channels=opt['no_channels'],
                        filters_num=opt['no_filters'],
                        layers=opt['no_layers'])
-
     y_pred = net.forwardpass(x, bn=opt['is_BN'])
     y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
-    cost = net.cost(y, y_pred)
 
-    keep_prob = tf.placeholder(tf.float32)  # keep probability for dropout
-    trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
-
+    # others:
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')  # keep probability for dropout
+    trade_off = tf.placeholder(tf.float32, name='trade_off')  # linear trade-off between two
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
-    # Define gradient descent op
+    # define loss and optimiser:
+    cost = net.cost(y, y_pred)
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
-    # ################ Directory settings ##################
+    # compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
-    print("Output radius: " + str(opt['output_radius']))
 
+    # ################ Directory settings ##################
+    # Create the root model directory:
     if not (os.path.exists(opt['save_dir'] + name_network(opt))):
         os.makedirs(opt['save_dir'] + name_network(opt))
 
+    # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + name_network(opt) + '/output.txt',
-                 'w')
+        f = open(opt['save_dir'] + name_network(opt) + '/output.txt', 'w')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
               + opt['save_dir'] + name_network(opt) + "/output.txt")
@@ -238,7 +236,7 @@ def train_cnn(opt):
         for p in sorted(opt.iteritems(), key=lambda (k, v): (v, k)):
             fp.write("%s:%s\n" % p)
 
-    # exit if the network has already been trained:
+    # Exit if network is already trained unless specified otherwise:
     if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
         if not (opt['continue']) and not (opt['overwrite']):
             print('Network already trained. Move on to next.')
@@ -277,8 +275,6 @@ def train_cnn(opt):
 
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
-    # print(opt['is_shuffle'])
-    # print (dataset._shuffle)
     print('Patch-lib size:', opt['train_noexamples'] + opt['valid_noexamples'],
     'Train size:', opt['train_noexamples'],
     'Valid size:', opt['valid_noexamples'])
