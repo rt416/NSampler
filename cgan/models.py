@@ -209,6 +209,18 @@ class espcn(object):
     def cost(self, y, y_pred):
         return tf.reduce_mean(tf.square(y - y_pred))
 
+    def scaled_prediction(self, x, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(tf.sub(x, x_mean), x_std)
+
+        y = self.forwardpass(x_scaled)
+        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+
+        return y_pred
 
 
 def espcn_with_deconv(x, filters_num=50, layers=2, upsampling_rate=2, num_channels=6):

@@ -12,9 +12,9 @@ import tensorflow as tf
 import sr_preprocess as pp
 import sr_utility
 import cgan.models as models
-from cgan.train_v2 import define_checkpoint, name_network, name_patchlib
+from cgan.train_v2 import define_checkpoint, name_network, name_patchlib, get_output_radius, get_optimizer
 from sr_datageneration import forward_periodic_shuffle
-
+from cgan.ops import get_tensor_shape
 
 # Pad the volumes:
 def dt_pad(dt_volume, opt):
@@ -97,35 +97,27 @@ def super_resolve(dt_lowres, opt):
     network_dir = define_checkpoint(opt)
 
     print('... defining the network model %s .' % opt['method'])
-    with tf.name_scope('input'):
-        x = tf.placeholder(tf.float32, [None,
-                                        2 * input_radius + 1,
-                                        2 * input_radius + 1,
-                                        2 * input_radius + 1,
-                                        opt['no_channels']],
-                           name='lo_res')
-        y = tf.placeholder(tf.float32, [None,
-                                        2 * output_radius + 1,
-                                        2 * output_radius + 1,
-                                        2 * output_radius + 1,
-                                        opt['no_channels'] * (upsampling_rate ** 3)],
-                           name='hi_res')
+    x = tf.placeholder(tf.float32, [None, 2 * opt['input_radius'] + 1,
+                                    2 * opt['input_radius'] + 1,
+                                    2 * opt['input_radius'] + 1,
+                                    opt['no_channels']], name='input_x')
+    net = models.espcn(upsampling_rate=opt['upsampling_rate'],
+                       out_channels=opt['no_channels'],
+                       filters_num=opt['no_filters'],
+                       layers=opt['no_layers'])
+    y_pred = net.forwardpass(x, bn=opt['is_BN'])
 
-    with tf.name_scope('learning_rate'):
-        lr = tf.placeholder(tf.float32, [], name='learning_rate')
+    # others:
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+    trade_off = tf.placeholder(tf.float32, name='trade_off')
 
-    with tf.name_scope('dropout'):
-        keep_prob = tf.placeholder(tf.float32, name='dropout_rate')  # keep probability for dropout
-
-    with tf.name_scope('tradeoff'):
-        trade_off = tf.placeholder(tf.float32)  # keep probability for dropout
-
-    global_step = tf.Variable(0, name="global_step", trainable=False)
+    # compute the output radius:
+    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
 
     # Load normalisation parameters and define prediction:
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    y_pred, y_pred_std = models.scaled_prediction(opt['method'], x, y, keep_prob, transform, opt, trade_off)
+    y_pred = net.scaled_prediction(x, transform)
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
