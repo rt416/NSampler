@@ -10,6 +10,7 @@ from collections import OrderedDict
 
 def print_network(network):
     """network (list): list of """
+    print("\n------")
     print("Model:")
     print("------")
     for item in network:
@@ -37,6 +38,7 @@ def count_num_params():
         variable_parametes = 1
         for dim in shape:
             variable_parametes *= dim.value
+        # print(variable.name,variable.get_shape(), variable_parametes)
         total_parameters += variable_parametes
     return total_parameters
 

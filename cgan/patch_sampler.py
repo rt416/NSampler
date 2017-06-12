@@ -143,7 +143,6 @@ class Data(object):
         print('Patch-lib size:', size,
               'Train size:', self._size,
               'Valid size:', self._valsize)
-
         return self
 
     def save(self, filename):
@@ -439,6 +438,7 @@ class Data(object):
 
         for r in pindlistO:
             if len(out_images[0].shape)==4:
+                # print(shuffle, c, outM, r, out_images[r[0]].shape)
                 out_patches[cnt, ...] = (
                                 out_images[r[0]][c*(r[1]-outM):c*(r[1]+outM+1),
                                                  c*(r[2]-outM):c*(r[2]+outM+1),

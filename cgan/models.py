@@ -161,11 +161,9 @@ def unet(x, n_f=50, depth=3, us=2, n_ch=6, fsz=3, n_conv=2, bn=True):
     return tf.nn.relu(inp)
 
 
-
-
 class espcn(object):
     def __init__(self, upsampling_rate, out_channels,
-                 layers=3, filters_num=50):
+                 layers=2, filters_num=50):
         """
         Args:
             input (tf tensor float 32): input tensor
@@ -179,7 +177,7 @@ class espcn(object):
         self.out_channels=out_channels
         self.filters_num=filters_num
 
-    def forwardpass(self, input):
+    def forwardpass(self, input, bn):
         net = []
         net = record_network(net, input)
 
@@ -187,7 +185,10 @@ class espcn(object):
         n_f = self.filters_num
         lyr = 0
         while lyr < self.layers:
-            input = conv3d(tf.nn.relu(input), filter_size=3, out_channels=n_f, name='conv_' + str(lyr + 1))
+            if lyr==1:
+                input = conv3d(tf.nn.relu(input), filter_size=1, out_channels=n_f, name='conv_'+str(lyr+1))
+            else:
+                input = conv3d(tf.nn.relu(input), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
             # double the num of features in the second lyr onward
             if lyr == 0: n_f = int(2 * n_f)
             net = record_network(net, input)
@@ -207,8 +208,6 @@ class espcn(object):
 
     def cost(self, y, y_pred):
         return tf.reduce_mean(tf.square(y - y_pred))
-
-
 
 
 

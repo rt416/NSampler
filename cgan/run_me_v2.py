@@ -32,10 +32,11 @@ parser.add_argument('--transform_opt', type=str, default='standard', help='norma
 parser.add_argument('--pad_size', type=int, default=-1, help='size of padding. Set -1 to apply maximal padding.')
 parser.add_argument('--is_clip', action='store_true', help='want to clip the images for preprocessing?')
 parser.add_argument('--is_shuffle', action='store_true', help='want to reverse shuffle the HR output into LR space?')
+parser.add_argument('--is_BN', action='store_true', help='want to use batch normalisation?')
 
+parser.add_argument('--no_filters', type=int, default=50, help='number of initial filters')
+parser.add_argument('--no_layers', type=int, default=2, help='number of hidden layers')
 
-parser.add_argument('--n_h1', type=int, default=50, help='n1')
-parser.add_argument('--n_h2', type=int, default=100, help='n2')
 
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
@@ -65,7 +66,7 @@ print device_lib.list_local_devices()
 # Other micellaneous parameters:
 # opt['n_h1'] = 50
 # opt['n_h2'] = 2 * opt['n_h1']
-opt['n_h3'] = 10
+# opt['n_h3'] = 10
 # opt['L1_reg'] = 0.00
 # opt['L2_reg'] = 1e-5
 
@@ -73,7 +74,6 @@ opt['n_h3'] = 10
 opt['train_size']=int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
 opt['patchlib_idx'] = 1
-opt['output_radius'] = ((2*opt['input_radius']-2*opt['receptive_field_radius']+1)//2)
 
 # directories:
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
@@ -105,15 +105,15 @@ else:
 
 
 # -------------------- Train and test --------------------------------:
-if not(os.path.exists(opt['save_dir']+name_network(opt))):
-    os.makedirs(opt['save_dir'] + name_network(opt))
-
-if opt['disp']:
-    f = open(opt['save_dir']+name_network(opt)+'/output.txt', 'w')
-    # Redirect all the outputs to the text file:
-    print("Redirecting the output to: "
-          +opt['save_dir']+name_network(opt)+"/output.txt")
-    sys.stdout = f
+# if not(os.path.exists(opt['save_dir']+name_network(opt))):
+#     os.makedirs(opt['save_dir'] + name_network(opt))
+#
+# if opt['disp']:
+#     f = open(opt['save_dir']+name_network(opt)+'/output.txt', 'w')
+#     # Redirect all the outputs to the text file:
+#     print("Redirecting the output to: "
+#           +opt['save_dir']+name_network(opt)+"/output.txt")
+#     sys.stdout = f
 
 # Train:
 print(opt)
