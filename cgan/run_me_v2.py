@@ -46,7 +46,6 @@ parser.add_argument('-bgval', '--background_value', dest="background_value", typ
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
 parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=2, help='upsampling rate')
 parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, default=5, help='input radius')
-parser.add_argument('-rr', '--receptive_field_radius', dest="receptive_field_radius", type=int, default=2, help='receptive field radius')
 
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
