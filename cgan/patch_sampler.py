@@ -618,18 +618,20 @@ class Data(object):
         print ('Padding low-res/hi-res images with zeros')
         inp_pad = []
         out_pad = []
+
+        # set the padding:
+        if padding == None:
+            print("Apply maximal padding ...")
+            pad_min_x, pad_min_y, pad_min_z = (inpN + 1) * us_rate, (
+            inpN + 1) * us_rate, (inpN + 1) * us_rate
+        else:
+            if type(padding) == int: padding = (padding,) * 3
+            print("Pad by: %s" % (padding,))
+            pad_min_x, pad_min_y, pad_min_z = padding
+
+        # start padding:
         for inp, out in zip(inp_images, out_images):
             sh = inp.shape
-
-            # set the padding
-            if padding==None:
-                print("Apply maximal padding ...")
-                pad_min_x, pad_min_y, pad_min_z = (inpN+1) * us_rate, (inpN + 1) * us_rate, (inpN + 1) * us_rate
-            else:
-                if type(padding)==int: padding = (padding,)*3
-                print("Pad by: %s" % (padding,))
-                pad_min_x, pad_min_y, pad_min_z = padding
-
             # add extra padding so padded images are divisible
             # by upsampling factor in all dimns
             pad_x = pad_min_x if np.mod(2 * pad_min_x + sh[0], us_rate) == 0 \
