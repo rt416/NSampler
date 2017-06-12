@@ -185,8 +185,10 @@ class espcn(object):
         n_f = self.filters_num
         lyr = 0
         while lyr < self.layers:
-            if lyr==1:
-                input = conv3d(tf.nn.relu(input), filter_size=1, out_channels=n_f, name='conv_'+str(lyr+1))
+            if lyr==0:
+                input = conv3d(input, filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
+            elif lyr==1:
+                input = conv3d(tf.nn.relu(input), filter_size=1, out_channels=n_f, name='conv_' + str(lyr + 1))
             else:
                 input = conv3d(tf.nn.relu(input), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
             # double the num of features in the second lyr onward
