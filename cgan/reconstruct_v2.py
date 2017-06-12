@@ -22,7 +22,6 @@ def dt_pad(dt_volume, opt):
 
     # -------------------- Load parameters ------------------------------- :
     upsampling_rate = opt['upsampling_rate']
-    receptive_field_radius = opt['receptive_field_radius']
     input_radius = opt['input_radius']
     output_radius = opt['output_radius']
 
@@ -33,7 +32,7 @@ def dt_pad(dt_volume, opt):
     pad_min = max((input_radius + 1) * upsampling_rate,
                   (output_radius + 1) * upsampling_rate)  # padding width
 
-    pad_x = pad_min if np.mod(2*pad_min + dim_x_highres, upsampling_rate) == 0 \
+    pad_x = pad_min if np.mod(2*pad_min + dim_x_highres, opt['upsampling_rate']) == 0 \
         else pad_min + \
              (upsampling_rate - np.mod(2*pad_min + dim_x_highres, upsampling_rate))
 
@@ -88,19 +87,16 @@ def super_resolve(dt_lowres, opt):
     """
 
     # --------------------------- Define the model--------------------------:
-    # Input/Output details:
-    upsampling_rate = opt['upsampling_rate']
-    input_radius = opt['input_radius']
-    output_radius = opt['output_radius']
-
     # get the dir where the network is saved
     network_dir = define_checkpoint(opt)
 
     print('... defining the network model %s .' % opt['method'])
-    x = tf.placeholder(tf.float32, [None, 2 * opt['input_radius'] + 1,
+    x = tf.placeholder(tf.float32, [None,
                                     2 * opt['input_radius'] + 1,
                                     2 * opt['input_radius'] + 1,
-                                    opt['no_channels']], name='input_x')
+                                    2 * opt['input_radius'] + 1,
+                                    opt['no_channels']],
+                       name='input_x')
     net = models.espcn(upsampling_rate=opt['upsampling_rate'],
                        out_channels=opt['no_channels'],
                        filters_num=opt['no_filters'],
@@ -144,28 +140,28 @@ def super_resolve(dt_lowres, opt):
         print("Size of dt_hires after padding: %s", (dt_hires.shape,))
 
         # Downsample:
-        dt_lowres = dt_lowres[::upsampling_rate,
-                              ::upsampling_rate,
-                              ::upsampling_rate, :]
+        dt_lowres = dt_lowres[::opt['upsampling_rate'],
+                              ::opt['upsampling_rate'],
+                              ::opt['upsampling_rate'], :]
 
         # Reconstruct:
         (xsize, ysize, zsize, comp) = dt_lowres.shape
-        recon_indx = [(i, j, k) for k in np.arange(input_radius + 1,
-                                                   zsize - input_radius + 1,
-                                                   2 * output_radius + 1)
-                                for j in np.arange(input_radius + 1,
-                                                   ysize - input_radius + 1,
-                                                   2 * output_radius + 1)
-                                for i in np.arange(input_radius + 1,
-                                                   xsize - input_radius + 1,
-                                                   2 * output_radius + 1)]
+        recon_indx = [(i, j, k) for k in np.arange(opt['input_radius'] + 1,
+                                                   zsize - opt['input_radius'] + 1,
+                                                   2 * opt['output_radius'] + 1)
+                                for j in np.arange(opt['input_radius'] + 1,
+                                                   ysize - opt['input_radius'] + 1,
+                                                   2 * opt['output_radius'] + 1)
+                                for i in np.arange(opt['input_radius'] + 1,
+                                                   xsize - opt['input_radius'] + 1,
+                                                   2 * opt['output_radius'] + 1)]
         for i, j, k in recon_indx:
             sys.stdout.flush()
             sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
 
-            ipatch_tmp = dt_lowres[(i - input_radius - 1):(i + input_radius),
-                                   (j - input_radius - 1):(j + input_radius),
-                                   (k - input_radius - 1):(k + input_radius),
+            ipatch_tmp = dt_lowres[(i - opt['input_radius'] - 1):(i + opt['input_radius']),
+                                   (j - opt['input_radius'] - 1):(j + opt['input_radius']),
+                                   (k - opt['input_radius'] - 1):(k + opt['input_radius']),
                                     2:comp]
 
             ipatch = ipatch_tmp[np.newaxis, ...]
@@ -174,14 +170,14 @@ def super_resolve(dt_lowres, opt):
             fd = {x: ipatch, keep_prob: 1.0, trade_off: 0.0}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
 
-            opatch = forward_periodic_shuffle(opatch_shuffled, upsampling_rate)
+            opatch = forward_periodic_shuffle(opatch_shuffled, opt['upsampling_rate'])
 
-            dt_hires[upsampling_rate * (i - output_radius - 1):
-                     upsampling_rate * (i + output_radius),
-                     upsampling_rate * (j - output_radius - 1):
-                     upsampling_rate * (j + output_radius),
-                     upsampling_rate * (k - output_radius - 1):
-                     upsampling_rate * (k + output_radius),
+            dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                     opt['upsampling_rate'] * (i + opt['output_radius']),
+                     opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                     opt['upsampling_rate'] * (j + opt['output_radius']),
+                     opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                     opt['upsampling_rate'] * (k + opt['output_radius']),
                      2:] \
             = opatch
 
