@@ -113,7 +113,7 @@ def super_resolve(dt_lowres, opt):
     # Load normalisation parameters and define prediction:
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    y_pred = net.scaled_prediction(x, transform)
+    y_pred = net.scaled_prediction(x, transform, bn=opt['is_BN'])
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
