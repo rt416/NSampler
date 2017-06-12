@@ -87,7 +87,7 @@ def super_resolve(dt_lowres, opt):
     """
 
     # --------------------------- Define the model--------------------------:
-    # get the dir where the network is saved
+    # Get the dir where the network is saved
     network_dir = define_checkpoint(opt)
 
     print('... defining the network model %s .' % opt['method'])
@@ -101,19 +101,17 @@ def super_resolve(dt_lowres, opt):
                        out_channels=opt['no_channels'],
                        filters_num=opt['no_filters'],
                        layers=opt['no_layers'])
-    y_pred = net.forwardpass(x, bn=opt['is_BN'])
 
-    # others:
-    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
-    trade_off = tf.placeholder(tf.float32, name='trade_off')
-
-    # compute the output radius:
-    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
-
-    # Load normalisation parameters and define prediction:
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, transform, bn=opt['is_BN'])
+
+    # Others:
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+    trade_off = tf.placeholder(tf.float32, name='trade_off')
+
+    # Compute the output radius:
+    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
