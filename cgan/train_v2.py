@@ -125,7 +125,7 @@ def save_model(opt, sess, saver, global_step, model_details):
     print('Model details saved')
 
 
-def initialise_model(sess, saver, checkpoint_dir, bests, opt):
+def initialise_model(sess, saver, phase_train, checkpoint_dir, bests, opt):
     # Initialization:
     if opt['continue']:
         # Specify the network parameters to be restored:
@@ -141,15 +141,19 @@ def initialise_model(sess, saver, checkpoint_dir, bests, opt):
             # Set the initial epoch:
             epoch_init = model_details['last_epoch']
 
-            # Restore the previous model parameters:
+            # Initialise and then restore the previous model parameters:
+            # init_global = tf.global_variables_initializer()
+            # init_local = tf.local_variables_initializer()
+            # sess.run([init_global,init_local], feed_dict={phase_train: True})
             saver.restore(sess, nn_file)
         else:
             print('no trace of previous training!')
             print('intialise and start training from scratch.')
             # init = tf.initialize_all_variables()
-            init = tf.global_variables_initializer()
+            init_global = tf.global_variables_initializer()
+            init_local = tf.local_variables_initializer()
             epoch_init = 0
-            sess.run(init)
+            sess.run([init_global,init_local], feed_dict={phase_train: True})
     else:
         if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):
             if opt['overwrite']:
@@ -162,9 +166,11 @@ def initialise_model(sess, saver, checkpoint_dir, bests, opt):
             print('Start brand new training ...')
 
         # init = tf.initialize_all_variables()
-        init = tf.global_variables_initializer()
+        init_global = tf.global_variables_initializer()
+        init_local = tf.local_variables_initializer()
+        sess.run([init_global, init_local], feed_dict={phase_train: True})
         epoch_init = 0
-        sess.run(init)
+
     return epoch_init
 
 def get_output_radius(y_pred, upsampling_rate, is_shuffle):
@@ -340,7 +346,7 @@ def train_cnn(opt):
         model_details['epoch_val_cost'] = []
 
         # Initialise:
-        epoch_init=initialise_model(sess, saver, checkpoint_dir, bests, opt)
+        epoch_init=initialise_model(sess, saver, phase_train, checkpoint_dir, bests, opt)
 
         # Start training!
         while (epoch < opt['no_epochs']) and (not done_looping):
