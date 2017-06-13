@@ -97,14 +97,17 @@ def super_resolve(dt_lowres, opt):
                                     2 * opt['input_radius'] + 1,
                                     opt['no_channels']],
                        name='input_x')
+    phase_train = tf.placeholder(tf.bool, name='phase_train')
+
     net = models.espcn(upsampling_rate=opt['upsampling_rate'],
                        out_channels=opt['no_channels'],
                        filters_num=opt['no_filters'],
-                       layers=opt['no_layers'])
+                       layers=opt['no_layers'],
+                       bn=opt['is_BN'])
 
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
-    y_pred = net.scaled_prediction(x, transform, bn=opt['is_BN'])
+    y_pred = net.scaled_prediction(x, phase_train, transform)
 
     # Others:
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
@@ -165,7 +168,10 @@ def super_resolve(dt_lowres, opt):
             ipatch = ipatch_tmp[np.newaxis, ...]
 
             # Predict high-res patch:
-            fd = {x: ipatch, keep_prob: 1.0, trade_off: 0.0}
+            fd = {x: ipatch,
+                  keep_prob: 1.0-opt['dropout_rate'],
+                  trade_off: 0.0,
+                  phase_train: False}
             opatch_shuffled = y_pred.eval(feed_dict=fd)
 
             opatch = forward_periodic_shuffle(opatch_shuffled, opt['upsampling_rate'])

@@ -193,12 +193,17 @@ def train_cnn(opt):
 
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
-    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1,2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
+    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1, 2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
+    phase_train = tf.placeholder(tf.bool, name='phase_train')
+
     net = models.espcn(upsampling_rate=opt['upsampling_rate'],
                        out_channels=opt['no_channels'],
                        filters_num=opt['no_filters'],
-                       layers=opt['no_layers'])
-    y_pred = net.forwardpass(x, bn=opt['is_BN'])
+                       layers=opt['no_layers'],
+                       bn=opt['is_BN'])
+
+    y_pred = net.forwardpass(x, phase_train)
+
     y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
 
     # others:
@@ -363,7 +368,9 @@ def train_cnn(opt):
                 # train op and loss
                 current_step = tf.train.global_step(sess, global_step)
                 fd_t={x: xt, y: yt, lr: lr_,
-                      keep_prob: 1.-opt['dropout_rate'], trade_off:tradeoff_list[epoch]}
+                      keep_prob: 1.-opt['dropout_rate'],
+                      trade_off:tradeoff_list[epoch],
+                      phase_train:True}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -371,7 +378,10 @@ def train_cnn(opt):
 
                 # valid loss
                 fd_v = {x: xv, y: yv,
-                        keep_prob: 1.-opt['dropout_rate'], trade_off:tradeoff_list[epoch]}
+                        keep_prob: 1.-opt['dropout_rate'],
+                        trade_off:tradeoff_list[epoch],
+                        phase_train:False}
+
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
                 total_val_cost_epoch += va_cost

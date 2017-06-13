@@ -220,7 +220,7 @@ def residual_block(x, n_in, n_out, name):
 ###############################################################
 # ------------------------ New stuff --------------------------
 ###############################################################
-def batchnorm(x, phase_train, bn=True):
+def batchnorm(x, phase_train, on=True, name=None):
     """
     Batch normalization on convolutional maps.
     Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
@@ -232,7 +232,7 @@ def batchnorm(x, phase_train, bn=True):
     Return:
         normed:      batch-normalized maps
     """
-    if not(bn): return input
+    if not(on): return x
 
     n_out=int(x.get_shape()[-1])
 
@@ -252,7 +252,7 @@ def batchnorm(x, phase_train, bn=True):
         mean, var = tf.cond(phase_train,
                             mean_var_with_update,
                             lambda: (ema.average(batch_mean), ema.average(batch_var)))
-        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3, name=name)
     return normed
 
 
