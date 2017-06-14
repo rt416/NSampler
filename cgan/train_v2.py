@@ -365,16 +365,13 @@ def train_cnn(opt):
         bests['step_save'] = 0  # global step for the best saved model
         bests['counter'] = 0
         bests['counter_thresh'] = 10
+        bests['last_epoch'] = 0
+        bests['epoch_tr_mse'] = []
+        bests['epoch_val_mse'] = []
+        bests['epoch_tr_cost'] = []
+        bests['epoch_val_cost'] = []
         validation_frequency = n_train_batches  # save every epoch basically.
         save_frequency = 1
-
-        model_details = opt.copy()
-        model_details.update(bests)
-        model_details['last_epoch'] = 0
-        model_details['epoch_tr_mse'] = []
-        model_details['epoch_val_mse'] = []
-        model_details['epoch_tr_cost'] = []
-        model_details['epoch_val_cost'] = []
 
         # Initialise:
         epoch_init=initialise_model(sess, saver, phase_train, checkpoint_dir, bests, opt)
@@ -450,11 +447,10 @@ def train_cnn(opt):
 
                     end_time_epoch = timeit.default_timer()
 
-                    model_details['epoch_val_mse'].append(this_val_mse)
-                    model_details['epoch_tr_mse'].append(this_tr_mse)
-
-                    model_details['epoch_val_cost'].append(this_val_cost)
-                    model_details['epoch_tr_cost'].append(this_tr_cost)
+                    bests['epoch_val_mse'].append(this_val_mse)
+                    bests['epoch_tr_mse'].append(this_tr_mse)
+                    bests['epoch_val_cost'].append(this_val_cost)
+                    bests['epoch_tr_cost'].append(this_tr_cost)
 
                     epoch = dataset.epochs_completed
 
@@ -498,10 +494,9 @@ def train_cnn(opt):
                     this_val_loss=this_val_mse
 
                 if this_val_loss < bests['val_loss_save']:
-                    model_details['last_epoch'] = epoch + 1
+                    bests['last_epoch'] = epoch + 1
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
-                    model_details.update(bests)
-                    save_model(opt, sess, saver, global_step, model_details)
+                    save_model(opt, sess, saver, global_step, bests)
 
         # close the summary writers:
         train_writer.close()
