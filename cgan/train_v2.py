@@ -291,6 +291,7 @@ def train_cnn(opt):
 
     # -------------------- SET UP THE DATA LOADER ------------------------------
     filename_patchlib = name_patchlib(opt)
+
     dataset, train_folder = prepare_data(size=opt['train_size'],
                                          eval_frac=opt['validation_fraction'],
                                          inpN=opt['input_radius'],
@@ -312,6 +313,8 @@ def train_cnn(opt):
                                          save_dir_root=opt['data_dir'],
                                          subpath=opt['subpath'])
 
+    print(opt['input_radius'], opt['output_radius'], opt['is_shuffle'], dataset._shuffle)
+
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
     print('Patch-lib size:', opt['train_noexamples'] + opt['valid_noexamples'],
@@ -321,6 +324,7 @@ def train_cnn(opt):
     # todo: need to move this to the section above:
     with tf.name_scope('accuracy'):
         transform = dataset._transform
+        print("shapee of transform['output_std'] is ", transform['output_std'].shape)
         mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
         # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)

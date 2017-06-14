@@ -133,7 +133,9 @@ class espcn_deconv(object):
                           filter_size=3 * self.upsampling_rate,
                           stride=self.upsampling_rate,
                           out_channels=self.out_channels,
-                          name='deconv')
+                          name='deconv',
+                          padding="SAME"
+                          )
         net = record_network(net, y_pred)
         print_network(net)
         return y_pred
@@ -173,7 +175,7 @@ def espcn_with_deconv(x, filters_num=50, layers=2, upsampling_rate=2, num_channe
         lyr += 1
 
     y_pred = deconv3d(tf.nn.relu(x), filter_size=3*upsampling_rate, stride=upsampling_rate,
-                      out_channels=num_channels, name='deconv')
+                      out_channels=num_channels, name='deconv', padding="SAME")
 
     net=record_network(net, y_pred)
     print_network(net)

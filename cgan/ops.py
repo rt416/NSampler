@@ -89,6 +89,7 @@ def deconv3d(input_batch, out_channels, filter_size=6, stride=2,
         else:
             return deconv
 
+
 def get_output_shape_3d(input_batch, filter_shape, strides, out_channels, padding='VALID'):
     """ Get the output shape of 3D de-convolution.
     Here it is assumed that the kernel size is divisible by stride in

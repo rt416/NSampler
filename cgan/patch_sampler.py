@@ -589,7 +589,10 @@ class Data(object):
                                                          self._outM,
                                                          self._inp_images,
                                                          self._out_images,
-                                                         pindlist1, pindlist2)
+                                                         pindlist1, pindlist2,
+                                                         us_rate=self._us_rate,
+                                                         shuffle=self._shuffle
+                                                         )
 
             sum_in += 1. * np.sum(inp_chunk, axis=0)
             sum_in2 += 1. * np.sum(inp_chunk ** 2, axis=0)
