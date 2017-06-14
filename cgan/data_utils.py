@@ -7,6 +7,8 @@ import largesc.math_utils as mu
 import os as os
 import sys as sys
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import shutil

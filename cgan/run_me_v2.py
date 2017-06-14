@@ -10,8 +10,8 @@ from cgan.train_v2 import name_network
 
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
-parser.add_argument('-e', '--experiment', dest='experiment', type=str, default='25Apr2017', help='name of the experiment')
-parser.add_argument('-m', '--method', dest='method', type=str, default='cnn_simple', help='network type')
+parser.add_argument('-e', '--experiment', dest='experiment', type=str, default='experiment_1', help='name of the experiment')
+parser.add_argument('-m', '--method', dest='method', type=str, default='espcn', help='network type')
 parser.add_argument('--valid', action='store_true', help='pick the best model based on the loss, not the MSE?')
 parser.add_argument('--overwrite', action='store_true', help='restart the training completelu')
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')

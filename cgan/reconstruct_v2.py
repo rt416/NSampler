@@ -12,7 +12,7 @@ import tensorflow as tf
 import sr_preprocess as pp
 import sr_utility
 import cgan.models as models
-from cgan.train_v2 import define_checkpoint, name_network, name_patchlib, get_output_radius, get_optimizer
+from cgan.train_v2 import define_checkpoint, name_network, name_patchlib, get_output_radius, set_network_config
 from sr_datageneration import forward_periodic_shuffle
 from cgan.ops import get_tensor_shape
 
@@ -99,12 +99,7 @@ def super_resolve(dt_lowres, opt):
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
-    net = models.espcn(upsampling_rate=opt['upsampling_rate'],
-                       out_channels=opt['no_channels'],
-                       filters_num=opt['no_filters'],
-                       layers=opt['no_layers'],
-                       bn=opt['is_BN'])
-
+    net = set_network_config(opt)
     transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, phase_train, transform)

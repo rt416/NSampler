@@ -50,10 +50,11 @@ def name_network(opt):
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
                opt['pad_size'],
+               opt['is_clip'],
                opt['transform_opt'],
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
-    nn_str += 'ts=%d_pl=%d_pad=%d_nrm=%s_smpl=%s_%03i'
+    nn_str += 'ts=%d_pl=%d_pad=%d_clip=%i_nrm=%s_smpl=%s_%03i'
 
     # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
     # nn_str +='opt=%s_drop=%s_prep=%s_'
@@ -192,34 +193,60 @@ def get_optimizer(optimizer, lr):
     return optim
 
 
+def set_network_config(opt):
+    """ Define the model type"""
+    if opt["method"] == "espcn":
+        assert opt["is_shuffle"]
+        net = models.espcn(upsampling_rate=opt['upsampling_rate'],
+                           out_channels=opt['no_channels'],
+                           filters_num=opt['no_filters'],
+                           layers=opt['no_layers'],
+                           bn=opt['is_BN'])
+
+    elif opt["method"] == "espcn_deconv" :
+        assert not(opt["is_shuffle"])
+        net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
+                                  out_channels=opt['no_channels'],
+                                  filters_num=opt['no_filters'],
+                                  layers=opt['no_layers'],
+                                  bn=opt['is_BN'])
+    elif opt["method"] == "unet":
+            print("not define yet!")
+    else:
+        raise ValueError("The specified network type %s not available" %
+                             (opt["method"],))
+    return net
+
+
 def train_cnn(opt):
 
-    # ############### DEFINE THE MODEL #####################
+    # ----------------------- DEFINE THE MODEL ---------------------------------
     # Currently, the size of the output radius is only computed after defining
     # the model.
 
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
-    x = tf.placeholder(tf.float32, [None,2*opt['input_radius']+1, 2*opt['input_radius']+1,2*opt['input_radius']+1,opt['no_channels']],name='input_x')
+    x = tf.placeholder(tf.float32, [opt["batch_size"],
+                                    2*opt['input_radius']+1,
+                                    2*opt['input_radius']+1,
+                                    2*opt['input_radius']+1,
+                                    opt['no_channels']],
+                       name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
-    net = models.espcn(upsampling_rate=opt['upsampling_rate'],
-                       out_channels=opt['no_channels'],
-                       filters_num=opt['no_filters'],
-                       layers=opt['no_layers'],
-                       bn=opt['is_BN'])
-
+    net = set_network_config(opt)
     y_pred = net.forwardpass(x, phase_train)
 
     y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
 
     # others:
-    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')  # keep probability for dropout
-    trade_off = tf.placeholder(tf.float32, name='trade_off')  # linear trade-off between two
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+    trade_off = tf.placeholder(tf.float32, name='trade_off')
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # define loss and optimiser:
     cost = net.cost(y, y_pred)
+    print(get_tensor_shape(y), get_tensor_shape(y_pred))
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
@@ -227,7 +254,7 @@ def train_cnn(opt):
     # compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
 
-    # ################ Directory settings ##################
+    # ----------------------- Directory settings -------------------------------
     # Create the root model directory:
     if not (os.path.exists(opt['save_dir'] + name_network(opt))):
         os.makedirs(opt['save_dir'] + name_network(opt))
@@ -262,7 +289,7 @@ def train_cnn(opt):
             for f in files: os.remove(f)
             shutil.rmtree(opt['log_dir'] + '/' + name_network(opt))
 
-    # ################# SET UP THE DATA LOADER ###############
+    # -------------------- SET UP THE DATA LOADER ------------------------------
     filename_patchlib = name_patchlib(opt)
     dataset, train_folder = prepare_data(size=opt['train_size'],
                                          eval_frac=opt['validation_fraction'],
@@ -288,8 +315,8 @@ def train_cnn(opt):
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
     print('Patch-lib size:', opt['train_noexamples'] + opt['valid_noexamples'],
-    'Train size:', opt['train_noexamples'],
-    'Valid size:', opt['valid_noexamples'])
+          'Train size:', opt['train_noexamples'],
+          'Valid size:', opt['valid_noexamples'])
 
     # todo: need to move this to the section above:
     with tf.name_scope('accuracy'):

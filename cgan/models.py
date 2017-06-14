@@ -17,6 +17,169 @@ from cgan.ops import *
 from collections import OrderedDict
 
 
+class espcn(object):
+    def __init__(self,
+                 upsampling_rate,
+                 out_channels,
+                 layers=2,
+                 filters_num=50,
+                 bn=False):
+        """
+        Args:
+            input (tf tensor float 32): input tensor
+            upsampling_rate (int): upsampling rate
+            out_channels: number of channels in the output image
+            layers: number of hidden layers
+            filters_num(int): number of filters in the first layer
+        """
+        self.upsampling_rate=upsampling_rate
+        self.layers=layers
+        self.out_channels=out_channels
+        self.filters_num=filters_num
+        self.bn = bn
+
+    def forwardpass(self, input, phase):
+        net = []
+        net = record_network(net, input)
+
+        # define the network:
+        n_f = self.filters_num
+        lyr = 0
+        while lyr < self.layers:
+            if lyr==1: # second layer with kernel size 1 other layers three
+                input = conv3d(input, filter_size=1, out_channels=n_f, name='conv_' + str(lyr + 1))
+            else:
+                input = conv3d(input, filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
+
+            # double the num of features in the second lyr onward
+            if lyr == 0: n_f = int(2 * n_f)
+            net = record_network(net, input)
+
+            # non-linearity + batch norm:
+            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            lyr += 1
+
+        y_pred = conv3d(tf.nn.relu(input),
+                        filter_size=3,
+                        out_channels=self.out_channels*(self.upsampling_rate)** 3,
+                        name='conv_last')
+
+        net = record_network(net, y_pred)
+        print_network(net)
+        return y_pred
+
+    def scaled_prediction(self, input, phase, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(tf.sub(input, x_mean), x_std)
+
+        y = self.forwardpass(x_scaled, phase)
+        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+        return y_pred
+
+    def get_output_shape(self):
+        return get_tensor_shape(self.y_pred)
+
+    def cost(self, y, y_pred):
+        return tf.reduce_mean(tf.square(y - y_pred))
+
+
+class espcn_deconv(object):
+    def __init__(self,
+                 upsampling_rate,
+                 out_channels,
+                 layers=2,
+                 filters_num=50,
+                 bn=False):
+        """
+        Args:
+            input (tf tensor float 32): input tensor
+            upsampling_rate (int): upsampling rate
+            out_channels: number of channels in the output image
+            layers: number of hidden layers
+            filters_num(int): number of filters in the first layer
+        """
+        self.upsampling_rate=upsampling_rate
+        self.layers=layers
+        self.out_channels=out_channels
+        self.filters_num=filters_num
+        self.bn = bn
+
+    def forwardpass(self, input, phase):
+        net = []
+        net = record_network(net, input)
+
+        # define the network:
+        n_f = self.filters_num
+        lyr = 0
+        while lyr < self.layers:
+            if lyr==1: # second layer with kernel size 1 other layers three
+                input = conv3d(input, filter_size=1, out_channels=n_f, name='conv_' + str(lyr + 1))
+            else:
+                input = conv3d(input, filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
+
+            # double the num of features in the second lyr onward
+            if lyr == 0: n_f = int(2 * n_f)
+            net = record_network(net, input)
+
+            # non-linearity + batch norm:
+            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            lyr += 1
+
+        y_pred = deconv3d(tf.nn.relu(input),
+                          filter_size=3 * self.upsampling_rate,
+                          stride=self.upsampling_rate,
+                          out_channels=self.out_channels,
+                          name='deconv')
+        net = record_network(net, y_pred)
+        print_network(net)
+        return y_pred
+
+    def scaled_prediction(self, input, phase, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(tf.sub(input, x_mean), x_std)
+
+        y = self.forwardpass(x_scaled, phase)
+        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+        return y_pred
+
+    def get_output_shape(self):
+        return get_tensor_shape(self.y_pred)
+
+    def cost(self, y, y_pred):
+        return tf.reduce_mean(tf.square(y - y_pred))
+
+
+def espcn_with_deconv(x, filters_num=50, layers=2, upsampling_rate=2, num_channels=6):
+    n_f = filters_num
+
+    net=[]
+    net=record_network(net, x)
+
+    # define the network:
+    lyr = 0
+    while lyr < layers:
+        x = conv3d(tf.nn.relu(x), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
+        # double the num of features in the second lyr onward
+        if lyr==0: n_f=int(2*n_f)
+        net=record_network(net, x)
+        lyr += 1
+
+    y_pred = deconv3d(tf.nn.relu(x), filter_size=3*upsampling_rate, stride=upsampling_rate,
+                      out_channels=num_channels, name='deconv')
+
+    net=record_network(net, y_pred)
+    print_network(net)
+    return y_pred
+
+
 def segnet(x, n_f=50, depth=3, us=2, n_ch=6, fsz=3, n_conv=2, bn=True):
     """
     Args:
@@ -159,125 +322,6 @@ def unet(x, n_f=50, depth=3, us=2, n_ch=6, fsz=3, n_conv=2, bn=True):
     print_network(net)
 
     return tf.nn.relu(inp)
-
-
-class espcn(object):
-    def __init__(self,
-                 upsampling_rate,
-                 out_channels,
-                 layers=2,
-                 filters_num=50,
-                 bn=False):
-        """
-        Args:
-            input (tf tensor float 32): input tensor
-            upsampling_rate (int): upsampling rate
-            out_channels: number of channels in the output image
-            layers: number of hidden layers
-            filters_num(int): number of filters in the first layer
-        """
-        self.upsampling_rate=upsampling_rate
-        self.layers=layers
-        self.out_channels=out_channels
-        self.filters_num=filters_num
-        self.bn = bn
-
-    def forwardpass(self, input, phase):
-        net = []
-        net = record_network(net, input)
-
-        # define the network:
-        n_f = self.filters_num
-        lyr = 0
-        while lyr < self.layers:
-            if lyr==1: # second layer with kernel size 1 other layers three
-                input = conv3d(input, filter_size=1, out_channels=n_f, name='conv_' + str(lyr + 1))
-            else:
-                input = conv3d(input, filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
-
-            # double the num of features in the second lyr onward
-            if lyr == 0: n_f = int(2 * n_f)
-            net = record_network(net, input)
-
-            # non-linearity + batch norm:
-            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
-            lyr += 1
-
-        y_pred = conv3d(tf.nn.relu(input),
-                        filter_size=3,
-                        out_channels=self.out_channels*(self.upsampling_rate)** 3,
-                        name='conv_last')
-
-        net = record_network(net, y_pred)
-        print_network(net)
-        return y_pred
-
-    def scaled_prediction(self, input, phase, transform):
-        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
-        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']),
-                             name='y_mean')
-        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-        x_scaled = tf.div(tf.sub(input, x_mean), x_std)
-
-        y = self.forwardpass(x_scaled, phase)
-        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
-        return y_pred
-
-    def get_output_shape(self):
-        return get_tensor_shape(self.y_pred)
-
-    def cost(self, y, y_pred):
-        return tf.reduce_mean(tf.square(y - y_pred))
-
-
-
-
-def espcn_with_deconv(x, filters_num=50, layers=2, upsampling_rate=2, num_channels=6):
-    n_f = filters_num
-
-    net=[]
-    net=record_network(net, x)
-
-    # define the network:
-    lyr = 0
-    while lyr < layers:
-        x = conv3d(tf.nn.relu(x), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
-        # double the num of features in the second lyr onward
-        if lyr==0: n_f=int(2*n_f)
-        net=record_network(net, x)
-        lyr += 1
-
-    y_pred = deconv3d(tf.nn.relu(x), filter_size=3*upsampling_rate, stride=upsampling_rate,
-                      out_channels=num_channels, name='deconv')
-
-    net=record_network(net, y_pred)
-    print_network(net)
-    return y_pred
-
-#
-# def ESPCN(input, filters_num=50, layers=1, upsampling_rate=2, out_channels=6):
-#     n_f = filters_num
-#
-#     net = []
-#     net = record_network(net, input)
-#
-#     # define the network:
-#     lyr = 0
-#     while lyr < layers:
-#         input = conv3d(tf.nn.relu(input), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
-#         # double the num of features in the second lyr onward
-#         if lyr == 0: n_f = int(2 * n_f)
-#         net = record_network(net, input)
-#         lyr += 1
-#
-#     y_pred = conv3d(tf.nn.relu(input), filter_size=3, out_channels=out_channels*(upsampling_rate)**3, name='conv_last')
-#     net=record_network(net, y_pred)
-#     print_network(net)
-#
-#     # cost = tf.reduce_mean(tf.square(y - y_pred))
-#
-#     return y_pred
 
 
 def inference(method, x, y, keep_prob, opt, trade_off=None):
