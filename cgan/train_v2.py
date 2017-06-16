@@ -207,7 +207,12 @@ def set_network_config(opt):
                                   layers=opt['no_layers'],
                                   bn=opt['is_BN'])
     elif opt["method"] == "unet":
-            print("not define yet!")
+        net = models.unet(upsampling_rate=opt['upsampling_rate'],
+                          out_channels=opt['no_channels'],
+                          filters_num=opt['no_filters'],
+                          layers=opt['no_layers'],
+                          conv_num=2,
+                          bn=opt['is_BN'])
     else:
         raise ValueError("The specified network type %s not available" %
                              (opt["method"],))

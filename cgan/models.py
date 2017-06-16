@@ -319,7 +319,8 @@ class unet(object):
 
             # concatenate
             print('decoder', input.get_shape(), down_h_convs[layer].get_shape())
-            input = tf.concat(4, [down_h_convs[layer], input], name='concat%d'%len(net))
+            # input = tf.concat(4, [down_h_convs[layer], input], name='concat%d'%len(net))
+            input = crop_and_concat_basic(input, down_h_convs[layer], name='concat%d'%len(net))
             net = record_network(net, input)
 
             # convolutions:
