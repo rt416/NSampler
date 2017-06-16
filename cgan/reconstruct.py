@@ -3,9 +3,12 @@ import os
 import sys
 import timeit
 import cPickle as pkl
+
 import numpy as np
 import tensorflow as tf
-import cgan.sr_utility as sr_utility
+
+import sr_utility
+
 from cgan.sr_utility import forward_periodic_shuffle
 from cgan.train import define_checkpoint, name_network, name_patchlib, get_output_radius, set_network_config
 

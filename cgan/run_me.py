@@ -6,7 +6,7 @@ import os
 import reconstruct
 import sys
 
-from cgan.data_utils import fetch_subjects
+from data_utils import fetch_subjects
 from train import name_network, train_cnn
 
 # Settings
