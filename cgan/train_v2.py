@@ -91,10 +91,6 @@ def name_patchlib(opt):
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
     nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
-
-    # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
-    # nn_str +='opt=%s_drop=%s_prep=%s_'
-
     nn_body = nn_str % nn_var
     return header+'_'+nn_body
 
@@ -219,18 +215,18 @@ def set_network_config(opt):
 
 
 def train_cnn(opt):
-
     # ----------------------- DEFINE THE MODEL ---------------------------------
     # Currently, the size of the output radius is only computed after defining
     # the model.
 
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
-    x = tf.placeholder(tf.float32, [opt["batch_size"],
-                                    2*opt['input_radius']+1,
-                                    2*opt['input_radius']+1,
-                                    2*opt['input_radius']+1,
-                                    opt['no_channels']],
+    x = tf.placeholder(tf.float32,
+                       [opt["batch_size"],
+                       2*opt['input_radius']+1,
+                       2*opt['input_radius']+1,
+                       2*opt['input_radius']+1,
+                       opt['no_channels']],
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
@@ -324,7 +320,6 @@ def train_cnn(opt):
     # todo: need to move this to the section above:
     with tf.name_scope('accuracy'):
         transform = dataset._transform
-        print("shapee of transform['output_std'] is ", transform['output_std'].shape)
         mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
         # mse = tf.reduce_mean(tf.square(y - y_pred))
         tf.summary.scalar('mse', mse)
