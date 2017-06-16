@@ -78,12 +78,6 @@ opt['patchlib_idx'] = 1
 
 # Make directories to store results:
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
-if not(os.path.exists(base_dir)):
-    os.makedirs(base_dir)
-    os.makedirs(os.path.join(base_dir,'data'))
-    os.makedirs(os.path.join(base_dir,'log'))
-    os.makedirs(os.path.join(base_dir,'models'))
-    os.makedirs(os.path.join(base_dir,'recon'))
 
 # Update directories in args
 opt.update({
@@ -92,6 +86,13 @@ opt.update({
     'log_dir': os.path.join(base_dir,'log')
     'recon_dir': os.path.join(base_dir,'recon')
 })
+
+if not(os.path.exists(base_dir)):
+    os.makedirs(base_dir)
+    os.makedirs(opt["data_dir"])
+    os.makedirs(opt["save_dir"])
+    os.makedirs(opt["log_dir"])
+    os.makedirs(opt["recon_dir"])
 
 #opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
