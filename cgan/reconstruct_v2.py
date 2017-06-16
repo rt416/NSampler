@@ -113,7 +113,7 @@ def super_resolve(dt_lowres, opt):
     network_dir = define_checkpoint(opt)
 
     print('... defining the network model %s .' % opt['method'])
-    x = tf.placeholder(tf.float32, [None,
+    x = tf.placeholder(tf.float32, [1,
                                     2 * opt['input_radius'] + 1,
                                     2 * opt['input_radius'] + 1,
                                     2 * opt['input_radius'] + 1,
