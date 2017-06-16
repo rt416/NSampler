@@ -94,7 +94,7 @@ if not(os.path.exists(base_dir)):
     os.makedirs(opt["log_dir"])
     os.makedirs(opt["recon_dir"])
 
-#opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
+opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
 # opt['subpath'] = '/T1w/Diffusion/'
 
@@ -128,6 +128,7 @@ if opt['is_dt_all']:
 print(opt)
 train_cnn(opt)
 
+"""
 # Reconstruct:
 subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
 rmse_average = 0
@@ -141,3 +142,4 @@ print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
       % (rmse_average / len(subjects_list),))
 print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
       % (rmse_whole_average / len(subjects_list),))
+"""

@@ -172,7 +172,7 @@ def save_as_nifti(recon_file, recon_dir, gt_dir,
                 gt_file= gt_header + '%02i.nii' % (k+1,)
                 dt_gt = nib.load(os.path.join(gt_dir, gt_file))
             else:
-                dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))
+                dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k+1) + '.nii'))
 
             affine = dt_gt.get_affine()  # fetch its affine transfomation
             header = dt_gt.get_header()  # fetch its header
