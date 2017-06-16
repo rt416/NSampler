@@ -125,7 +125,7 @@ def super_resolve(dt_lowres, opt):
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
     net = set_network_config(opt)
-    transfile = os.path.join(opt['data_dir'], name_patchlib(opt), '/transforms.pkl')
+    transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, phase_train, transform)
 

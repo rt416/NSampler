@@ -75,10 +75,10 @@ class espcn(object):
         y_mean = tf.constant(np.float32(transform['output_mean']),
                              name='y_mean')
         y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-        x_scaled = tf.div(tf.sub(input, x_mean), x_std)
+        x_scaled = tf.div(input - x_mean, x_std)
 
         y = self.forwardpass(x_scaled, phase)
-        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+        y_pred = tf.add(y_std*y, y_mean, name='y_pred')
         return y_pred
 
     def get_output_shape(self):
