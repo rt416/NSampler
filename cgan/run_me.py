@@ -2,11 +2,12 @@
 
 import argparse
 import os
-from cgan.train import train_cnn
-import cgan.reconstruct_v2 as reconstruct
+
+import reconstruct
 import sys
+
 from cgan.data_utils import fetch_subjects
-from cgan.train import name_network
+from train import name_network, train_cnn
 
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
