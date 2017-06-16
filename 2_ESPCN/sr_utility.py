@@ -16,6 +16,7 @@ import sys
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_',
                    no_channels=6):
+    # Append file number to end of file name
     if no_channels > 7:
         file_1 = nameroot + '01.nii'
         file_2 = nameroot + '02.nii'
@@ -30,9 +31,9 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
         for idx in np.arange(3, no_channels+3):
 
             if no_channels > 7:
-                data_path_new = nameroot + '%02i.nii' % (idx,)
+                data_path_new = nameroot + "{:02d}.nii".format(idx)
             else:
-                data_path_new = nameroot + str(idx) + '.nii'
+                data_path_new = nameroot + "{:d}.nii".format(idx)
 
             print("... loading %s" % data_path_new)
 
@@ -53,9 +54,9 @@ def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b10
     else:
         for idx in np.arange(1, no_channels+3):
             if no_channels > 7:
-                data_path_new = nameroot + '%02i.nii' % (idx,)
+                data_path_new = nameroot + "{:02d}.nii".format(idx)
             else:
-                data_path_new = nameroot + str(idx) + '.nii'
+                data_path_new = nameroot + "{:d}.nii".format(idx)
 
             print("... loading %s" % data_path_new)
 
@@ -278,13 +279,13 @@ def compute_rmse_nii(nii_1, nii_2, save_file=None, mask=None):
 def name_network(opt):
     """given inputs, return the model name."""
     optim = opt['optimizer'].__name__
-    
+
     nn_tuple = (opt['method'], 6*(2*opt['n']+1)**3, 6*opt['m']**3)
     nn_str = '%s_%i-%i_'
     nn_tuple += (optim, str(opt['dropout_rate']), opt['cohort'], opt['us'],
                  2*opt['n']+1, opt['m'], opt['no_subjects'], opt['sample_rate'])
     nn_str += 'opt=%s_drop=%s_%sDS%02i_in=%i_out=%i_TS%i_SRi%03i'
-   
+
     return nn_str % nn_tuple
 
 
@@ -514,13 +515,3 @@ def forward_periodic_shuffle(patch, upsampling_rate=2):
                                         np.mod(k, upsampling_rate) * (upsampling_rate**2) +
                                         c * (upsampling_rate**3)]
     return patch_ps
-
-
-
-
-
-
-
-
-
-

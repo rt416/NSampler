@@ -29,7 +29,7 @@ def sr_reconstruct(opt):
         opt['output_file_name'] = 'dt_recon_b1000.npy'
 
     # Load the input low-res DT image:
-    input_file = gt_dir + subject + subpath + input_file_name
+    input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
@@ -125,7 +125,7 @@ def super_resolve(dt_lowres, opt):
     phase_train = tf.placeholder(tf.bool, name='phase_train')
 
     net = set_network_config(opt)
-    transfile = opt['data_dir'] + name_patchlib(opt) + '/transforms.pkl'
+    transfile = os.path.join(opt['data_dir'], name_patchlib(opt), '/transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, phase_train, transform)
 
@@ -263,4 +263,3 @@ def dt_trim(dt_volume, pd):
                           pd[2][0]:-pd[2][1],
                           :]
     return dt_volume
-

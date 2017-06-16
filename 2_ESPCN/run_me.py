@@ -77,14 +77,14 @@ opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=F
 opt['patchlib_idx'] = 1
 
 # Make directories to store results:
-base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
+base_dir = os.path.join(opt['base_dir'],opt['experiment'])
 
 # Update directories in args
 opt.update({
-    'data_dir': os.path.join(base_dir,'data'),
-    'save_dir': os.path.join(base_dir,'models'),
-    'log_dir': os.path.join(base_dir,'log'),
-    'recon_dir': os.path.join(base_dir,'recon')
+    "data_dir": os.path.join(base_dir,"data"),
+    "save_dir": os.path.join(base_dir,"models"),
+    "log_dir": os.path.join(base_dir,"log"),
+    "recon_dir": os.path.join(base_dir,"recon")
 })
 
 if not(os.path.exists(base_dir)):
