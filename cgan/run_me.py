@@ -34,6 +34,7 @@ parser.add_argument('--pad_size', type=int, default=-1, help='size of padding. S
 parser.add_argument('--is_clip', action='store_true', help='want to clip the images for preprocessing?')
 parser.add_argument('--is_shuffle', action='store_true', help='want to reverse shuffle the HR output into LR space?')
 parser.add_argument('--is_BN', action='store_true', help='want to use batch normalisation?')
+parser.add_argument('--is_dt_all', action='store_true', help='use the dt_all files')
 
 parser.add_argument('--no_filters', type=int, default=50, help='number of initial filters')
 parser.add_argument('--no_layers', type=int, default=2, help='number of hidden layers')
@@ -50,8 +51,8 @@ parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, defa
 
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
-parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc/', help='ground truth directory')
-parser.add_argument('--subpath', type=str, default='/T1w/Diffusion/', help='subdirectory in gt_dir')
+parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc', help='ground truth directory')
+parser.add_argument('--subpath', type=str, default='T1w/Diffusion', help='subdirectory in gt_dir')
 
 
 arg = parser.parse_args()
@@ -94,14 +95,18 @@ opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['subpath'] = '/T1w/Diffusion/'
 
 # Mean Apparent Propagater MRI
+opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
+opt['gt_header'] = 'dt_b1000_{:d}.nii'
+
 if opt['is_map']:
     opt['input_file_name'] = 'h4_all_lowres_'+str(opt['upsampling_rate'])+'_{:02d}.nii'
     opt['output_file_name'] = 'h4_recon.npy'
     opt['gt_header'] = 'h4_all_{:02d}.nii'
     opt['no_channels'] = 22
-else:
-    opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
-    opt['gt_header'] = 'dt_b1000_{:d}.nii'
+
+if opt['is_dt_all']:
+    opt['input_file_name'] = 'dt_all_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
+    opt['gt_header'] = 'dt_all_{:d}.nii'
 
 
 # -------------------- Train and test --------------------------------:
