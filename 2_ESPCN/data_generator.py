@@ -89,7 +89,7 @@ def prepare_data(size,
 
 
     # Create the dir for saving the training data details
-    train_folder = save_dir_root + patchlib_name
+    train_folder = os.path.join(save_dir_root,patchlib_name)
 
     if not os.path.exists(train_folder):
         os.makedirs(train_folder)
@@ -112,8 +112,8 @@ def prepare_data(size,
         dutils.sanitise_imgdata(out_images[i])
 
     # Feed the data into patch extractor:
-    patfile = train_folder + '/patchlib_indices.pkl'
-    transfile = train_folder + '/transforms.pkl'
+    patfile = os.path.join(train_folder,'patchlib_indices.pkl')
+    transfile = os.path.join(train_folder,'transforms.pkl')
 
     if os.path.isfile(patfile) and os.path.isfile(transfile) and not is_reset:
         print ('Loading patch indices...')
@@ -160,7 +160,9 @@ def load_data(data_dir_root,
               out_channels,
               inp_header,
               out_header):
-    """ load a sequence of nii files.
+    """Load a sequence of nifti files.
+
+    Load a sequence of nifti files, which should be stored in the HCP folder
 
     Args:
         data_dir_root (str) : root dir for data
@@ -172,7 +174,6 @@ def load_data(data_dir_root,
 
     Returns:
         inp_images (list): list of numpy arrays
-
     """
     print ('Loading data...')
     inp_images = [0,] * len(train_index)
@@ -180,10 +181,8 @@ def load_data(data_dir_root,
     ind = 0
 
     for subject in train_index:
-        inp_file = (data_dir_root + subject + subpath +
-                    '/'+inp_header)
-        out_file = (data_dir_root + subject + subpath +
-                    '/'+out_header)
+        inp_file = os.path.join(data_dir_root, subject, subpath, inp_header)
+        out_file = os.path.join(data_dir_root, subject, subpath, out_header)
         inp_images[ind], hdr = dutils.load_series_nii(inp_file, inp_channels, dtype='float32')
         out_images[ind], _   = dutils.load_series_nii(out_file, out_channels, dtype='float32')
         ind += 1

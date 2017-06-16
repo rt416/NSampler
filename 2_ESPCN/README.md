@@ -1,1 +1,2 @@
-# The ESPCN
+# Conditional GAN
+

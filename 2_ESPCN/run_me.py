@@ -80,15 +80,15 @@ opt['patchlib_idx'] = 1
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
 if not(os.path.exists(base_dir)):
     os.makedirs(base_dir)
-    os.makedirs(base_dir + 'data/')
-    os.makedirs(base_dir + 'log/')
-    os.makedirs(base_dir + 'models/')
-    os.makedirs(base_dir + 'recon/')
+    os.makedirs(os.path.join(base_dir,'data'))
+    os.makedirs(os.path.join(base_dir,'log'))
+    os.makedirs(os.path.join(base_dir,'models'))
+    os.makedirs(os.path.join(base_dir,'recon'))
 
-opt['data_dir'] = base_dir + 'data/'
-opt['save_dir'] = base_dir + 'models/'
-opt['log_dir'] = base_dir + 'log/'
-opt['recon_dir'] = base_dir + 'recon/'
+opt['data_dir'] = os.path.join(base_dir,'data')
+opt['save_dir'] = os.path.join(base_dir,'models')
+opt['log_dir'] = os.path.join(base_dir,'log')
+opt['recon_dir'] = os.path.join(base_dir,'recon')
 
 opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
