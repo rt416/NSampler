@@ -15,11 +15,9 @@ def axisAngle_from_rotmat(R):
     return angle, np.array([x, y, z])
 
 
-
 def unique_rows(A):
     return np.unique(A.view(np.dtype((np.void, 
             A.dtype.itemsize*A.shape[1])))).view(A.dtype).reshape(-1, A.shape[1])
-
 
 
 def entropy(counts):

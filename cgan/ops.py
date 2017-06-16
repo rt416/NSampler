@@ -8,6 +8,7 @@ from collections import OrderedDict
 # ------------------------ moved from prvious model.py --------------------
 ############################################################################
 
+
 def print_network(network):
     """network (list): list of """
     print("\n------")
