@@ -51,7 +51,7 @@ parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, defa
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
 parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc/', help='ground truth directory')
-parser.add_argument('--subpath', type=str, default='/T1w/Diffusion/', help='ground truth directory')
+parser.add_argument('--subpath', type=str, default='/T1w/Diffusion/', help='subdirectory in gt_dir')
 
 
 arg = parser.parse_args()
