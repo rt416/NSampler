@@ -418,8 +418,13 @@ def crop_and_concat_basic(x1,x2,name=''):
                (x1_shape[2] - x2_shape[2]) // 2,
                (x1_shape[3] - x2_shape[3]) // 2,
                0]
-    print("offsets", offsets)
-    size = [x2_shape[0], x2_shape[1], x2_shape[2], x2_shape[3], -1]
-    print("size", size)
+    size = [-1, x2_shape[1], x2_shape[2], x2_shape[3], -1]
     x1_crop = tf.slice(x1, offsets, size)
-    return tf.concat([x1_crop, x2], 3, name=name)
+
+    try:
+        y = tf.concat(4, [x1_crop, x2], name=name)
+    # Support for verisons of TensorFlow after 1.1
+    except TypeError:
+        y = tf.concat([x1_crop, x2], 4, name=name)
+
+    return y

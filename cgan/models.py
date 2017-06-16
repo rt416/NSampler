@@ -262,9 +262,12 @@ class unet(object):
                 filters_num=50,
                 filter_size=3,
                 conv_num=2,
-                bn=True):
+                bn=True,
+                is_concat=True):
 
         """
+        Unet or Segnet type networks
+
         Args:
             filters_num (int): number of features in the first convolution
             layers:
@@ -281,6 +284,7 @@ class unet(object):
         self.filter_size = filter_size
         self.conv_num=conv_num
         self.bn = bn
+        self.is_concat = is_concat
 
     def forwardpass(self, input, phase):
         net=[]
@@ -307,9 +311,7 @@ class unet(object):
             input = conv3d(input, out_channels=filters_num, filter_size=self.filter_size, stride=self.upsampling_rate, name='conv%d' % len(net), padding='SAME')
             net = record_network(net, input)
             input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
-            print("encoder", input.get_shape())
 
-        print(down_h_convs)
         # ---------- Decoder network ----------------
         for layer in range(self.layers-1, -1, -1):
             # upsample:
@@ -318,10 +320,9 @@ class unet(object):
             input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
 
             # concatenate
-            print('decoder', input.get_shape(), down_h_convs[layer].get_shape())
-            # input = tf.concat(4, [down_h_convs[layer], input], name='concat%d'%len(net))
-            input = crop_and_concat_basic(input, down_h_convs[layer], name='concat%d'%len(net))
-            net = record_network(net, input)
+            if self.is_concat:
+                input = crop_and_concat_basic(input, down_h_convs[layer], name='concat%d'%len(net))
+                net = record_network(net, input)
 
             # convolutions:
             j = 0
@@ -335,8 +336,8 @@ class unet(object):
             # halve the number of features:
             filters_num = int(filters_num / 2)
 
-        # Last convolution:
-        y_pred=conv3d(input, out_channels=self.out_channels, filter_size=self.filter_size, name='conv%d' % len(net), padding='SAME')
+        # Last deconv:
+        y_pred = deconv3d(input, out_channels=self.out_channels, filter_size=self.upsampling_rate * self.filter_size, stride=self.upsampling_rate, name='deconv%d' % len(net), padding='SAME')
         net= record_network(net, y_pred)
 
         # Print the architecture
