@@ -9,8 +9,8 @@ import tensorflow as tf
 
 import sr_utility
 
-from cgan.sr_utility import forward_periodic_shuffle
-from cgan.train import define_checkpoint, name_network, name_patchlib, get_output_radius, set_network_config
+from sr_utility import forward_periodic_shuffle
+from train import define_checkpoint, name_network, name_patchlib, get_output_radius, set_network_config
 
 
 # Main reconstruction code:

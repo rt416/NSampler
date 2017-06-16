@@ -18,8 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import os
-import cgan.patch_sampler as patch_sampler
-import cgan.data_utils as dutils
+import patch_sampler as patch_sampler
+import  data_utils as dutils
 
 
 # The main function for define the patch loader:

@@ -8,8 +8,8 @@ import sys
 import numpy as np
 import cPickle as pickle
 import copy
-import cgan.data_utils as du
-import largesc.math_utils as mu
+import data_utils as du
+# import largesc.math_utils as mu
 # import data_whiten as dwh
 # import pepys.flags as flags
 # from debug import set_trace
@@ -23,7 +23,7 @@ class Data(object):
     """
     Generic class for data patch generation.
     Will provide a next_batch function to call for training.
-    High resolution images are reverse periodically shuffled 
+    High resolution images are reverse periodically shuffled
     (equation (4) in Magic Pony CVPR 2016)
 
     This class assumes that the low-res image is in the hi-res space
@@ -172,8 +172,8 @@ class Data(object):
         self._index = 0
         self._index_in_epoch   = 0
         self._valid_index      = 0
-        print ('Patch-lib size:', self._size + self._valsize, 
-               'Train size:', self._size, 
+        print ('Patch-lib size:', self._size + self._valsize,
+               'Train size:', self._size,
                'Valid size:', self._valsize)
         return self
 
@@ -244,7 +244,7 @@ class Data(object):
                                       voxindlist1, voxindlist2,
                                       us_rate=self._us_rate,
                                       shuffle=self._shuffle))
-        plist = [] 
+        plist = []
         for i in range(len(pindlist)):
             plist.append(inp_patches[i, :, :, self._inpN, ic])
             plist.append(out_patches[i, :, :, iz2, ic])
@@ -262,7 +262,7 @@ class Data(object):
         """
         df = inpN - outM
         if iz2 < 0:
-            iz2 = outM 
+            iz2 = outM
         pindlist = np.zeros((len(indexlist), 4), dtype='int')
         for i, r in enumerate(indexlist):
             pindlist[i, ...] = np.array(r)
@@ -271,7 +271,7 @@ class Data(object):
                                                          pindlist, pindlist,
                                                          us_rate=self._us_rate,
                                                          shuffle=self._shuffle)
-        plist = [] 
+        plist = []
         for i in range(len(pindlist)):
             plist.append(inp_patches[i, :, :, iz2 + df, ic])
             plist.append(out_patches[i, :, :, iz2, 0])
@@ -283,18 +283,18 @@ class Data(object):
     def next_batch(self, batch_size):
         """
         Returns the next training minibatch with size: batch_size of example data
-        Alert: while iterating over the entire sample-set, this method 
+        Alert: while iterating over the entire sample-set, this method
                 reshuffles the input/output patch list. Hence if you save
-                this class after this function has been called, there is 
+                this class after this function has been called, there is
                 no guarantee that the order of the input/output patches
                 will be preserved
 
         Args:
-            batch_size (int): minibatch size, should be smaller than 
+            batch_size (int): minibatch size, should be smaller than
                               patch library dataset size
 
         Returns:
-            minibatch (tuple): containing input/output example batches 
+            minibatch (tuple): containing input/output example batches
                                (np.ndarray compatible with tf)
         """
         assert batch_size <= self._size
@@ -331,11 +331,11 @@ class Data(object):
         This method does not change the epoch count.
 
         Args:
-            batch_size (int): minibatch size, should be smaller than 
+            batch_size (int): minibatch size, should be smaller than
                               patch library dataset size
 
         Returns:
-            minibatch (tuple): containing input/output example batches 
+            minibatch (tuple): containing input/output example batches
                                (np.ndarray compatible with tf)
         """
         assert batch_size <= self._valsize
@@ -390,23 +390,23 @@ class Data(object):
             if ijk.size == 0:
                 raise ValueError('Cannot find any valid patch indices')
             iskeep = np.zeros((ijk.shape[0], 6), dtype=bool)
-            iskeep[:, 0] = (ijk[:, 0] - psz) >= 0 
-            iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0] 
-            iskeep[:, 2] = (ijk[:, 1] - psz) >= 0 
+            iskeep[:, 0] = (ijk[:, 0] - psz) >= 0
+            iskeep[:, 1] = (ijk[:, 0] + psz) < dims[0]
+            iskeep[:, 2] = (ijk[:, 1] - psz) >= 0
             iskeep[:, 3] = (ijk[:, 1] + psz) < dims[1]
             iskeep[:, 4] = (ijk[:, 2] - psz) >= 0
             iskeep[:, 5] = (ijk[:, 2] + psz) < dims[2]
             iskeep = np.all(iskeep, axis=1)
             neg_indx = np.where(iskeep == False)
             if neg_indx[0].size > 0:
-                print ('Warning: Image', cnt, 
+                print ('Warning: Image', cnt,
                        'has some voxels that cannot be used:', len(neg_indx[0]))
             rowlist = np.delete(np.array(range(ijk.shape[0])), neg_indx, 0)
             index_list.append(ijk[rowlist, :])
             cnt += 1
         return index_list
 
-    def _collect_patches(self, inpN, outM, inp_images, out_images, 
+    def _collect_patches(self, inpN, outM, inp_images, out_images,
                          pindlistI, pindlistO,
                          us_rate=2, shuffle=True):
         dimV = inp_images[0].shape[-1] if len(inp_images[0].shape)==4 else 1
@@ -422,13 +422,13 @@ class Data(object):
         for r in pindlistI:
             if len(inp_images[0].shape)==4:
                 inp_patches[cnt, ...] = (
-                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
-                                                 r[2]-inpN:r[2]+inpN+1, 
+                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1,
+                                                 r[2]-inpN:r[2]+inpN+1,
                                                  r[3]-inpN:r[3]+inpN+1, ...])
             else:
                 inp_patches[cnt, ..., 0] = (
-                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1, 
-                                                 r[2]-inpN:r[2]+inpN+1, 
+                                inp_images[r[0]][r[1]-inpN:r[1]+inpN+1,
+                                                 r[2]-inpN:r[2]+inpN+1,
                                                  r[3]-inpN:r[3]+inpN+1, ...])
             cnt += 1
 
@@ -506,10 +506,10 @@ class Data(object):
                 raise ValueError('Only 3D or 4D images')
             mask[img3D > 0] = 1
             masks.append(mask)
-        inpN += 2 
+        inpN += 2
         for r in valindlist:
-            masks[r[0]][r[1]-inpN:r[1]+inpN+1, 
-                        r[2]-inpN:r[2]+inpN+1, 
+            masks[r[0]][r[1]-inpN:r[1]+inpN+1,
+                        r[2]-inpN:r[2]+inpN+1,
                         r[3]-inpN:r[3]+inpN+1] = 0
         return masks
 
@@ -682,14 +682,14 @@ class Data(object):
 
         return inp_pad, out_pad
 
-            
+
     def _downsample_lowres(self, lr_images, us_rate):
         """ Down-sample
         Returns:
             ds_images: downsampled images
         """
         print ('Downsampling low-res images')
-        is3D = True 
+        is3D = True
         if len(lr_images[0].shape) == 3: pass
         elif len(lr_images[0].shape) == 4:
             is3D = False
@@ -744,11 +744,3 @@ class Data(object):
                                                                  out_perc_head)
         assert len(inp_perc_list)==len(out_perc_list)
         return inp_images, out_images
-
-
-
-
-
-
-
-

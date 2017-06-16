@@ -2,17 +2,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import nibabel as nib
-import largesc.math_utils as mu
 import os as os
+import random
+import shutil
 import sys as sys
+
+import nibabel as nib
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import shutil
-import random
+
+#import largesc.math_utils as mu
+
 
 # from debug import set_trace
 
@@ -33,7 +36,7 @@ def gendata_centroid(mask, bgval=0):
     ijk = np.where(mask!=bgval)
     mui = np.mean(ijk[0])
     muj = np.mean(ijk[1])
-    muk = np.mean(ijk[2])    
+    muk = np.mean(ijk[2])
     cijk = np.array(ijk,dtype=float).T
     cijk[:,0] -= mui
     cijk[:,1] -= muj
@@ -81,7 +84,7 @@ def prog_epoch(mesg, step, stepval):
     """
     Print the progress message in place.
 
-    Args: 
+    Args:
         mesg (str): progress message
         step (int): step=stepval for first call, after that step>stepval
         stepval (int): first value of step
@@ -96,7 +99,7 @@ def prog(perc, step, stepval, mesg=''):
     """
     Print the progress percentage in place.
 
-    Args: 
+    Args:
         perc (number): Percentage to print.
         step (int): step=stepval for first call, after that step>stepval
         stepval (int): first value of step
@@ -165,12 +168,12 @@ def image_subsample(dat, mask, ds=2, bgval=0):
     ijk = np.argwhere(mask!=bgval)
     cop = np.copy(dat)
     if len(dat.shape)==3:
-        for i,j,k in ijk: 
+        for i,j,k in ijk:
             bmask = mask[i:(i+ds),j:(j+ds),k:(k+ds)]
             if bgval not in bmask:
                 dat[i,j,k]=np.mean(cop[i:(i+ds),j:(j+ds),k:(k+ds)])
     elif len(dat.shape)==4:
-        for i,j,k in ijk: 
+        for i,j,k in ijk:
             bmask = mask[i:(i+ds),j:(j+ds),k:(k+ds)]
             if bgval not in bmask:
                 dat[i,j,k,:]=np.mean(cop[i:(i+ds),j:(j+ds),k:(k+ds),:])
@@ -194,10 +197,10 @@ def image_subsample2(dat, mask, ds=2, bgval=0):
     ijk = np.argwhere(mask!=bgval)
     cop = np.copy(dat)
     if len(dat.shape)==3:
-        for i,j,k in ijk: 
+        for i,j,k in ijk:
             dat[i,j,k]=np.mean(cop[i:(i+ds),j:(j+ds),k:(k+ds)])
     elif len(dat.shape)==4:
-        for i,j,k in ijk: 
+        for i,j,k in ijk:
             dat[i,j,k,:]=np.mean(cop[i:(i+ds),j:(j+ds),k:(k+ds),:])
     else:
         raise ValueError('Only 3D or 4D images are handled')
@@ -298,7 +301,7 @@ def get_root_pepys():
     Returns: root as string
     """
     r1 = '/Users/aghosh/Data/ClusterDRIVE01/hcp/Auro/'
-    r2 = '/home/aghosh/Data/ClusterDRIVE/' 
+    r2 = '/home/aghosh/Data/ClusterDRIVE/'
     r3 = '/Users/aghosh/Data/'
     if os.path.exists(r1):
         root = r1
@@ -368,13 +371,13 @@ def backward_shuffle_img(imglist, ds):
         shuff_images (list): reverse shuffled images
     """
     print ('Reverse shuffling hi-res images')
-    
+
     shuffle_indices = [(i, j, k) for k in range(ds)
                                  for j in range(ds)
                                  for i in range(ds)]
     is3D = True
     channelsN = 1
-    if len(imglist[0].shape) == 3: 
+    if len(imglist[0].shape) == 3:
         pass
     elif len(imglist[0].shape) == 4:
         channelsN = imglist[0].shape[3]

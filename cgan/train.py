@@ -6,12 +6,14 @@ import timeit
 import glob
 import shutil
 import cPickle as pkl
+
 import numpy as np
 import tensorflow as tf
-from cgan.data_generator import prepare_data
+
+from data_generator import prepare_data
 import sr_preprocess as pp
-import cgan.models as models
-from cgan.ops import get_tensor_shape
+import models as models
+from ops import get_tensor_shape
 
 
 def define_checkpoint(opt):
