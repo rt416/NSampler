@@ -76,7 +76,7 @@ opt['train_size']=int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
 opt['patchlib_idx'] = 1
 
-# directories:
+# Make directories to store results:
 base_dir = opt['base_dir']+'/'+opt['experiment']+'/'
 if not(os.path.exists(base_dir)):
     os.makedirs(base_dir)
@@ -85,16 +85,19 @@ if not(os.path.exists(base_dir)):
     os.makedirs(os.path.join(base_dir,'models'))
     os.makedirs(os.path.join(base_dir,'recon'))
 
-opt['data_dir'] = os.path.join(base_dir,'data')
-opt['save_dir'] = os.path.join(base_dir,'models')
-opt['log_dir'] = os.path.join(base_dir,'log')
-opt['recon_dir'] = os.path.join(base_dir,'recon')
+# Update directories in args
+opt.update({
+    'data_dir': os.path.join(base_dir,'data')
+    'save_dir': os.path.join(base_dir,'models')
+    'log_dir': os.path.join(base_dir,'log')
+    'recon_dir': os.path.join(base_dir,'recon')
+})
 
-opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
+#opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
 # opt['subpath'] = '/T1w/Diffusion/'
 
-# Mean Apparent Propagater MRI
+# Mean Apparent Propagator MRI
 opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
 opt['gt_header'] = 'dt_b1000_{:d}.nii'
 
