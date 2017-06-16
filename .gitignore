@@ -1,4 +1,3 @@
 *.pyc
 test1.py
 local_ryu_experiments.py
-sr_utility.pyc
