@@ -319,10 +319,9 @@ class unet(object):
             net = record_network(net, input)
             input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
 
-            # concatenate
-            if self.is_concat:
-                input = crop_and_concat_basic(input, down_h_convs[layer], name='concat%d'%len(net))
-                net = record_network(net, input)
+            # concatenate or just crop (Unet or Segnet)
+            input = crop_and_or_concat_basic(input, down_h_convs[layer], is_concat=self.is_concat, name='concat_or_crop%d'%len(net))
+            net = record_network(net, input)
 
             # convolutions:
             j = 0

@@ -409,9 +409,10 @@ def crop_and_concat(x1,x2):
     return tf.concat([x1_crop, x2_crop], 4)
 
 
-def crop_and_concat_basic(x1,x2,name=''):
+def crop_and_or_concat_basic(x1,x2,is_concat=True,name=''):
     x1_shape = get_tensor_shape(x1)
     x2_shape = get_tensor_shape(x2)
+
     # offsets for the top left corner of the crop
     offsets = [0,
                (x1_shape[1] - x2_shape[1]) // 2,
@@ -419,12 +420,16 @@ def crop_and_concat_basic(x1,x2,name=''):
                (x1_shape[3] - x2_shape[3]) // 2,
                0]
     size = [-1, x2_shape[1], x2_shape[2], x2_shape[3], -1]
-    x1_crop = tf.slice(x1, offsets, size)
+    x1_crop = tf.slice(x1, offsets, size, name=name)
 
+    # For segnet, just return cropped feature maps:
+    if not(is_concat):
+        return x1_crop
+
+    # For unet, skip-connections:
     try:
         y = tf.concat(4, [x1_crop, x2], name=name)
-    # Support for verisons of TensorFlow after 1.1
-    except TypeError:
+    except TypeError: # Support for verisons of TensorFlow after 1.1
         y = tf.concat([x1_crop, x2], 4, name=name)
 
     return y
