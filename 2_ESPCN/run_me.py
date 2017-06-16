@@ -53,6 +53,7 @@ parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, defa
 parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')
 parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc', help='ground truth directory')
 parser.add_argument('--subpath', type=str, default='T1w/Diffusion', help='subdirectory in gt_dir')
+parser.add_argument('--mask_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017/recon/', help='directory of segmentation masks')
 
 
 arg = parser.parse_args()
@@ -94,7 +95,7 @@ if not(os.path.exists(base_dir)):
     os.makedirs(opt["log_dir"])
     os.makedirs(opt["recon_dir"])
 
-opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
+# opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
 # opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
 # opt['subpath'] = '/T1w/Diffusion/'
 
@@ -124,11 +125,14 @@ if opt['is_dt_all']:
 #           +opt['save_dir']+name_network(opt)+"/output.txt")
 #     sys.stdout = f
 
-# Train:
-print(opt)
+# Print options
+for key, val in opt.iteritems():
+    print("{}: {}".format(key, val))
+
+# TRAIN
 train_cnn(opt)
 
-"""
+
 # Reconstruct:
 subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
 rmse_average = 0
@@ -142,4 +146,3 @@ print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
       % (rmse_average / len(subjects_list),))
 print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
       % (rmse_whole_average / len(subjects_list),))
-"""
