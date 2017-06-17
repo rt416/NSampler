@@ -247,17 +247,19 @@ def train_cnn(opt):
 
     net = set_network_config(opt)
     y_pred = net.forwardpass(x, phase_train)
-
     y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
 
     # others:
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     global_step = tf.Variable(0, name="global_step", trainable=False)
+    transform = tf.placeholder(tf.float32, name='norm_transform')
 
     # define loss and optimiser:
     cost = net.cost(y, y_pred)
-    print(get_tensor_shape(y), get_tensor_shape(y_pred))
+    mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
+    tf.summary.scalar('mse', mse)
+
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
@@ -332,12 +334,6 @@ def train_cnn(opt):
           'Train size:', opt['train_noexamples'],
           'Valid size:', opt['valid_noexamples'])
 
-    # todo: need to move this to the section above:
-    with tf.name_scope('accuracy'):
-        transform = dataset._transform
-        mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
-        # mse = tf.reduce_mean(tf.square(y - y_pred))
-        tf.summary.scalar('mse', mse)
 
     # ######################### START TRAINING ###################
     saver = tf.train.Saver()
@@ -355,6 +351,9 @@ def train_cnn(opt):
 
         # Compute the trade-off values:
         tradeoff_list = models.get_tradeoff_values_v2(opt['method'], opt['no_epochs'])
+
+        # Define the normalisation tranform:
+        norm_std = dataset._transform['output_std']
 
         # Define some counters
         start_time = timeit.default_timer()
@@ -415,7 +414,8 @@ def train_cnn(opt):
                 fd_t={x: xt, y: yt, lr: lr_,
                       keep_prob: 1.-opt['dropout_rate'],
                       trade_off:tradeoff_list[epoch],
-                      phase_train:True}
+                      phase_train:True,
+                      transform: norm_std}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -425,7 +425,8 @@ def train_cnn(opt):
                 fd_v = {x: xv, y: yv,
                         keep_prob: 1.-opt['dropout_rate'],
                         trade_off:tradeoff_list[epoch],
-                        phase_train:False}
+                        phase_train:False,
+                        transform: norm_std}
 
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
