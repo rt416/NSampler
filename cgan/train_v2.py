@@ -9,7 +9,6 @@ import cPickle as pkl
 import numpy as np
 import tensorflow as tf
 from cgan.data_generator import prepare_data
-import sr_preprocess as pp
 import cgan.models as models
 from cgan.ops import get_tensor_shape
 
@@ -41,11 +40,12 @@ def name_network(opt):
     opt['receptive_field_radius']=(2*opt['input_radius']-2*opt['output_radius'] + 1)//2
 
     nn_var = (opt['upsampling_rate'],
+              opt['no_layers'],
               2*opt['input_radius']+1,
               2*opt['receptive_field_radius']+1,
              (2*opt['output_radius']+1)*opt['upsampling_rate'],
               opt['is_BN'])
-    nn_str = 'us=%i_in=%i_rec=%i_out=%i_bn=%i_'
+    nn_str = 'us=%i_lyr=%i_in=%i_rec=%i_out=%i_bn=%i_'
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
