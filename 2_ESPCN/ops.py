@@ -352,15 +352,84 @@ def max_pool(x,n):
     return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
 
 
+
+def pad_and_concat(x1, x2):
+    """ Unfinished
+    get the union of two tensors, pad and then concatenate
+    """
+    # get the shapes as tuples:
+    x1_shape = get_tensor_shape(x1)
+    x2_shape = get_tensor_shape(x2)
+
+    # if the two tensors have equal width, height, depth
+    if x1_shape[1:-1] == x2_shape[1:-1]:
+        return tf.concat([x1, x2], 4)
+
+    # ------ Otherwise pad the union ---------
+    # get the size of the common tensor:
+    size = [max(x1_shape[i], x2_shape[i]) for i in range(1,4)]
+    padding_1 = [[0,0],
+                 [1,2],
+                 [3,4],
+                 [1,3],
+                 [0,0]]
+
+
+
 def crop_and_concat(x1,x2):
-    x1_shape = tf.shape(x1)
-    x2_shape = tf.shape(x2)
+    """ get the intersection between x_1, x_2 and then crop and concatenate
+    """
+    # if the two tensors have equal width, height, depth
+    # if x1.shape[1:-1]==x2.shape[1:-1]:
+    # return tf.concat([x1, x2], 4)
+
+    # Otherwise get the intersection:
+    x1_shape = get_tensor_shape(x1)
+    x2_shape = get_tensor_shape(x2)
+
+    # get the size of the common tensor:
+    size = [-1]+[min(x1_shape[i], x2_shape[i]) for i in range(1,4)]+[-1]
+    print(size)
+
+    # get where x1 is larger than x2:
+    offsets_1 = [0,
+                max((x1_shape[1] - x2_shape[1]) // 2, 0),
+                max((x1_shape[2] - x2_shape[2]) // 2, 0),
+                max((x1_shape[3] - x2_shape[3]) // 2, 0),
+                0]
+    x1_crop = tf.slice(x1, offsets_1, size)
+
+    # get where x2 is larger than x1:
+    offsets_2 = [0,
+                 max((x2_shape[1] - x1_shape[1]) // 2, 0),
+                 max((x2_shape[2] - x1_shape[2]) // 2, 0),
+                 max((x2_shape[3] - x1_shape[3]) // 2, 0),
+                 0]
+    x2_crop = tf.slice(x2, offsets_2, size)
+    return tf.concat([x1_crop, x2_crop], 4)
+
+
+def crop_and_or_concat_basic(x1,x2,is_concat=True,name=''):
+    x1_shape = get_tensor_shape(x1)
+    x2_shape = get_tensor_shape(x2)
+
     # offsets for the top left corner of the crop
     offsets = [0,
                (x1_shape[1] - x2_shape[1]) // 2,
                (x1_shape[2] - x2_shape[2]) // 2,
                (x1_shape[3] - x2_shape[3]) // 2,
                0]
-    size = [-1, x2_shape[1], x2_shape[2],x2_shape[3], -1]
-    x1_crop = tf.slice(x1, offsets, size)
-    return tf.concat([x1_crop, x2], 4)
+    size = [-1, x2_shape[1], x2_shape[2], x2_shape[3], -1]
+    x1_crop = tf.slice(x1, offsets, size, name=name)
+
+    # For segnet, just return cropped feature maps:
+    if not(is_concat):
+        return x1_crop
+
+    # For unet, skip-connections:
+    try:
+        y = tf.concat(4, [x1_crop, x2], name=name)
+    except TypeError: # Support for verisons of TensorFlow after 1.1
+        y = tf.concat([x1_crop, x2], 4, name=name)
+
+    return y

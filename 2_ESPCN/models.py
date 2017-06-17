@@ -26,12 +26,16 @@ class espcn(object):
                  filters_num=50,
                  bn=False):
         """
+        3D Efficient Subpixel-Shifted Convolutional Network
+        Need to set opt['is_shuffle']=True
+
         Args:
             input (tf tensor float 32): input tensor
             upsampling_rate (int): upsampling rate
             out_channels: number of channels in the output image
             layers: number of hidden layers
             filters_num(int): number of filters in the first layer
+            bn (boolean): set True fro BatchNorm
         """
         self.upsampling_rate=upsampling_rate
         self.layers=layers
@@ -96,12 +100,23 @@ class espcn_deconv(object):
                  filters_num=50,
                  bn=False):
         """
+        3D ESPCN with deconvolution (in place of subpixel-shifted convolution)
+        No shuffling needed for patch-loarder.
+        Need to set opt['is_shuffle']=False
+
+        Note:
+            Backpropagation does not work for tf.nn.conv3d_transpose() for
+            padding = 'VALID' for TF version before 0.12. So, the current
+            version uses deconv with padding = 'SAME'. This needs to be fixed
+            for a faithful reimplementation of ESPCN with a deconvolution layer.
+
         Args:
             input (tf tensor float 32): input tensor
             upsampling_rate (int): upsampling rate
-            out_channels: number of channels in the output image
-            layers: number of hidden layers
+            out_channels (int): number of channels in the output image
+            layers (int): number of hidden layers
             filters_num(int): number of filters in the first layer
+            bn (boolean): set True fro BatchNorm
         """
         self.upsampling_rate=upsampling_rate
         self.layers=layers
@@ -160,101 +175,6 @@ class espcn_deconv(object):
         return tf.reduce_mean(tf.square(y - y_pred))
 
 
-
-def espcn_with_deconv(x, filters_num=50, layers=2, upsampling_rate=2, num_channels=6):
-    n_f = filters_num
-
-    net=[]
-    net=record_network(net, x)
-
-    # define the network:
-    lyr = 0
-    while lyr < layers:
-        x = conv3d(tf.nn.relu(x), filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
-        # double the num of features in the second lyr onward
-        if lyr==0: n_f=int(2*n_f)
-        net=record_network(net, x)
-        lyr += 1
-
-    y_pred = deconv3d(tf.nn.relu(x), filter_size=3*upsampling_rate, stride=upsampling_rate,
-                      out_channels=num_channels, name='deconv', padding="SAME")
-
-    net=record_network(net, y_pred)
-    print_network(net)
-    return y_pred
-
-
-def segnet(x, n_f=50, depth=3, us=2, n_ch=6, fsz=3, n_conv=2, bn=True):
-    """
-    Args:
-        x (tf tensor): input minibatch
-        n_f (int): number of features in the first convolution
-        depth:
-        us: upsampling rate
-        n_ch: number of output channels
-        fsz:
-        n_conv (int): number of intermediate
-
-    Returns:
-
-    """
-    net=[]
-    net=record_network(net, x)
-    inp=x
-
-    # ---------- Encoder network ----------------
-    for i in range(depth-1):
-
-        # Double the number of features:
-        if i!=0: n_f = int(2 * n_f)
-
-        # convolutions with equal input:
-        j=0
-        while j<n_conv:
-            inp=conv3d(inp, out_channels=n_f, filter_size=fsz, name='conv%d'%len(net), padding='SAME')
-            net = record_network(net, inp)
-            inp = batch_norm(name='BN%d' % len(net))(lrelu(inp))
-            j+=1
-
-        # down-sample: conv with stride 2
-        inp = conv3d(inp, out_channels=n_f, filter_size=fsz, stride=us, name='conv%d' % len(net), padding='SAME')
-        net = record_network(net, inp)
-        inp = batch_norm(name='BN%d' % len(net))(lrelu(inp))
-
-    # ---------- Decoder network ----------------
-    for i in range(depth-1):
-        # upsample:
-        print(inp.get_shape())
-        inp = deconv3d(inp, out_channels=n_f, filter_size=us * fsz, stride=us, name='deconv%d' % len(net), padding='SAME')
-        net = record_network(net, inp)
-        inp = batch_norm(name='BN%d' % len(net))(lrelu(inp))
-
-        # concatenate
-        # inp = tf.concat(4, [inp, ])
-
-        # convolutions with equal input:
-        j = 0
-        while j < n_conv:
-            # convolution
-            inp = conv3d(inp, out_channels=n_f, filter_size=fsz, name='conv%d'%len(net), padding='SAME')
-            net = record_network(net, inp)
-            inp = batch_norm(name='BN%d' % len(net))(lrelu(inp))
-
-            j += 1
-
-        # Halve the number of features:
-        n_f = int(n_f/2)
-
-    # Last convolution:
-    inp=conv3d(inp, out_channels=n_ch, filter_size=fsz, name='conv%d'%len(net), padding='SAME')
-    net= record_network(net, inp)
-
-    # Print the architecture
-    print_network(net)
-
-    return tf.nn.relu(inp)
-
-
 class unet(object):
     def __init__(self,
                 upsampling_rate=2,
@@ -263,17 +183,28 @@ class unet(object):
                 filters_num=50,
                 filter_size=3,
                 conv_num=2,
-                bn=True):
+                bn=True,
+                is_concat=True):
 
         """
-        Args:
-            filters_num (int): number of features in the first convolution
-            layers:
-            upsampling_rate: upsampling rate
-            out_channels: number of output channels
-            filter_size:
-            conv_num (int): number of convolutions in each level of encode/decoder
+        3D U-net or SegNet type networks
+        Currently, no extra convolutions are performed at the trough of the
+        U-shaped architecture.
 
+        Note:
+            when input size is odd-numbered, cropping is applied in decoder
+            network before concatenation. Another option is to pad, but not
+            implemented yet.
+
+        Args:
+            upsampling_rate (int): upsampling rate
+            out_channels (int): number of output channels
+            layers (int): number of hidden layers
+            filters_num (int): number of features in the first convolution
+            filter_size (int): size of convolution filter. default = 3x3x3
+            conv_num (int): number of convolutions in each level of encode/decoder
+            bn (boolean): set True fro BatchNorm
+            is_concat (boolean): set True for Unet, o/w defines a SegNet.
         """
         self.upsampling_rate = upsampling_rate
         self.layers = layers
@@ -282,6 +213,7 @@ class unet(object):
         self.filter_size = filter_size
         self.conv_num=conv_num
         self.bn = bn
+        self.is_concat = is_concat
 
     def forwardpass(self, input, phase):
         net=[]
@@ -308,9 +240,7 @@ class unet(object):
             input = conv3d(input, out_channels=filters_num, filter_size=self.filter_size, stride=self.upsampling_rate, name='conv%d' % len(net), padding='SAME')
             net = record_network(net, input)
             input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
-            print("encoder", input.get_shape())
 
-        print(down_h_convs)
         # ---------- Decoder network ----------------
         for layer in range(self.layers-1, -1, -1):
             # upsample:
@@ -318,9 +248,8 @@ class unet(object):
             net = record_network(net, input)
             input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
 
-            # concatenate
-            print('decoder', input.get_shape(), down_h_convs[layer].get_shape())
-            input = tf.concat(4, [down_h_convs[layer], input], name='concat%d'%len(net))
+            # concatenate or just crop (Unet or Segnet)
+            input = crop_and_or_concat_basic(input, down_h_convs[layer], is_concat=self.is_concat, name='concat_or_crop%d'%len(net))
             net = record_network(net, input)
 
             # convolutions:
@@ -335,8 +264,8 @@ class unet(object):
             # halve the number of features:
             filters_num = int(filters_num / 2)
 
-        # Last convolution:
-        y_pred=conv3d(input, out_channels=self.out_channels, filter_size=self.filter_size, name='conv%d' % len(net), padding='SAME')
+        # Last deconv:
+        y_pred = deconv3d(input, out_channels=self.out_channels, filter_size=self.upsampling_rate * self.filter_size, stride=self.upsampling_rate, name='deconv%d' % len(net), padding='SAME')
         net= record_network(net, y_pred)
 
         # Print the architecture
