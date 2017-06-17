@@ -108,6 +108,7 @@ class Data(object):
         self._us_rate          = us_rate
         self._shuffle          = shuffle
         self._pad_size         = pad_size
+        self._whiten           = whiten
 
         # ------------------ Preprocess --------------------------------
         # store input and output for patch collection
@@ -138,7 +139,7 @@ class Data(object):
 
         # Compute normalisation transform:
         # todo: need to include normalisation in the preprocessing function.
-        self._transform=self._whiten_imgs(whiten, inp_images, out_images, True, us_rate)
+        self._transform=self._compute_normalisation_transform(whiten, inp_images, out_images, True, us_rate)
 
         print('Patch-lib size:', size,
               'Train size:', self._size,
@@ -220,7 +221,7 @@ class Data(object):
         # Normalise:
         self._inp_images = inp_images
         self._out_images = out_images
-        self._transform = self._whiten_imgs(whiten, inp_images, out_images, True, us_rate)
+        self._transform = self._compute_normalisation_transform(whiten, inp_images, out_images, True, us_rate)
 
         return self
 
@@ -322,6 +323,7 @@ class Data(object):
                                          us_rate=self._us_rate,
                                          shuffle=self._shuffle)
         self._index += 1
+        inp, out = self._normalise(inp, out)
         return inp, out
 
 
@@ -359,6 +361,7 @@ class Data(object):
                                          us_rate=self._us_rate,
                                          shuffle=self._shuffle
                                          )
+        inp, out = self._normalise(inp, out)
         return inp, out
 
 
@@ -540,7 +543,7 @@ class Data(object):
 
         return inp_images, out_images
 
-    def _whiten_imgs(self, whiten, inp_images, out_images, compute_tfm,us_rate):
+    def _compute_normalisation_transform(self, whiten, inp_images, out_images, compute_tfm, us_rate):
         # Compute the normalisation parameters:
         if compute_tfm:
             if whiten == 'none':
@@ -610,6 +613,19 @@ class Data(object):
                         out_m ** 2)) \
                         / (n_chunks * chunk_size))
         return in_m, in_s, out_m, out_s
+
+    def _normalise(self, inp, out):
+        inp = self._diag_whiten(inp,
+                                self._transform['input_mean'],
+                                self._transform['input_std'])
+        out = self._diag_whiten(out,
+                                self._transform['output_mean'],
+                                self._transform['output_std'])
+
+        return inp, out
+
+    def _diag_whiten(self, mini_batch, mean, std):
+        return (mini_batch - mean)/std
 
     def _pad_images(self, inp_images, out_images, us_rate, inpN, padding=None):
         """

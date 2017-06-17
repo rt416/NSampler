@@ -334,7 +334,7 @@ def train_cnn(opt):
           'Train size:', opt['train_noexamples'],
           'Valid size:', opt['valid_noexamples'])
 
-    # todo: need to move this to the section above:
+    # todo: need to move this to the section above for presentation.
     with tf.name_scope('accuracy'):
         transform = dataset._transform
         mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
@@ -405,12 +405,6 @@ def train_cnn(opt):
 
                 xt, yt = dataset.next_batch(opt['batch_size'])
                 xv, yv = dataset.next_val_batch(opt['batch_size'])
-
-                # normalise:
-                xt = pp.diag_whiten(xt,transform['input_mean'],transform['input_std'])
-                yt = pp.diag_whiten(yt,transform['output_mean'],transform['output_std'])
-                xv = pp.diag_whiten(xv,transform['input_mean'],transform['input_std'])
-                yv = pp.diag_whiten(yv,transform['output_mean'],transform['output_std'])
 
                 # train op and loss
                 current_step = tf.train.global_step(sess, global_step)
