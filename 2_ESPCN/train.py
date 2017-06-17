@@ -11,7 +11,6 @@ import numpy as np
 import tensorflow as tf
 
 from data_generator import prepare_data
-import sr_preprocess as pp
 import models as models
 from ops import get_tensor_shape
 
@@ -43,11 +42,12 @@ def name_network(opt):
     opt['receptive_field_radius']=(2*opt['input_radius']-2*opt['output_radius'] + 1)//2
 
     nn_var = (opt['upsampling_rate'],
+              opt['no_layers'],
               2*opt['input_radius']+1,
               2*opt['receptive_field_radius']+1,
              (2*opt['output_radius']+1)*opt['upsampling_rate'],
               opt['is_BN'])
-    nn_str = 'us=%i_in=%i_rec=%i_out=%i_bn=%i_'
+    nn_str = 'us=%i_lyr=%i_in=%i_rec=%i_out=%i_bn=%i_'
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
@@ -57,10 +57,6 @@ def name_network(opt):
                opt['patch_sampling_opt'],
                opt['patchlib_idx'])
     nn_str += 'ts=%d_pl=%d_pad=%d_clip=%i_nrm=%s_smpl=%s_%03i'
-
-    # nn_var += (optim, str(opt['dropout_rate']), opt['transform_opt'])
-    # nn_str +='opt=%s_drop=%s_prep=%s_'
-
     nn_body = nn_str % nn_var
 
     if opt['is_map']:
@@ -172,6 +168,7 @@ def initialise_model(sess, saver, phase_train, checkpoint_dir, bests, opt):
 
     return epoch_init
 
+
 def get_output_radius(y_pred, upsampling_rate, is_shuffle):
     """ Compute the output radius """
     if is_shuffle:
@@ -238,6 +235,8 @@ def train_cnn(opt):
 
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
+    # todo: allow for input of even numbered size
+
     x = tf.placeholder(tf.float32,
                        [opt["batch_size"],
                        2*opt['input_radius']+1,
@@ -246,28 +245,31 @@ def train_cnn(opt):
                        opt['no_channels']],
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
-
     net = set_network_config(opt)
     y_pred = net.forwardpass(x, phase_train)
-
     y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
 
-    # others:
+    # other place holders:
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     global_step = tf.Variable(0, name="global_step", trainable=False)
+    transform = tf.placeholder(tf.float32, name='norm_transform')
 
-    # define loss and optimiser:
+    # define loss and evaluation criteria:
     cost = net.cost(y, y_pred)
-    print(get_tensor_shape(y), get_tensor_shape(y_pred))
+    mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
+    tf.summary.scalar('mse', mse)
+
+    # define training op
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
     optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
-    # compute the output radius:
-    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
-
     # ----------------------- Directory settings -------------------------------
+    # compute the output radius (needed for defining the network name):
+    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'],
+                                             opt['is_shuffle'])
+
     # Create the root model directory:
     if not (os.path.exists(opt['save_dir'] + name_network(opt))):
         os.makedirs(opt['save_dir'] + name_network(opt))
@@ -334,12 +336,6 @@ def train_cnn(opt):
           'Train size:', opt['train_noexamples'],
           'Valid size:', opt['valid_noexamples'])
 
-    # todo: need to move this to the section above for presentation.
-    with tf.name_scope('accuracy'):
-        transform = dataset._transform
-        mse = tf.reduce_mean(tf.square(transform['output_std'] * (y - y_pred)))
-        # mse = tf.reduce_mean(tf.square(y - y_pred))
-        tf.summary.scalar('mse', mse)
 
     # ######################### START TRAINING ###################
     saver = tf.train.Saver()
@@ -357,6 +353,9 @@ def train_cnn(opt):
 
         # Compute the trade-off values:
         tradeoff_list = models.get_tradeoff_values_v2(opt['method'], opt['no_epochs'])
+
+        # Define the normalisation tranform:
+        norm_std = dataset._transform['output_std']
 
         # Define some counters
         start_time = timeit.default_timer()
@@ -394,7 +393,6 @@ def train_cnn(opt):
             start_time_epoch = timeit.default_timer()
             lr_ = opt['learning_rate']
 
-            # todo: try with this.
             # gradually reduce learning rate every 50 epochs:
             if (epoch+1) % 50 == 0:
                 lr_=lr_/ 10.
@@ -411,7 +409,8 @@ def train_cnn(opt):
                 fd_t={x: xt, y: yt, lr: lr_,
                       keep_prob: 1.-opt['dropout_rate'],
                       trade_off:tradeoff_list[epoch],
-                      phase_train:True}
+                      phase_train:True,
+                      transform: norm_std}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -421,7 +420,8 @@ def train_cnn(opt):
                 fd_v = {x: xv, y: yv,
                         keep_prob: 1.-opt['dropout_rate'],
                         trade_off:tradeoff_list[epoch],
-                        phase_train:False}
+                        phase_train:False,
+                        transform: norm_std}
 
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
