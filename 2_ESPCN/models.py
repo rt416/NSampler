@@ -290,6 +290,8 @@ class unet(object):
     def cost(self, y, y_pred):
         return tf.reduce_mean(tf.square(y - y_pred))
 
+# -------------------------- old stuff -----------------------------------------
+# contains ESPCN with heteroscedastic likelihood and variational dropout
 
 def inference(method, x, y, keep_prob, opt, trade_off=None):
     """ Define the model up to where it may be used for inference.
