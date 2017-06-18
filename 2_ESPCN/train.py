@@ -18,40 +18,6 @@ from ops import get_tensor_shape
 from utils import *
 
 
-def define_logdir(opt):
-    nn_file = name_network(opt)
-    checkpoint_dir = os.path.join(opt['log_dir'], nn_file)
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
-    return checkpoint_dir
-
-
-
-
-def name_patchlib(opt):
-    """given inputs, return the patchlib name """
-    header = 'patchlib'
-    if opt['is_map']: header = 'MAP_' + header
-
-    # problem definition:
-    nn_var = (opt['upsampling_rate'],
-              2 * opt['input_radius'] + 1,
-              2 * opt['receptive_field_radius'] + 1,
-              (2 * opt['output_radius'] + 1) * opt['upsampling_rate'],
-              opt['pad_size'],
-              opt['is_shuffle'])
-    nn_str = 'us=%i_in=%i_rec=%i_out=%i_pad=%i_shuffle=%i_'
-
-    nn_var += (opt['no_subjects'],
-               opt['no_patches'],
-               opt['transform_opt'],
-               opt['patch_sampling_opt'],
-               opt['patchlib_idx'])
-    nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
-    nn_body = nn_str % nn_var
-    return header+'_'+nn_body
-
-
 def update_best_loss(this_loss, bests, iter_, current_step):
     bests['counter'] += 1
     if this_loss < bests['val_loss']:
