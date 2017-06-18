@@ -138,8 +138,6 @@ class dcespcn(object):
                                    out_channels=n_f, filter_size=3,
                                    name='conv_dc_' + str(lyr + 1))
 
-            # double the num of features in the second lyr onward
-            if lyr == 0: n_f = int(2 * n_f)
             net = record_network(net, input)
             lyr += 1
 
