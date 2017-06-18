@@ -3,10 +3,14 @@
 import os
 import sys
 import time
+sys.path.append("../2_ESPCN")
 
+import cPickle as pkl
 import numpy as np
 import tensorflow as tf
 
+# FIXME: this is horrid
+import models
 
 ### NAMING
 def define_checkpoint(opt):
@@ -147,3 +151,44 @@ def save_model(opt, sess, saver, global_step, model_details):
     with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
         pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
     print('Model details saved')
+
+
+def set_network_config(opt):
+    """ Define the model type"""
+    if opt["method"] == "espcn":
+        assert opt["is_shuffle"]
+        net = models.espcn(upsampling_rate=opt['upsampling_rate'],
+                           out_channels=opt['no_channels'],
+                           filters_num=opt['no_filters'],
+                           layers=opt['no_layers'],
+                           bn=opt['is_BN'])
+
+    elif opt["method"] == "espcn_deconv" :
+        assert not(opt["is_shuffle"])
+        net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
+                                  out_channels=opt['no_channels'],
+                                  filters_num=opt['no_filters'],
+                                  layers=opt['no_layers'],
+                                  bn=opt['is_BN'])
+    elif opt["method"] == "segnet":
+        net = models.unet(upsampling_rate=opt['upsampling_rate'],
+                          out_channels=opt['no_channels'],
+                          filters_num=opt['no_filters'],
+                          layers=opt['no_layers'],
+                          conv_num=2,
+                          bn=opt['is_BN'],
+                          is_concat=False)
+
+    elif opt["method"] == "unet":
+        net = models.unet(upsampling_rate=opt['upsampling_rate'],
+                          out_channels=opt['no_channels'],
+                          filters_num=opt['no_filters'],
+                          layers=opt['no_layers'],
+                          conv_num=2,
+                          bn=opt['is_BN'],
+                          is_concat=True)
+    else:
+        raise ValueError("The specified network type %s not available" %
+                        (opt["method"],))
+    return net
+

@@ -103,46 +103,6 @@ def get_optimizer(optimizer, lr):
     return optim
 
 
-def set_network_config(opt):
-    """ Define the model type"""
-    if opt["method"] == "espcn":
-        assert opt["is_shuffle"]
-        net = models.espcn(upsampling_rate=opt['upsampling_rate'],
-                           out_channels=opt['no_channels'],
-                           filters_num=opt['no_filters'],
-                           layers=opt['no_layers'],
-                           bn=opt['is_BN'])
-
-    elif opt["method"] == "espcn_deconv" :
-        assert not(opt["is_shuffle"])
-        net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
-                                  out_channels=opt['no_channels'],
-                                  filters_num=opt['no_filters'],
-                                  layers=opt['no_layers'],
-                                  bn=opt['is_BN'])
-    elif opt["method"] == "segnet":
-        net = models.unet(upsampling_rate=opt['upsampling_rate'],
-                          out_channels=opt['no_channels'],
-                          filters_num=opt['no_filters'],
-                          layers=opt['no_layers'],
-                          conv_num=2,
-                          bn=opt['is_BN'],
-                          is_concat=False)
-
-    elif opt["method"] == "unet":
-        net = models.unet(upsampling_rate=opt['upsampling_rate'],
-                          out_channels=opt['no_channels'],
-                          filters_num=opt['no_filters'],
-                          layers=opt['no_layers'],
-                          conv_num=2,
-                          bn=opt['is_BN'],
-                          is_concat=True)
-    else:
-        raise ValueError("The specified network type %s not available" %
-                        (opt["method"],))
-    return net
-
-
 def train_cnn(opt):
     # ----------------------- DEFINE THE MODEL ---------------------------------
     # Currently, the size of the output radius is only computed after defining
@@ -151,24 +111,24 @@ def train_cnn(opt):
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
     # todo: allow for input of even numbered size
-
-    x = tf.placeholder(tf.float32,
-                       [opt["batch_size"],
-                       2*opt['input_radius']+1,
-                       2*opt['input_radius']+1,
-                       2*opt['input_radius']+1,
-                       opt['no_channels']],
-                       name='input_x')
+     
+    print("...Setting up placeholders")
+    side = 2*opt["input_radius"] + 1
+    x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side, 
+                       opt['no_channels']],name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
-    net = set_network_config(opt)
-    y_pred = net.forwardpass(x, phase_train)
-    y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
-
-    # other place holders:
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
-    global_step = tf.Variable(0, name="global_step", trainable=False)
     transform = tf.placeholder(tf.float32, name='norm_transform')
+    
+    global_step = tf.Variable(0, name="global_step", trainable=False)
+    
+    print("...Constructing network\n")
+    net = set_network_config(opt)
+
+    y_pred = net.forwardpass(x, phase_train)
+    # HACK: I don't like this at all!
+    y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
 
     # define loss and evaluation criteria:
     cost = net.cost(y, y_pred)
@@ -177,7 +137,9 @@ def train_cnn(opt):
 
     # define training op
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    optim = get_optimizer(opt["optimizer"], lr)
+    # TODO: write a proper optimizer lookup
+    #optim = get_optimizer(opt["optimizer"], lr)
+    optim = tf.train.AdamOptimizer(learning_rate=lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
     # ----------------------- Directory settings -------------------------------

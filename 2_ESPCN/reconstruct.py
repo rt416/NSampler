@@ -3,6 +3,7 @@ import os
 import sys
 import timeit
 import cPickle as pkl
+sys.path.append("../common")
 
 import numpy as np
 import tensorflow as tf
@@ -10,7 +11,8 @@ import tensorflow as tf
 import sr_utility
 
 from sr_utility import forward_periodic_shuffle
-from train import define_checkpoint, name_network, name_patchlib, get_output_radius, set_network_config
+from train import define_checkpoint, get_output_radius
+from utils import * 
 
 
 # Main reconstruction code:
@@ -114,23 +116,20 @@ def super_resolve(dt_lowres, opt):
     # Get the dir where the network is saved
     network_dir = define_checkpoint(opt)
 
+    # Placeholders
     print('... defining the network model %s .' % opt['method'])
-    x = tf.placeholder(tf.float32, [1,
-                                    2 * opt['input_radius'] + 1,
-                                    2 * opt['input_radius'] + 1,
-                                    2 * opt['input_radius'] + 1,
-                                    opt['no_channels']],
+    side = 2*opt["input_radius"] + 1
+    x = tf.placeholder(tf.float32, [1,side,side,side,opt['no_channels']],
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+    trade_off = tf.placeholder(tf.float32, name='trade_off')
 
     net = set_network_config(opt)
     transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, phase_train, transform)
 
-    # Others:
-    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
-    trade_off = tf.placeholder(tf.float32, name='trade_off')
 
     # Compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
