@@ -67,17 +67,16 @@ def sr_reconstruct(opt):
                              gt_header=gt_header)
 
     # Compute the reconstruction error:
-    mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
-                '_rec=' + str(5) + '.nii'
+    mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
     # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
     #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
-    mask_dir = opt['mask_dir']
+    mask_dir_local = os.path.join(opt["mask_dir"], subject, "T1w/Diffusion/masks")
     rmse, rmse_whole, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir,subject,nn_dir),
                                   gt_dir=os.path.join(gt_dir,subject,subpath),
                                   mask_choose=True,
-                                  mask_dir=os.path.join(mask_dir,subject,'masks'),
+                                  mask_dir=mask_dir_local,
                                   mask_file=mask_file,
                                   no_channels=no_channels,
                                   gt_header=gt_header)
