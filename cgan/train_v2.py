@@ -206,7 +206,15 @@ def set_network_config(opt):
                                   filters_num=opt['no_filters'],
                                   layers=opt['no_layers'],
                                   bn=opt['is_BN'])
+    elif opt["method"] == "dcespcn" :
+        assert opt["is_shuffle"]
+        net = models.dcespcn(upsampling_rate=opt['upsampling_rate'],
+                             out_channels=opt['no_channels'],
+                             filters_num=opt['no_filters'],
+                             layers=opt['no_layers'],
+                             bn=opt['is_BN'])
     elif opt["method"] == "segnet":
+        assert not (opt["is_shuffle"])
         net = models.unet(upsampling_rate=opt['upsampling_rate'],
                           out_channels=opt['no_channels'],
                           filters_num=opt['no_filters'],
@@ -216,6 +224,7 @@ def set_network_config(opt):
                           is_concat=False)
 
     elif opt["method"] == "unet":
+        assert not (opt["is_shuffle"])
         net = models.unet(upsampling_rate=opt['upsampling_rate'],
                           out_channels=opt['no_channels'],
                           filters_num=opt['no_filters'],
