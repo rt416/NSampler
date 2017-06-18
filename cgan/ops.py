@@ -104,7 +104,7 @@ def conv_dc_3d(input_old, phase, bn_on, out_channels, filter_size=3, stride=1, n
         input_new = tf.nn.relu(input_new)
         input_new = conv3d(input_new, out_channels, filter_size, stride,
                            name='conv1', padding=padding)
-        input_old = crop_and_or_concat_basic(input_old, input_new)
+        input_old = crop_and_or_concat_basic(input_old, input_new, name='concat1')
         variable_summaries(input_old, summary)
     return input_old
 
