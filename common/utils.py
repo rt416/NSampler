@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 
+### NAMING
 def define_checkpoint(opt):
     """Create checkpoint directory.
     
@@ -124,3 +125,25 @@ def name_patchlib(opt):
     nn_str += 'ts=%d_pl=%d_nrm=%s_smpl=%s_%03i'
     nn_body = nn_str % nn_var
     return header+'_'+nn_body
+
+
+### IO
+def save_model(opt, sess, saver, global_step, model_details):
+    """Save model
+
+    Create a model checkpoint and save to opt["checkpoint_dir"]
+
+    Args:
+        opt: dict of configuration options, defined in run_me.py
+        sess: current TF session handle
+        saver: tf.Saver instance 
+        global_step: iteration counter (can be tf variable)
+        model_details: extra information to dump
+    """
+    checkpoint_dir = opt['checkpoint_dir']
+    checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+    save_path = saver.save(sess, checkpoint_prefix, global_step=global_step)
+    print("Model saved in file: {:s}".format(save_path))
+    with open(os.path.join(checkpoint_dir, 'settings.pkl'), 'wb') as fp:
+        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    print('Model details saved')
