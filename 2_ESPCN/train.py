@@ -15,7 +15,7 @@ import models
 
 from data_generator import prepare_data
 from ops import get_tensor_shape
-from utils import *
+from common.utils import *
 
 
 def update_best_loss(this_loss, bests, iter_, current_step):

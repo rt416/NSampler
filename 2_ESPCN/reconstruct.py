@@ -12,7 +12,7 @@ import sr_utility
 
 from sr_utility import forward_periodic_shuffle
 from train import define_checkpoint, get_output_radius
-from utils import * 
+from common.utils import *
 
 
 # Main reconstruction code:
@@ -72,7 +72,7 @@ def sr_reconstruct(opt):
     mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
     # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
     #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
-    mask_dir_local = os.path.join(opt["mask_dir"], subject, "T1w/Diffusion/masks")
+    mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
     rmse, rmse_whole, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,
                                   recon_dir=os.path.join(recon_dir,subject,nn_dir),

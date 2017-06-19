@@ -54,7 +54,7 @@ parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2
 parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.3_Proc', help='ground truth directory')
 parser.add_argument('--subpath', type=str, default='T1w/Diffusion', help='subdirectory in gt_dir')
 parser.add_argument('--mask_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017/recon/', help='directory of segmentation masks')
-
+parser.add_argument('--mask_subpath', type=str, default='', help='subdirectory in mask_dir')
 
 arg = parser.parse_args()
 opt = vars(arg)
