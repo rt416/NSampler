@@ -4,10 +4,9 @@ import cPickle as pkl
 import numpy as np
 import tensorflow as tf
 
-import sr_utility
-
-from sr_utility import forward_periodic_shuffle
 from train import get_output_radius
+import common.sr_utility as sr_utility
+from common.sr_utility import forward_periodic_shuffle
 from common.utils import *
 
 

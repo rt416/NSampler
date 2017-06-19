@@ -8,7 +8,7 @@ import sys
 import numpy as np
 import cPickle as pickle
 import copy
-import data_utils as du
+import common.data_utils as du
 # import largesc.math_utils as mu
 # import data_whiten as dwh
 # import pepys.flags as flags
