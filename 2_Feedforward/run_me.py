@@ -6,7 +6,7 @@ import os
 import reconstruct
 import sys
 
-from data_utils import fetch_subjects
+from common.data_utils import fetch_subjects
 from train import name_network, train_cnn
 
 # Settings
@@ -42,7 +42,7 @@ parser.add_argument('--no_layers', type=int, default=2, help='number of hidden l
 
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='MAP-SR?')
-parser.add_argument('--no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
+parser.add_argument('-pl', '--no_patches', dest='no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
 parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='8', help='background value')
 parser.add_argument('-bgval', '--background_value', dest="background_value", type=float, default='0', help='background value')
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')

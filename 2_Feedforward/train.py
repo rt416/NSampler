@@ -100,7 +100,9 @@ def train_cnn(opt):
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
     # todo: allow for input of even numbered size
-     
+
+    print()
+    print("--------------------------")
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
     x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side, 
@@ -171,8 +173,9 @@ def train_cnn(opt):
             shutil.rmtree(opt['log_dir'] + '/' + name_network(opt))
 
     # -------------------- SET UP THE DATA LOADER ------------------------------
+    print("\n--------------------------")
+    print("... Define dataloader\n")
     filename_patchlib = name_patchlib(opt)
-
     dataset, train_folder = prepare_data(size=opt['train_size'],
                                          eval_frac=opt['validation_fraction'],
                                          inpN=opt['input_radius'],
@@ -193,19 +196,13 @@ def train_cnn(opt):
                                          data_dir_root=opt['gt_dir'],
                                          save_dir_root=opt['data_dir'],
                                          subpath=opt['subpath'])
-
-    print(opt['input_radius'], opt['output_radius'], opt['is_shuffle'], dataset._shuffle)
-
     opt['train_noexamples'] = dataset.size
     opt['valid_noexamples'] = dataset.size_valid
-    print('Patch-lib size:', opt['train_noexamples'] + opt['valid_noexamples'],
-          'Train size:', opt['train_noexamples'],
-          'Valid size:', opt['valid_noexamples'])
 
-
-    # ######################### START TRAINING ###################
+    # --------------------------- START TRAINING ------------------------------
+    print("\n--------------------------")
+    print("... Start training! \n")
     saver = tf.train.Saver()
-    print('\nStart training!\n')
     with tf.Session() as sess:
 
         # Merge all the summaries and write them out to ../network_name/log

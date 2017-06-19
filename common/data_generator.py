@@ -131,7 +131,6 @@ def prepare_data(size,
         dataset.save_transform(transfile)
     else:
         print ('Computing patch library...')
-        print(us_rate)
         dataset = patch_sampler.Data().create_patch_lib(size,
                                                         eval_frac,
                                                         inpN,

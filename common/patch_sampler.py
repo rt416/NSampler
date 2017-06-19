@@ -472,10 +472,6 @@ class Data(object):
         no_samples = size//len(vox_indx)
         reminder = size % len(vox_indx)
         size_total = 0
-
-        print(no_samples)
-        print(vox_indx[0].shape)
-
         pindlist = np.zeros((size, 4), dtype=int)
 
         for idx in range(len(vox_indx)):
