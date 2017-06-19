@@ -53,11 +53,12 @@ def name_network(opt):
 
     nn_var = (opt['upsampling_rate'],
               opt['no_layers'],
+              opt['no_filters'],
               2*opt['input_radius']+1,
               2*opt['receptive_field_radius']+1,
              (2*opt['output_radius']+1)*opt['upsampling_rate'],
               opt['is_BN'])
-    nn_str = 'us=%i_lyr=%i_in=%i_rec=%i_out=%i_bn=%i_'
+    nn_str = 'us=%i_lyr=%i_nf=%i_in=%i_rec=%i_out=%i_bn=%i_'
 
     nn_var += (opt['no_subjects'],
                opt['no_patches'],
@@ -163,6 +164,14 @@ def set_network_config(opt):
                            layers=opt['no_layers'],
                            bn=opt['is_BN'])
 
+    elif opt["method"] == "dcespcn" :
+        assert opt["is_shuffle"]
+        net = models.dcespcn(upsampling_rate=opt['upsampling_rate'],
+                             out_channels=opt['no_channels'],
+                             filters_num=opt['no_filters'],
+                             layers=opt['no_layers'],
+                             bn=opt['is_BN'])
+
     elif opt["method"] == "espcn_deconv" :
         assert not(opt["is_shuffle"])
         net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
@@ -171,6 +180,7 @@ def set_network_config(opt):
                                   layers=opt['no_layers'],
                                   bn=opt['is_BN'])
     elif opt["method"] == "segnet":
+        assert not (opt["is_shuffle"])
         net = models.unet(upsampling_rate=opt['upsampling_rate'],
                           out_channels=opt['no_channels'],
                           filters_num=opt['no_filters'],
@@ -180,6 +190,7 @@ def set_network_config(opt):
                           is_concat=False)
 
     elif opt["method"] == "unet":
+        assert not (opt["is_shuffle"])
         net = models.unet(upsampling_rate=opt['upsampling_rate'],
                           out_channels=opt['no_channels'],
                           filters_num=opt['no_filters'],

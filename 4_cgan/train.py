@@ -6,6 +6,7 @@ from common.data_generator import prepare_data
 from common.ops import get_tensor_shape
 from common.utils import *
 
+
 def update_best_loss(this_loss, bests, iter_, current_step):
     bests['counter'] += 1
     if this_loss < bests['val_loss']:
@@ -104,15 +105,15 @@ def train_cnn(opt):
     print("--------------------------")
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
-    x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side, 
+    x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side,
                        opt['no_channels']],name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     transform = tf.placeholder(tf.float32, name='norm_transform')
-    
+
     global_step = tf.Variable(0, name="global_step", trainable=False)
-    
+
     print("...Constructing network\n")
     net = set_network_config(opt)
 

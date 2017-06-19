@@ -92,6 +92,86 @@ class espcn(object):
         return tf.reduce_mean(tf.square(y - y_pred))
 
 
+class dcespcn(object):
+    def __init__(self,
+                 upsampling_rate,
+                 out_channels,
+                 layers=2,
+                 filters_num=50,
+                 bn=False):
+        """
+        Densely connected ESPCN:
+        Input into L th convolution is the concatenation of all the feature maps
+        in the preceding L-1 layers.
+        We perform all convolutions without padding as we find them detrimental
+        to performance. This means that the output feature map size reduces after
+        each convolution. We thus crop the feature maps of previous layers accordingly
+        before concatenation.
+        Args:
+            input (tf tensor float 32): input tensor
+            upsampling_rate (int): upsampling rate
+            out_channels: number of channels in the output image
+            layers: number of hidden layers
+            filters_num(int): number of filters in the first layer
+        """
+        self.upsampling_rate=upsampling_rate
+        self.layers=layers
+        self.out_channels=out_channels
+        self.filters_num=filters_num
+        self.bn = bn
+
+    def forwardpass(self, input, phase):
+        net = []
+        net = record_network(net, input)
+
+        # define the network:
+        n_f = self.filters_num
+        input = conv3d(input, filter_size=3, out_channels=n_f,
+                       name='conv_' + str(1))
+        net = record_network(net, input)
+        lyr = 1
+
+        while lyr < self.layers:
+            if lyr == 1:  # second layer with kernel size 1 other layers three
+                input = conv_dc_3d(input, phase, bn_on=self.bn,
+                                   out_channels=n_f, filter_size=1,
+                                   name='conv_dc_' + str(lyr + 1))
+            else:
+                input = conv_dc_3d(input, phase, bn_on=self.bn,
+                                   out_channels=n_f, filter_size=3,
+                                   name='conv_dc_' + str(lyr + 1))
+
+            net = record_network(net, input)
+            lyr += 1
+
+        y_pred = conv3d(tf.nn.relu(input),
+                        filter_size=3,
+                        out_channels=self.out_channels*(self.upsampling_rate)** 3,
+                        name='conv_last')
+
+        net = record_network(net, y_pred)
+        print_network(net)
+        return y_pred
+
+    def scaled_prediction(self, input, phase, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(tf.sub(input, x_mean), x_std)
+
+        y = self.forwardpass(x_scaled, phase)
+        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+        return y_pred
+
+    def get_output_shape(self):
+        return get_tensor_shape(self.y_pred)
+
+    def cost(self, y, y_pred):
+        return tf.reduce_mean(tf.square(y - y_pred))
+
+
 class espcn_deconv(object):
     def __init__(self,
                  upsampling_rate,

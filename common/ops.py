@@ -90,6 +90,23 @@ def deconv3d(input_batch, out_channels, filter_size=6, stride=2,
         else:
             return deconv
 
+def conv_dc_3d(input_old, phase, bn_on, out_channels, filter_size=3,
+               stride=1, name='',
+               summary=True, padding='VALID'):
+    """
+    Densely connected layer:
+    BN => ReLu => Convolution => Concatenate the output feature map with the
+    input feature map.
+    Note: input feature maps are cropped before concatenation.
+    """
+    with tf.variable_scope(name):
+        input_new = batchnorm(input_old, phase, on=bn_on, name='BN1')
+        input_new = tf.nn.relu(input_new)
+        input_new = conv3d(input_new, out_channels, filter_size, stride,
+                           name='conv1', padding=padding)
+        input_old = crop_and_or_concat_basic(input_old, input_new, name='concat1')
+        variable_summaries(input_old, summary)
+    return input_old
 
 def get_output_shape_3d(input_batch, filter_shape, strides, out_channels, padding='VALID'):
     """ Get the output shape of 3D de-convolution.
