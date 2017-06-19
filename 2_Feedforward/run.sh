@@ -1,3 +1,4 @@
+#!/bin/bash
 data=/media/daniel/HDD/superres_data/HCP/
 mask=/media/daniel/HDD/superres_data/HCP/
 mask_sp=T1w/Diffusion

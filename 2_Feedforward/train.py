@@ -1,20 +1,9 @@
 """Training file (Ryu) """
-
-import os
 import glob
 import shutil
-import sys
 import timeit
-sys.path.append("../common")
-
-import cPickle as pkl
-import numpy as np
-import tensorflow as tf
-
-import models
-
-from data_generator import prepare_data
-from ops import get_tensor_shape
+from common.data_generator import prepare_data
+from common.ops import get_tensor_shape
 from common.utils import *
 
 

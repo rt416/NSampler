@@ -1,17 +1,13 @@
 """ Reconstruction file """
-import os
-import sys
 import timeit
 import cPickle as pkl
-sys.path.append("../common")
-
 import numpy as np
 import tensorflow as tf
 
 import sr_utility
 
 from sr_utility import forward_periodic_shuffle
-from train import define_checkpoint, get_output_radius
+from train import get_output_radius
 from common.utils import *
 
 
