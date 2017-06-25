@@ -31,6 +31,7 @@ def sr_reconstruct(opt):
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
     # Clip the input DTI:
+    # todo: think about test-time clipping as well for post-processing.
     if opt["is_clip"]:
         print('... clipping the input image')
         dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
