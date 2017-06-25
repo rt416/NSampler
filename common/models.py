@@ -61,7 +61,8 @@ class espcn(object):
             net = record_network(net, input)
 
             # non-linearity + batch norm:
-            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+            input = tf.nn.relu(input, name='activation'%len(net))
             lyr += 1
 
         y_pred = conv3d(tf.nn.relu(input),
@@ -222,7 +223,8 @@ class espcn_deconv(object):
             net = record_network(net, input)
 
             # non-linearity + batch norm:
-            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+            input = tf.nn.relu(input, name='activation'%len(net))
             lyr += 1
 
         y_pred = deconv3d(tf.nn.relu(input),
@@ -311,7 +313,8 @@ class unet(object):
             while j<self.conv_num:
                 input=conv3d(input, out_channels=filters_num, filter_size=self.filter_size, name='conv%d' % len(net), padding='SAME')
                 net = record_network(net, input)
-                input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+                input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+                input = tf.nn.relu(input, name='activation' % len(net))
                 if j==self.conv_num-1:
                     down_h_convs[layer]=input
                 j+=1
@@ -319,14 +322,16 @@ class unet(object):
             # down-sample: conv with stride 2
             input = conv3d(input, out_channels=filters_num, filter_size=self.filter_size, stride=self.upsampling_rate, name='conv%d' % len(net), padding='SAME')
             net = record_network(net, input)
-            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+            input = tf.nn.relu(input, name='activation' % len(net))
 
         # ---------- Decoder network ----------------
         for layer in range(self.layers-1, -1, -1):
             # upsample:
             input = deconv3d(input, out_channels=filters_num, filter_size=self.upsampling_rate * self.filter_size, stride=self.upsampling_rate, name='deconv%d' % len(net), padding='SAME')
             net = record_network(net, input)
-            input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+            input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+            input = tf.nn.relu(input, name='activation' % len(net))
 
             # concatenate or just crop (Unet or Segnet)
             input = crop_and_or_concat_basic(input, down_h_convs[layer], is_concat=self.is_concat, name='concat_or_crop%d'%len(net))
@@ -338,7 +343,8 @@ class unet(object):
                 # convolution
                 input = conv3d(input, out_channels=filters_num, filter_size=self.filter_size, name='conv%d' % len(net), padding='SAME')
                 net = record_network(net, input)
-                input = batchnorm(tf.nn.relu(input), phase, on=self.bn, name='BN%d' % len(net))
+                input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+                input = tf.nn.relu(input, name='activation' % len(net))
                 j += 1
 
             # halve the number of features:

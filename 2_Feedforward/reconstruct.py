@@ -30,6 +30,12 @@ def sr_reconstruct(opt):
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
+    # Clip the input DTI:
+    if opt["is_clip"]:
+        print('... clipping the input image')
+        dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
+                                                bkgv=opt["background_value"])
+
     # clear the graph (is it necessary?)
     tf.reset_default_graph()
 
@@ -124,7 +130,6 @@ def super_resolve(dt_lowres, opt):
     transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
     y_pred = net.scaled_prediction(x, phase_train, transform)
-
 
     # Compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
@@ -256,3 +261,26 @@ def dt_trim(dt_volume, pd):
                           pd[2][0]:-pd[2][1],
                           :]
     return dt_volume
+
+
+# Clip images:
+def clip_image(img, bkgv=0.0, tail_perc=0.1, head_perc=99.9):
+    """ Truncate 3d volume by the specified percentile
+    Assumptions:
+        img is 4d numpy array with last dim being channels e.g. DTI components
+        back ground value is consistently given by bkgv.
+
+    Args:
+    """
+    assert img.ndim == 4
+    brain_mask = img[..., 0] != bkgv # get the foreground voxels
+    for ch_idx in range(img.shape[-1]):
+        v_ch=img[...,ch_idx][brain_mask]
+        inp_perc_tail = np.percentile(v_ch, tail_perc)
+        inp_perc_head = np.percentile(v_ch, head_perc)
+        img[...,ch_idx][brain_mask]=np.clip(v_ch, inp_perc_tail, inp_perc_head)
+    return img
+
+
+
+
