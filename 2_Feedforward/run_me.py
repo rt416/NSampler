@@ -20,7 +20,7 @@ parser.add_argument('--is_reset', action='store_true', help='reset the patch lib
 parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
 parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
 parser.add_argument('--disp', action='store_true', help='display outputs?')
-
+parser.add_argument('-pp', '--postprocess', dest='postprocess', action='store_true', help='post-process the estimated highres output?')
 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
 parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float, default='1e-3', help='learning rate')

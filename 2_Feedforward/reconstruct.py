@@ -30,8 +30,8 @@ def sr_reconstruct(opt):
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
+    # Seems to aggravate performance, so currently ignored.
     # Clip the input DTI:
-    # todo: think about test-time clipping as well for post-processing.
     # if opt["is_clip"]:
     #     print('... clipping the input image')
     #     dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
@@ -45,9 +45,11 @@ def sr_reconstruct(opt):
     nn_dir = name_network(opt)
     print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
     dt_hr = super_resolve(dt_lowres, opt)
-    # todo: test whether post-reconstruction clipping improves accuracy.
-    if opt["is_clip"]:
-        print('... clipping the output image')
+
+    # Post-processing:
+    if opt["postprocess"]:
+        # Clipping:
+        print('... post-processing the output image')
         dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:],
                                                bkgv=opt["background_value"],
                                                tail_perc=0.01, head_perc=99.99)
