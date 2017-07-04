@@ -12,14 +12,21 @@ from common.utils import *
 
 # Main reconstruction code:
 def sr_reconstruct(opt):
+    # Save displayed output to a text file:
+    if opt['disp']:
+        f = open(opt['save_dir'] + name_network(opt) + '/output_recon.txt', 'w')
+        # Redirect all the outputs to the text file:
+        print("Redirecting the output to: "
+              + opt['save_dir'] + name_network(opt) + "/output_recon.txt")
+        sys.stdout = f
+
+    # Define directory and file names:
     print('\nStart reconstruction! \n')
-    # load parameters:
     recon_dir = opt['recon_dir']
     gt_dir = opt['gt_dir']
     subpath = opt['subpath']
     subject = opt['subject']
     no_channels = opt['no_channels']
-
     input_file_name, _ = opt['input_file_name'].split('{')
     gt_header, _ = opt['gt_header'].split('{')
     if not('output_file_name' in opt):
@@ -80,8 +87,6 @@ def sr_reconstruct(opt):
 
     # Compute the reconstruction error:
     mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
-    # mask_file = 'mask_us=' + str(opt['upsampling_rate']) + \
-    #             '_rec=' + str(2*opt['receptive_field_radius']+1) +'.nii'
     mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
     rmse, rmse_whole, rmse_volume \
         = sr_utility.compute_rmse(recon_file=recon_file,

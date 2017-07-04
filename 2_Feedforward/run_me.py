@@ -19,7 +19,7 @@ parser.add_argument('--continue', action='store_true', help='continue training f
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
 parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
 parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
-parser.add_argument('--disp', action='store_true', help='display outputs?')
+parser.add_argument('--disp', action='store_true', help='save the displayed outputs?')
 parser.add_argument('-pp', '--postprocess', dest='postprocess', action='store_true', help='post-process the estimated highres output?')
 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
@@ -65,13 +65,6 @@ os.environ["CUDA_VISIBLE_DEVICES"]=opt["gpu"]
 from tensorflow.python.client import device_lib
 print device_lib.list_local_devices()
 
-# Other micellaneous parameters:
-# opt['n_h1'] = 50
-# opt['n_h2'] = 2 * opt['n_h1']
-# opt['n_h3'] = 10
-# opt['L1_reg'] = 0.00
-# opt['L2_reg'] = 1e-5
-
 # data/task:
 opt['train_size']=int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
@@ -94,10 +87,6 @@ if not(os.path.exists(base_dir)):
     os.makedirs(opt["save_dir"])
     os.makedirs(opt["log_dir"])
     os.makedirs(opt["recon_dir"])
-
-# opt['mask_dir'] = '/SAN/vision/hcp/Ryu/miccai2017/recon/'
-# opt['gt_dir'] = '/SAN/vision/hcp/DCA_HCP.2013.3_Proc/'  # ground truth dir
-# opt['subpath'] = '/T1w/Diffusion/'
 
 # Mean Apparent Propagator MRI
 opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
