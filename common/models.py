@@ -43,6 +43,7 @@ class espcn(object):
         self.filters_num=filters_num
         self.bn = bn
 
+    # ------------- STANDARD NETWORK ----------------
     def forwardpass(self, input, phase):
         net = []
         net = record_network(net, input)
@@ -74,6 +75,81 @@ class espcn(object):
         print_network(net)
         return y_pred
 
+    def cost(self, y, y_pred):
+        return tf.reduce_mean(tf.square(y - y_pred))
+
+    # ------------ HETEROSCEDASTIC NETWORK ------------
+    def forwardpass_hetero(self, input, phase):
+        with tf.name_scope('mean_network'):
+            net = []
+            net = record_network(net, input)
+
+            # define the network:
+            n_f = self.filters_num
+            lyr = 0
+            while lyr < self.layers:
+                if lyr == 1:  # second layer with kernel size 1 other layers three
+                    input = conv3d(input, filter_size=1, out_channels=n_f,
+                                   name='conv_' + str(lyr + 1))
+                else:
+                    input = conv3d(input, filter_size=3, out_channels=n_f,
+                                   name='conv_' + str(lyr + 1))
+
+                # double the num of features in the second lyr onward
+                if lyr == 0: n_f = int(2 * n_f)
+                net = record_network(net, input)
+
+                # non-linearity + batch norm:
+                input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+                input = tf.nn.relu(input, name='activation' % len(net))
+                lyr += 1
+
+            y_pred = conv3d(tf.nn.relu(input),
+                            filter_size=3,
+                            out_channels=self.out_channels * (
+                                                             self.upsampling_rate) ** 3,
+                            name='conv_last')
+
+            net = record_network(net, y_pred)
+            print("Mean network architecture is ...")
+            print_network(net)
+
+        with tf.name_scope('precision_network'):
+            # define the network:
+            n_f = self.filters_num
+            lyr = 0
+            while lyr < self.layers:
+                if lyr == 1:  # second layer with kernel size 1 other layers three
+                    input = conv3d(input, filter_size=1, out_channels=n_f,
+                                   name='conv_' + str(lyr + 1))
+                else:
+                    input = conv3d(input, filter_size=3, out_channels=n_f,
+                                   name='conv_' + str(lyr + 1))
+
+                # double the num of features in the second lyr onward
+                if lyr == 0: n_f = int(2 * n_f)
+
+                # non-linearity + batch norm:
+                input = batchnorm(input, phase, on=self.bn, name='BN%d' % len(net))
+                input = tf.nn.relu(input, name='activation' % len(net))
+                lyr += 1
+
+            h_last = conv3d(tf.nn.relu(input),
+                            filter_size=3,
+                            out_channels=self.out_channels*(self.upsampling_rate)**3,
+                            name='conv_last')
+            y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
+            y_std = tf.sqrt(1. / y_prec, name='y_std')
+
+        return y_pred, y_std
+
+    def cost_hetero(self, y, y_pred, y_std):
+        with tf.name_scope('loss'):
+            cost = tf.reduce_mean(tf.square(tf.mul(1./y_std, (y - y_pred)))) \
+                   - tf.reduce_mean(tf.log(1./y_std))
+        return cost
+
+
     def scaled_prediction(self, input, phase, transform):
         x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
         x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
@@ -89,8 +165,7 @@ class espcn(object):
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)
 
-    def cost(self, y, y_pred):
-        return tf.reduce_mean(tf.square(y - y_pred))
+
 
 
 class dcespcn(object):
