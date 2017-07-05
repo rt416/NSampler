@@ -147,7 +147,6 @@ class espcn(object):
         with tf.name_scope('loss'):
             cost = tf.reduce_mean(tf.square(tf.mul(1./y_std, (y - y_pred)))) \
                    - tf.reduce_mean(tf.log(1./y_std))
-        return cost
 
 
     def scaled_prediction(self, input, phase, transform):

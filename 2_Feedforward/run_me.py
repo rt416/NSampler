@@ -18,7 +18,7 @@ parser.add_argument('--overwrite', action='store_true', help='restart the traini
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
 parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
-parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
+parser.add_argument('--not_save', action='store_true', help='invoke if you do not want to save the output')
 parser.add_argument('--disp', action='store_true', help='save the displayed outputs?')
 parser.add_argument('-pp', '--postprocess', dest='postprocess', action='store_true', help='post-process the estimated highres output?')
 
