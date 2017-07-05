@@ -137,7 +137,8 @@ def super_resolve(dt_lowres, opt):
     # Placeholders
     print('... defining the network model %s .' % opt['method'])
     side = 2*opt["input_radius"] + 1
-    x = tf.placeholder(tf.float32, [1,side,side,side,opt['no_channels']],
+    x = tf.placeholder(tf.float32,
+                       shape=[1,side,side,side,opt['no_channels']],
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
