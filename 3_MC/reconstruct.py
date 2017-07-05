@@ -62,56 +62,59 @@ def sr_reconstruct(opt):
                                                tail_perc=0.01, head_perc=99.99)
 
     # Save:
-    if no_channels > 6:
-        output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+    if opt["not_save"]:
+        rmse, rmse_whole = 10**10, 10**10
     else:
-        output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
+        if no_channels > 6:
+            output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+        else:
+            output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
 
-    print('... saving as %s' % output_file)
-    if not (os.path.exists(os.path.join(recon_dir, subject))):
-        os.mkdir(os.path.join(recon_dir, subject))
-    if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
-        os.mkdir(os.path.join(recon_dir, subject, nn_dir))
-    np.save(output_file, dt_hr)
-    end_time = timeit.default_timer()
-    print('\nIt took %f secs. \n' % (end_time - start_time))
+        print('... saving as %s' % output_file)
+        if not (os.path.exists(os.path.join(recon_dir, subject))):
+            os.mkdir(os.path.join(recon_dir, subject))
+        if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+            os.mkdir(os.path.join(recon_dir, subject, nn_dir))
+        np.save(output_file, dt_hr)
+        end_time = timeit.default_timer()
+        print('\nIt took %f secs. \n' % (end_time - start_time))
 
-    # Save each estimated dti separately as a nifti file for visualisation:
-    __, recon_file = os.path.split(output_file)
-    print('\nSave each estimated dti separately as a nii file ...')
-    sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir,subject,nn_dir),
-                             os.path.join(gt_dir,subject,subpath),
-                             no_channels=no_channels,
-                             gt_header=gt_header)
+        # Save each estimated dti separately as a nifti file for visualisation:
+        __, recon_file = os.path.split(output_file)
+        print('\nSave each estimated dti separately as a nii file ...')
+        sr_utility.save_as_nifti(recon_file,
+                                 os.path.join(recon_dir,subject,nn_dir),
+                                 os.path.join(gt_dir,subject,subpath),
+                                 no_channels=no_channels,
+                                 gt_header=gt_header)
 
-    # Compute the reconstruction error:
-    mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
-    mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
-    rmse, rmse_whole, rmse_volume \
-        = sr_utility.compute_rmse(recon_file=recon_file,
-                                  recon_dir=os.path.join(recon_dir,subject,nn_dir),
-                                  gt_dir=os.path.join(gt_dir,subject,subpath),
-                                  mask_choose=True,
-                                  mask_dir=mask_dir_local,
-                                  mask_file=mask_file,
-                                  no_channels=no_channels,
-                                  gt_header=gt_header)
+        # Compute the reconstruction error:
+        mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
+        mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
+        rmse, rmse_whole, rmse_volume \
+            = sr_utility.compute_rmse(recon_file=recon_file,
+                                      recon_dir=os.path.join(recon_dir,subject,nn_dir),
+                                      gt_dir=os.path.join(gt_dir,subject,subpath),
+                                      mask_choose=True,
+                                      mask_dir=mask_dir_local,
+                                      mask_file=mask_file,
+                                      no_channels=no_channels,
+                                      gt_header=gt_header)
 
-    print('\nRMSE (no edge) is %f.' % rmse)
-    print('\nRMSE (whole) is %f.' % rmse_whole)
+        print('\nRMSE (no edge) is %f.' % rmse)
+        print('\nRMSE (whole) is %f.' % rmse_whole)
 
-    # Save the RMSE on the chosen test subject:
-    print('Save it to settings.skl')
-    network_dir = define_checkpoint(opt)
-    model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
-    if not('subject_rmse' in model_details):
-        model_details['subject_rmse'] = {opt['subject']:rmse}
-    else:
-        model_details['subject_rmse'].update({opt['subject']:rmse})
+        # Save the RMSE on the chosen test subject:
+        print('Save it to settings.skl')
+        network_dir = define_checkpoint(opt)
+        model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
+        if not('subject_rmse' in model_details):
+            model_details['subject_rmse'] = {opt['subject']:rmse}
+        else:
+            model_details['subject_rmse'].update({opt['subject']:rmse})
 
-    with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
-        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+        with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
+            pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
 
     return rmse, rmse_whole
 
@@ -134,7 +137,8 @@ def super_resolve(dt_lowres, opt):
     # Placeholders
     print('... defining the network model %s .' % opt['method'])
     side = 2*opt["input_radius"] + 1
-    x = tf.placeholder(tf.float32, [1,side,side,side,opt['no_channels']],
+    x = tf.placeholder(tf.float32,
+                       shape=[1,side,side,side,opt['no_channels']],
                        name='input_x')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')

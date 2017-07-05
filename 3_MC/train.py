@@ -99,37 +99,32 @@ def train_cnn(opt):
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
     # todo: allow for input of even numbered size
+    # todo: write a proper optimizer lookup
 
     print()
     print("--------------------------")
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
-    x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side, 
-                       opt['no_channels']],name='input_x')
+    x = tf.placeholder(tf.float32,
+                       [opt["batch_size"], side, side, side, opt['no_channels']],
+                       name='input_x')
+    y = tf.placeholder(tf.float32, name='input_y')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     transform = tf.placeholder(tf.float32, name='norm_transform')
-    
     global_step = tf.Variable(0, name="global_step", trainable=False)
-    
+
+    # define network, loss and evaluation criteria:
     print("...Constructing network\n")
     net = set_network_config(opt)
-
-    y_pred = net.forwardpass(x, phase_train)
-    # HACK: I don't like this at all!
-    y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
-
-    # define loss and evaluation criteria:
-    cost = net.cost(y, y_pred)
+    y_pred, cost = net.forwardpass(x, y, phase_train)
     mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
     tf.summary.scalar('mse', mse)
 
     # define training op
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    # TODO: write a proper optimizer lookup
-    #optim = get_optimizer(opt["optimizer"], lr)
-    optim = tf.train.AdamOptimizer(learning_rate=lr)
+    optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
     # ----------------------- Directory settings -------------------------------
