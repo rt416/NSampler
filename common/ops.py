@@ -159,7 +159,7 @@ def get_tensor_shape(tensor):
     return tuple([s[i].value for i in range(0, len(s))])
 
 
-def normal_mult_noise(a, keep_prob, params, opt, name, summary=True):
+def normal_mult_noise(a, keep_prob, params, name, summary=True):
     """Gaussian dropout, Srivastava 2014 JMLR"""
     with tf.name_scope(name):
         if params==None:

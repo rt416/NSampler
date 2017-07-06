@@ -92,6 +92,76 @@ class espcn(object):
         y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
         return y_pred
 
+    # ------------ BAYESIAN NETWORK -------------------
+    # variational dropout only.
+    # todo: implement standard dropout i.e. binary and gaussian
+
+    def forwardpass_vardrop(self, x, y, phase, keep_prob, params):
+        net = []
+        net = record_network(net, x)
+
+        # define the network:
+        n_f = self.filters_num
+        lyr = 0
+        kl = 0
+        while lyr < self.layers:
+            if lyr == 1:  # second layer with kernel size 1 other layers three
+                x = conv3d(x, filter_size=1, out_channels=n_f,
+                           name='conv_' + str(lyr + 1))
+            else:
+                x = conv3d(x, filter_size=3, out_channels=n_f,
+                           name='conv_' + str(lyr + 1))
+
+            # double the num of features in the second lyr onward
+            if lyr == 0: n_f = int(2 * n_f)
+            net = record_network(net, x)
+
+            # non-linearity + batch norm + noise injection:
+            x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
+            x = tf.nn.relu(x, name='activation%d' % len(net))
+            x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
+                                      name='mulnoise%d'% len(net))
+            kl += kl_tmp
+            lyr += 1
+
+        y_pred = conv3d(tf.nn.relu(x),
+                        filter_size=3,
+                        out_channels=self.out_channels*(self.upsampling_rate)**3,
+                        name='conv_last')
+
+        net = record_network(net, y_pred)
+        print_network(net)
+
+        # define the loss:
+        with tf.name_scope('kl_div'):
+            down_sc = 1.0
+            kl_div = down_sc*kl
+            tf.summary.scalar('kl_div_average', kl_div)
+
+        with tf.name_scope('expected_negloglikelihood'):
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
+            tf.summary.scalar('e_negloglike', e_negloglike)
+
+        with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
+            cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
+            tf.summary.scalar('neg_ELBO', cost)
+
+        return y_pred, cost
+
+    def scaled_prediction_vardrop(self, x, phase, keep_prob, params, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(x - x_mean, x_std)
+
+        y = tf.placeholder(tf.float32,
+                           name='input_y')  # dummy: you don't need it.
+        y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params)
+        y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
+        return y_pred
+
     # ------------ HETEROSCEDASTIC NETWORK ------------
     def forwardpass_hetero(self, x, y, phase):
         # defin the mean network:
@@ -177,7 +247,139 @@ class espcn(object):
         y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
         return y_pred, y_pred_std
 
-    # ------------ BAYESIAN NETWORK ------------
+    # ------------ BAYESIAN HETEROSCEDASTIC NETWORK ------------
+    def forwardpass_hetero_vardrop(self, x, y, phase, keep_prob, params,
+                                   trade_off, num_data, cov=False):
+        """ We only perform variational dropout on the parameters of
+        the mean network
+
+        params:
+            num_data (int_: number of training data points.
+            cov (boolean): set True if you want to perform variational dropout
+            on the parameters of the covariance network.
+        """
+
+        # define the mean network:
+        with tf.name_scope('mean_network'):
+            net = []
+            net = record_network(net, x)
+
+            # define the network:
+            n_f = self.filters_num
+            lyr = 0
+            kl=0
+            while lyr < self.layers:
+                if lyr == 1:  # second layer with kernel size 1 other layers three
+                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                               name='conv_' + str(lyr + 1))
+                else:
+                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                               name='conv_' + str(lyr + 1))
+
+                # double the num of features in the second lyr onward
+                if lyr == 0: n_f = int(2 * n_f)
+                net = record_network(net, x)
+
+                # non-linearity + batch norm:
+                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
+                x = tf.nn.relu(x, name='activation%d' % len(net))
+                x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
+                                              name='mulnoise%d' % len(net))
+                kl += kl_tmp
+                lyr += 1
+
+            y_pred = conv3d(tf.nn.relu(x),
+                            filter_size=3,
+                            out_channels=self.out_channels*(self.upsampling_rate) ** 3,
+                            name='conv_last')
+
+            net = record_network(net, y_pred)
+            print("Mean network architecture is ...")
+            print_network(net)
+
+        # define the covariance network:
+        with tf.name_scope('precision_network'):
+            # define the network:
+            n_f = self.filters_num
+            lyr = 0
+            kl_prec=0  # kl-div for params of prec network
+
+            while lyr < self.layers:
+                if lyr == 1:  # second layer with kernel size 1 other layers three
+                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                               name='conv_' + str(lyr + 1))
+                else:
+                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                               name='conv_' + str(lyr + 1))
+
+                # double the num of features in the second lyr onward
+                if lyr == 0: n_f = int(2 * n_f)
+
+                # non-linearity + batch norm:
+                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
+                x = tf.nn.relu(x, name='activation' % len(net))
+
+                # inject multiplicative noise if specified:
+                if cov:
+                    x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
+                                                  name='mulnoise%d' % len(net))
+                    kl_prec += kl_tmp
+                lyr += 1
+
+            h_last = conv3d(tf.nn.relu(x),
+                            filter_size=3,
+                            out_channels=self.out_channels*(self.upsampling_rate) ** 3,
+                            name='conv_last')
+            y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
+            y_std = tf.sqrt(1. / y_prec, name='y_std')
+
+        # define the loss:
+        with tf.name_scope('kl_div'):
+            down_sc = 1.0
+            kl_div = down_sc * (kl+kl_prec)
+            tf.summary.scalar('kl_div_average', kl_div)
+
+        with tf.name_scope('expected_negloglikelihood'):
+            # expected NLL for mean network
+            mse_sum = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
+            mse_sum *= num_data
+            tf.summary.scalar('mse_sum', mse_sum)
+
+            # expected NLL for heteroscedastic network
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+                         - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
+            e_negloglike *= num_data
+            tf.summary.scalar('e_negloglike', e_negloglike)
+
+        with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
+            cost = trade_off*(e_negloglike-kl_div)+(1.-trade_off)*(mse_sum-kl_div)
+            tf.summary.scalar('neg_ELBO', cost)
+
+        return y_pred, y_std, cost
+
+    def scaled_prediction_hetero_vardrop(self, x, phase, keep_prob, params,
+                                         trade_off, num_data, cov, transform):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(x - x_mean, x_std)
+
+        y = tf.placeholder(tf.float32, name='input_y')  # dummy: you don't need it.
+        y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(x_scaled, y,
+                                                                phase,
+                                                                keep_prob,
+                                                                params,
+                                                                trade_off,
+                                                                num_data,
+                                                                cov)
+        y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
+        y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+        return y_pred, y_pred_std
+
+    # ------------ UTILITY --------------------
+
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)
 

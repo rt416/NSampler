@@ -118,7 +118,7 @@ def train_cnn(opt):
     # define network, loss and evaluation criteria:
     print("...Constructing network\n")
     net = set_network_config(opt)
-    y_pred, cost = net.forwardpass(x, y, phase_train)
+    y_pred, y_std, cost = net.forwardpass_hetero(x, y, phase_train)
     mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
     tf.summary.scalar('mse', mse)
 

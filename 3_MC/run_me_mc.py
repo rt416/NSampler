@@ -18,7 +18,7 @@ parser.add_argument('--overwrite', action='store_true', help='restart the traini
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
 parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
-parser.add_argument('--save', action='store_true', help='save the reconstructed output?')
+parser.add_argument('--not_save', action='store_true', help='evoke not to save reconstructed output.')
 parser.add_argument('--disp', action='store_true', help='save the displayed outputs?')
 parser.add_argument('-pp', '--postprocess', dest='postprocess', action='store_true', help='post-process the estimated highres output?')
 
@@ -38,6 +38,7 @@ parser.add_argument('--is_dt_all', action='store_true', help='use the dt_all fil
 
 parser.add_argument('--no_filters', type=int, default=50, help='number of initial filters')
 parser.add_argument('--no_layers', type=int, default=2, help='number of hidden layers')
+parser.add_argument('--mc_no_samples', type=int, default=50, help='number of MC samples at reconstruction')
 
 
 # Data/task
