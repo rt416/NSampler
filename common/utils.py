@@ -214,3 +214,25 @@ def set_network_config(opt):
                         (opt["method"],))
     return net
 
+
+def get_tradeoff_values(hybrid_on, n_epochs=200):
+    if hybrid_on:
+        print('apply ascending trade-off!')
+        tradeoff_list = np.zeros(n_epochs)
+        init_idx = n_epochs//4  # intial stable training with std variational dropout loss
+        freq = 1
+        counter = 0
+        rate  = 1./(len(range(init_idx,3*init_idx))//freq)
+        for idx in range(init_idx,3*init_idx):
+            if (counter+1)%freq==0:
+                tradeoff_list[idx] = tradeoff_list[idx-1] + rate
+                counter=0
+            else:
+                tradeoff_list[idx] = tradeoff_list[idx-1]
+                counter+=1
+        tradeoff_list[3*init_idx:]=1.  # fine-tune with the true cost function.
+    else:
+        print('no trade off needed!')
+        tradeoff_list = np.ones(n_epochs)
+
+    return tradeoff_list
