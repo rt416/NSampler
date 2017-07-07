@@ -147,7 +147,9 @@ def super_resolve(dt_lowres, opt):
     net = set_network_config(opt)
     transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
-    y_pred = net.scaled_prediction(x, phase_train, transform)
+
+    # todo: need to make the below optional:
+    y_pred = net.scaled_prediction_hetero(x, phase_train, transform)
 
     # Compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])

@@ -191,8 +191,7 @@ class espcn(object):
 
             y_pred = conv3d(tf.nn.relu(x),
                             filter_size=3,
-                            out_channels=self.out_channels * (
-                                                             self.upsampling_rate) ** 3,
+                            out_channels=self.out_channels*(self.upsampling_rate)**3,
                             name='conv_last')
 
             net = record_network(net, y_pred)
@@ -249,7 +248,7 @@ class espcn(object):
 
     # ------------ BAYESIAN HETEROSCEDASTIC NETWORK ------------
     def forwardpass_hetero_vardrop(self, x, y, phase, keep_prob, params,
-                                   trade_off, num_data, cov=False):
+                                   trade_off, num_data, cov_on=False):
         """ We only perform variational dropout on the parameters of
         the mean network
 
@@ -320,7 +319,7 @@ class espcn(object):
                 x = tf.nn.relu(x, name='activation' % len(net))
 
                 # inject multiplicative noise if specified:
-                if cov:
+                if cov_on:
                     x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
                                                   name='mulnoise%d' % len(net))
                     kl_prec += kl_tmp
@@ -358,11 +357,10 @@ class espcn(object):
         return y_pred, y_std, cost
 
     def scaled_prediction_hetero_vardrop(self, x, phase, keep_prob, params,
-                                         trade_off, num_data, cov, transform):
+                                         trade_off, num_data, cov_on, transform):
         x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
         x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']),
-                             name='y_mean')
+        y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
         y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
         x_scaled = tf.div(x - x_mean, x_std)
 
@@ -373,12 +371,41 @@ class espcn(object):
                                                                 params,
                                                                 trade_off,
                                                                 num_data,
-                                                                cov)
+                                                                cov_on)
         y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
         y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
         return y_pred, y_pred_std
 
-    # ------------ UTILITY --------------------
+    # ------------ UTILITY ----------------
+    def scaled_prediction_mc(self, x, phase, keep_prob, params,
+                             trade_off, num_data, cov_on, transform,
+                             hetero, vardrop):
+        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
+        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
+        y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
+        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
+        x_scaled = tf.div(x - x_mean, x_std)
+        y = tf.placeholder(tf.float32, name='input_y')
+
+        if hetero:
+            if vardrop:
+                y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(x_scaled, y, phase, keep_prob, params, trade_off, num_data, cov_on)
+            else:
+                y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
+
+            y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
+            y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+        else:
+            if vardrop:
+                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params)
+            else:
+                y_norm, _ = self.forwardpass(x_scaled, y, phase)
+
+            y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
+            y_pred_std = 1  # just constant number
+
+        return y_pred, y_pred_std
+
 
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)
