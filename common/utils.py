@@ -44,11 +44,29 @@ def name_network(opt):
     Returns:
         model name string
     """
-    optim = opt['optimizer']
+    # HEADER:
+    nn_header = opt['method'] if opt['dropout_rate'] == 0 else \
+                opt['method'] + str(opt['dropout_rate'])
 
-    nn_header = opt['method'] if opt['dropout_rate']==0 \
-    else opt['method'] + str(opt['dropout_rate'])
+    if opt['is_map']:
+        nn_header = 'MAP_' + nn_header
 
+    if opt['hetero']:
+        nn_header += '_hetero'
+
+    if opt['vardrop']:
+        nn_header += '_vardrop_' + opt['params']+'wise'
+
+    if opt['hybrid_on']:
+        nn_header += '_hybrid'
+
+    if opt['cov_on']:
+        nn_header += '_cov'
+
+    if opt['valid']:  # Validate on the cost:
+        nn_header += '_validcost'
+
+    # BODY
     opt['receptive_field_radius']=(2*opt['input_radius']-2*opt['output_radius'] + 1)//2
 
     nn_var = (opt['upsampling_rate'],
@@ -69,13 +87,6 @@ def name_network(opt):
                opt['patchlib_idx'])
     nn_str += 'ts=%d_pl=%d_pad=%d_clip=%i_nrm=%s_smpl=%s_%03i'
     nn_body = nn_str % nn_var
-
-    if opt['is_map']:
-        nn_header = 'MAP_' + nn_header
-
-    if opt['valid']:
-        # Validate on the cost:
-        nn_header += '_validcost'
 
     return nn_header + '_' + nn_body
 

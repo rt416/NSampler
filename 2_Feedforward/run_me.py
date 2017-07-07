@@ -66,9 +66,15 @@ from tensorflow.python.client import device_lib
 print device_lib.list_local_devices()
 
 # data/task:
-opt['train_size']=int(opt['no_patches']*opt['no_subjects'])
+opt['train_size'] = int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
 opt['patchlib_idx'] = 1
+
+# turn off probabilistic model options:
+opt['hetero'] = False
+opt['vardrop'] = False
+opt['cov_on'] = False
+opt['hybrid_on'] = False
 
 # Make directories to store results:
 base_dir = os.path.join(opt['base_dir'],opt['experiment'])

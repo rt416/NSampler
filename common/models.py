@@ -83,11 +83,13 @@ class espcn(object):
     def scaled_prediction(self, x, phase, transform):
         x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
         x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
+        y_mean = tf.constant(np.float32(transform['output_mean']),
+                             name='y_mean')
         y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
         x_scaled = tf.div(x - x_mean, x_std)
 
-        y = tf.placeholder(tf.float32, name='input_y') # dummy: you don't need it.
+        y = tf.placeholder(tf.float32,
+                           name='input_y')  # dummy: you don't need it.
         y_norm, _ = self.forwardpass(x_scaled, y, phase)
         y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
         return y_pred
@@ -148,48 +150,35 @@ class espcn(object):
 
         return y_pred, cost
 
-    def scaled_prediction_vardrop(self, x, phase, keep_prob, params, transform):
-        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
-        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']),
-                             name='y_mean')
-        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-        x_scaled = tf.div(x - x_mean, x_std)
-
-        y = tf.placeholder(tf.float32,
-                           name='input_y')  # dummy: you don't need it.
-        y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params)
-        y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-        return y_pred
-
     # ------------ HETEROSCEDASTIC NETWORK ------------
     def forwardpass_hetero(self, x, y, phase):
-        # defin the mean network:
+        # define the mean network:
         with tf.name_scope('mean_network'):
+            h = x + 0.0
             net = []
-            net = record_network(net, x)
+            net = record_network(net, h)
 
             # define the network:
             n_f = self.filters_num
             lyr = 0
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
-                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                    h = conv3d(h, filter_size=1, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
                 else:
-                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                    h = conv3d(h, filter_size=3, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
 
                 # double the num of features in the second lyr onward
                 if lyr == 0: n_f = int(2 * n_f)
-                net = record_network(net, x)
+                net = record_network(net, h)
 
                 # non-linearity + batch norm:
-                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-                x = tf.nn.relu(x, name='activation%d' % len(net))
+                h = batchnorm(h, phase, on=self.bn, name='BN%d' % len(net))
+                h = tf.nn.relu(h, name='activation%d' % len(net))
                 lyr += 1
 
-            y_pred = conv3d(tf.nn.relu(x),
+            y_pred = conv3d(tf.nn.relu(h),
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate)**3,
                             name='conv_last')
@@ -200,31 +189,31 @@ class espcn(object):
 
         # define the covariance network:
         with tf.name_scope('precision_network'):
-            # define the network:
+            h = x + 0.0
             n_f = self.filters_num
             lyr = 0
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
-                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                    h = conv3d(h, filter_size=1, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
                 else:
-                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                    h = conv3d(h, filter_size=3, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
 
                 # double the num of features in the second lyr onward
                 if lyr == 0: n_f = int(2 * n_f)
 
                 # non-linearity + batch norm:
-                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-                x = tf.nn.relu(x, name='activation' % len(net))
+                h = batchnorm(h, phase, on=self.bn, name='BN_' + str(lyr + 1))
+                h = tf.nn.relu(h, name='activation_' + str(lyr + 1))
                 lyr += 1
 
-            h_last = conv3d(tf.nn.relu(x),
+            h_last = conv3d(tf.nn.relu(h),
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate)**3,
-                            name='conv_last')
+                            name='conv_last_prec')
             y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
-            y_std = tf.sqrt(1. / y_prec, name='y_std')
+            y_std = tf.sqrt(1./y_prec, name='y_std')
 
         # define the loss:
         with tf.name_scope('loss'):
@@ -232,19 +221,6 @@ class espcn(object):
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
-
-    def scaled_prediction_hetero(self, x, phase, transform):
-        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
-        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
-        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-        x_scaled = tf.div(x - x_mean, x_std)
-
-        y = tf.placeholder(tf.float32, name='input_y')  # dummy: you don't need it.
-        y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
-        y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-        y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
-        return y_pred, y_pred_std
 
     # ------------ BAYESIAN HETEROSCEDASTIC NETWORK ------------
     def forwardpass_hetero_vardrop(self, x, y, phase, keep_prob, params,
@@ -260,34 +236,35 @@ class espcn(object):
 
         # define the mean network:
         with tf.name_scope('mean_network'):
-            net = []
-            net = record_network(net, x)
 
-            # define the network:
+            h = x + 0.0  # define the input
+            net = []
+            net = record_network(net, h)
             n_f = self.filters_num
             lyr = 0
             kl=0
+
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
-                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                    h = conv3d(h, filter_size=1, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
                 else:
-                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                    h = conv3d(h, filter_size=3, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
 
                 # double the num of features in the second lyr onward
                 if lyr == 0: n_f = int(2 * n_f)
-                net = record_network(net, x)
+                net = record_network(net, h)
 
                 # non-linearity + batch norm:
-                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-                x = tf.nn.relu(x, name='activation%d' % len(net))
-                x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
+                h = batchnorm(h, phase, on=self.bn, name='BN%d' % len(net))
+                h = tf.nn.relu(h, name='activation%d' % len(net))
+                h, kl_tmp = normal_mult_noise(tf.nn.relu(h), keep_prob, params,
                                               name='mulnoise%d' % len(net))
                 kl += kl_tmp
                 lyr += 1
 
-            y_pred = conv3d(tf.nn.relu(x),
+            y_pred = conv3d(tf.nn.relu(h),
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate) ** 3,
                             name='conv_last')
@@ -298,37 +275,37 @@ class espcn(object):
 
         # define the covariance network:
         with tf.name_scope('precision_network'):
-            # define the network:
+            h = x + 0.0
             n_f = self.filters_num
             lyr = 0
             kl_prec=0  # kl-div for params of prec network
 
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
-                    x = conv3d(x, filter_size=1, out_channels=n_f,
+                    h = conv3d(h, filter_size=1, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
                 else:
-                    x = conv3d(x, filter_size=3, out_channels=n_f,
+                    h = conv3d(h, filter_size=3, out_channels=n_f,
                                name='conv_' + str(lyr + 1))
 
                 # double the num of features in the second lyr onward
                 if lyr == 0: n_f = int(2 * n_f)
 
                 # non-linearity + batch norm:
-                x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-                x = tf.nn.relu(x, name='activation' % len(net))
+                h = batchnorm(h, phase, on=self.bn, name='BN' + str(lyr + 1))
+                h = tf.nn.relu(h, name='activation_' + str(lyr + 1))
 
                 # inject multiplicative noise if specified:
                 if cov_on:
-                    x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
-                                                  name='mulnoise%d' % len(net))
+                    h, kl_tmp = normal_mult_noise(tf.nn.relu(h), keep_prob, params,
+                                                  name='mulnoise_'+str(lyr+1))
                     kl_prec += kl_tmp
                 lyr += 1
 
-            h_last = conv3d(tf.nn.relu(x),
+            h_last = conv3d(tf.nn.relu(h),
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate) ** 3,
-                            name='conv_last')
+                            name='conv_last_prec')
             y_prec = tf.nn.softplus(h_last) + 1e-6  # precision matrix (diagonal)
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
@@ -356,27 +333,22 @@ class espcn(object):
 
         return y_pred, y_std, cost
 
-    def scaled_prediction_hetero_vardrop(self, x, phase, keep_prob, params,
-                                         trade_off, num_data, cov_on, transform):
-        x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
-        x_std = tf.constant(np.float32(transform['input_std']), name='x_std')
-        y_mean = tf.constant(np.float32(transform['output_mean']), name='y_mean')
-        y_std = tf.constant(np.float32(transform['output_std']), name='y_std')
-        x_scaled = tf.div(x - x_mean, x_std)
+    # -------- UTILITY ----------------
+    def build_network(self, x, y, phase, keep_prob, params, trade_off,
+                      num_data, cov_on, hetero, vardrop):
+        if hetero:
+            if vardrop:  # hetero + var. drop
+                y_pred, y_std, cost = self.forwardpass_hetero_vardrop(x, y, phase, keep_prob, params, trade_off, num_data, cov_on)
+            else:        # hetero
+                y_pred, y_std, cost = self.forwardpass_hetero(x, y, phase)
+        else:
+            if vardrop:  # var. drop
+                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob, params)
+            else:        # standard network
+                y_pred, cost = self.forwardpass(x, y, phase)
+            y_std = 1  # just constant number
+        return y_pred, y_std, cost
 
-        y = tf.placeholder(tf.float32, name='input_y')  # dummy: you don't need it.
-        y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(x_scaled, y,
-                                                                phase,
-                                                                keep_prob,
-                                                                params,
-                                                                trade_off,
-                                                                num_data,
-                                                                cov_on)
-        y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-        y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
-        return y_pred, y_pred_std
-
-    # ------------ UTILITY ----------------
     def scaled_prediction_mc(self, x, phase, keep_prob, params,
                              trade_off, num_data, cov_on, transform,
                              hetero, vardrop):
@@ -405,7 +377,6 @@ class espcn(object):
             y_pred_std = 1  # just constant number
 
         return y_pred, y_pred_std
-
 
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)

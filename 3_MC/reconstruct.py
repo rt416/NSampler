@@ -121,7 +121,6 @@ def sr_reconstruct(opt):
 
 # Reconstruct with shuffling:
 def super_resolve(dt_lowres, opt):
-
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
         dt_lowres (numpy array): a low-res diffusion tensor image volume
@@ -134,7 +133,10 @@ def super_resolve(dt_lowres, opt):
     # Get the dir where the network is saved
     network_dir = define_checkpoint(opt)
 
-    # Placeholders
+    # placeholders
+    print()
+    print("--------------------------")
+    print("...Setting up placeholders")
     print('... defining the network model %s .' % opt['method'])
     side = 2*opt["input_radius"] + 1
     x = tf.placeholder(tf.float32,
@@ -143,14 +145,21 @@ def super_resolve(dt_lowres, opt):
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
+    num_data = tf.placeholder(tf.float32, name='num_train_data')
 
+    # define network and inference:
+    print("...Constructing network: %s \n" % opt['method'])
     net = set_network_config(opt)
     transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
     transform = pkl.load(open(transfile, 'rb'))
-
-    # todo: need to make the below optional:
-    y_pred = net.scaled_prediction_hetero(x, phase_train, transform)
-
+    y_pred, y_std = net.scaled_prediction_mc(x, phase_train, keep_prob,
+                                             transform=transform,
+                                             trade_off=trade_off,
+                                             num_data=num_data,
+                                             params=opt["params"],
+                                             cov_on=opt["cov_on"],
+                                             hetero=opt["hetero"],
+                                             vardrop=opt["vardrop"])
     # Compute the output radius:
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
 

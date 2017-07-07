@@ -113,12 +113,19 @@ def train_cnn(opt):
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     transform = tf.placeholder(tf.float32, name='norm_transform')
+    num_data = tf.placeholder(tf.float32, name='num_train_data')
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
     # define network, loss and evaluation criteria:
     print("...Constructing network\n")
     net = set_network_config(opt)
-    y_pred, y_std, cost = net.forwardpass_hetero(x, y, phase_train)
+    y_pred, y_std, cost = net.build_network(x, y, phase_train, keep_prob,
+                                            trade_off=trade_off,
+                                            num_data=num_data,
+                                            params=opt["params"],
+                                            cov_on=opt["cov_on"],
+                                            hetero=opt["hetero"],
+                                            vardrop=opt["vardrop"])
     mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
     tf.summary.scalar('mse', mse)
 
@@ -127,7 +134,7 @@ def train_cnn(opt):
     optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
-    # ----------------------- Directory settings -------------------------------
+    # ----------------------- DIRECTORY SETTINGS -------------------------------
     # compute the output radius (needed for defining the network name):
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'],
                                              opt['is_shuffle'])
@@ -267,7 +274,8 @@ def train_cnn(opt):
                       keep_prob: 1.-opt['dropout_rate'],
                       trade_off:tradeoff_list[epoch],
                       phase_train:True,
-                      transform: norm_std}
+                      transform: norm_std,
+                      num_data: opt['train_noexamples']}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -278,7 +286,8 @@ def train_cnn(opt):
                         keep_prob: 1.-opt['dropout_rate'],
                         trade_off:tradeoff_list[epoch],
                         phase_train:False,
-                        transform: norm_std}
+                        transform: norm_std,
+                        num_data: opt['valid_noexamples']}
 
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
