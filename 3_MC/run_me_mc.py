@@ -99,17 +99,21 @@ if not(os.path.exists(base_dir)):
 # Mean Apparent Propagator MRI
 opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
 opt['gt_header'] = 'dt_b1000_{:d}.nii'
+opt['output_file_name'] = 'dt_recon_b1000.npy'
+opt['output_std_file_name'] = 'dt_std_b1000.npy'
 
 if opt['is_map']:
     opt['input_file_name'] = 'h4_all_lowres_'+str(opt['upsampling_rate'])+'_{:02d}.nii'
     opt['output_file_name'] = 'h4_recon.npy'
+    opt['output_std_file_name'] = 'h4_std.npy'
     opt['gt_header'] = 'h4_all_{:02d}.nii'
     opt['no_channels'] = 22
 
 if opt['is_dt_all']:
     opt['input_file_name'] = 'dt_all_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
     opt['gt_header'] = 'dt_all_{:d}.nii'
-
+    opt['output_file_name'] = 'dt_recon_all.npy'
+    opt['output_std_file_name'] = 'dt_std_all.npy'
 
 # -------------------- Train and test --------------------------------:
 # if not(os.path.exists(opt['save_dir']+name_network(opt))):

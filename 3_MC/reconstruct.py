@@ -51,7 +51,7 @@ def sr_reconstruct(opt):
     start_time = timeit.default_timer()
     nn_dir = name_network(opt)
     print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
-    dt_hr = super_resolve(dt_lowres, opt)
+    dt_hr, dt_std = super_resolve(dt_lowres, opt)
 
     # Post-processing:
     if opt["postprocess"]:
@@ -65,30 +65,39 @@ def sr_reconstruct(opt):
     if opt["not_save"]:
         rmse, rmse_whole = 10**10, 10**10
     else:
-        if no_channels > 6:
-            output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
-        else:
-            output_file = os.path.join(recon_dir, subject, nn_dir, 'dt_recon_b1000.npy')
+        output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
 
-        print('... saving as %s' % output_file)
+        print('... saving MC-estimated high-res volume and its uncertainty as %s' % output_file)
         if not (os.path.exists(os.path.join(recon_dir, subject))):
             os.mkdir(os.path.join(recon_dir, subject))
         if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
             os.mkdir(os.path.join(recon_dir, subject, nn_dir))
         np.save(output_file, dt_hr)
+        np.save(uncertainty_file, dt_hr)
         end_time = timeit.default_timer()
         print('\nIt took %f secs. \n' % (end_time - start_time))
 
         # Save each estimated dti separately as a nifti file for visualisation:
         __, recon_file = os.path.split(output_file)
-        print('\nSave each estimated dti separately as a nii file ...')
+        print('\nSave each super-resolved channel separately as a nii file ...')
         sr_utility.save_as_nifti(recon_file,
                                  os.path.join(recon_dir,subject,nn_dir),
                                  os.path.join(gt_dir,subject,subpath),
                                  no_channels=no_channels,
                                  gt_header=gt_header)
 
+        # Save each estimated uncertainty separately as a nifti:
+        __, std_file = os.path.split(uncertainty_file)
+        print('\nSave the uncertainty separately for respective channels as a nii file ...')
+        sr_utility.save_as_nifti(std_file,
+                                 os.path.join(recon_dir, subject, nn_dir),
+                                 os.path.join(gt_dir, subject, subpath),
+                                 no_channels=no_channels,
+                                 gt_header=gt_header)
+
         # Compute the reconstruction error:
+        print('\nCompute the evaluation statistics ...')
         mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
         mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
         rmse, rmse_whole, rmse_volume \
