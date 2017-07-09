@@ -185,6 +185,8 @@ def super_resolve(dt_lowres, opt):
         # Prepare high-res skeleton:
         dt_hires = np.zeros(dt_lowres.shape)
         dt_hires[:, :, :, 0] = dt_lowres[:, :, :, 0]  # same brain mask as input
+        dt_hires_std = np.zeros(dt_lowres.shape)
+        dt_hires_std[:, :, :, 0] = dt_lowres[:, :, :, 0]
         print("Size of dt_hires after padding: %s", (dt_hires.shape,))
 
         # Downsample:
@@ -214,15 +216,18 @@ def super_resolve(dt_lowres, opt):
 
             ipatch = ipatch_tmp[np.newaxis, ...]
 
-            # Predict high-res patch:
+            # Estimate high-res patch and its associeated uncertainty:
             fd = {x: ipatch,
                   keep_prob: 1.0-opt['dropout_rate'],
-                  trade_off: 0.0,
+                  trade_off: 1.0,
                   phase_train: False}
-            opatch = y_pred.eval(feed_dict=fd)
+
+            opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
+            # opatch, opatch_std = y_pred.eval(feed_dict=fd)
 
             if opt["is_shuffle"]:  # only apply shuffling if necessary
                 opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
+                opatch_std = forward_periodic_shuffle(opatch_std, opt['upsampling_rate'])
 
             dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
                      opt['upsampling_rate'] * (i + opt['output_radius']),
@@ -233,14 +238,68 @@ def super_resolve(dt_lowres, opt):
                      2:] \
             = opatch
 
+            dt_hires_std[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (i + opt['output_radius']),
+                         opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (j + opt['output_radius']),
+                         opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (k + opt['output_radius']),
+                         2:] \
+            = opatch_std
+
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
+        dt_hires_std = dt_trim(dt_hires_std, padding)
         mask = dt_hires[:, :, :, 0] !=-1
         dt_hires[...,2:]=dt_hires[...,2:]*mask[..., np.newaxis]
+        dt_hires_std[..., 2:] = dt_hires_std[..., 2:] * mask[..., np.newaxis]
 
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
-    return dt_hires
+    return dt_hires, dt_hires_std
 
+
+# Monte-Carlo inference:
+def mc_inference(fn, fn_std, fd, opt, sess):
+    """ Compute the mean and std of samples drawn from stochastic function"""
+    no_samples = opt['mc_no_samples']
+    if opt['hetero']:
+        if opt['cov_on']:
+            sum_out = 0.0
+            sum_out2 = 0.0
+            sum_var = 0.0
+            for i in xrange(no_samples):
+                current, current_std = sess.run([fn, fn_std], feed_dict=fd)
+                sum_out += current
+                sum_out2 += current ** 2
+                sum_var += current_std ** 2
+            mean = sum_out / (1. * no_samples)
+            std = np.sqrt((np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) + sum_var) / no_samples)
+        else:
+            sum_out = 0.0
+            sum_out2 = 0.0
+            for i in xrange(no_samples):
+                current = 1. * fn.eval(feed_dict=fd)
+                sum_out += current
+                sum_out2 += current ** 2
+            mean = sum_out / (1. * no_samples)
+            std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
+            std += 1. * fn_std.eval(feed_dict=fd)
+    else:
+        if opt['vardrop']:
+            sum_out = 0.0
+            sum_out2 = 0.0
+            for i in xrange(no_samples):
+                current = 1. * fn.eval(feed_dict=fd)
+                sum_out += current
+                sum_out2 += current ** 2
+
+            mean = sum_out / (1.*no_samples)
+            std = np.sqrt(np.abs(sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
+        else:
+            raise Exception('The specified method does not support MC inference.')
+            mean = fn.eval(feed_dict=fd)
+            std = None
+    return mean, std
 
 # Pad the volumes:
 def dt_pad(dt_volume, upsampling_rate, input_radius):
