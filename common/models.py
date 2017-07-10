@@ -420,7 +420,7 @@ class dcespcn(object):
         x = conv3d(x, filter_size=3, out_channels=n_f,
                    name='conv_' + str(1))
         net = record_network(net, x)
-        lyr = 0
+        lyr = 1
 
         while lyr < self.layers:
             if lyr == 1:  # second layer with kernel size 1 other layers three
@@ -474,7 +474,7 @@ class dcespcn(object):
         x = conv3d(x, filter_size=3, out_channels=n_f,
                    name='conv_' + str(1))
         net = record_network(net, x)
-        lyr = 0
+        lyr = 1
         kl = 0
         while lyr < self.layers:
             if lyr == 1:  # second layer with kernel size 1 other layers three
@@ -530,7 +530,7 @@ class dcespcn(object):
             h = conv3d(h, filter_size=3, out_channels=n_f,
                        name='conv_' + str(1))
             net = record_network(net, h)
-            lyr = 0
+            lyr = 1
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
                     h = conv_dc_3d(h, phase, bn_on=self.bn,
@@ -555,9 +555,12 @@ class dcespcn(object):
 
         # define the covariance network:
         with tf.name_scope('precision_network'):
+            # define the network:
             h = x + 0.0
             n_f = self.filters_num
-            lyr = 0
+            h = conv3d(h, filter_size=3, out_channels=n_f,
+                       name='conv_' + str(1))
+            lyr = 1
             while lyr < self.layers:
                 if lyr == 1:  # second layer with kernel size 1 other layers three
                     h = conv_dc_3d(h, phase, bn_on=self.bn,
@@ -604,8 +607,14 @@ class dcespcn(object):
             h = x + 0.0  # define the input
             net = []
             net = record_network(net, h)
+
+            # define the network
             n_f = self.filters_num
-            lyr = 0
+            h = conv3d(h, filter_size=3, out_channels=n_f,
+                       name='conv_' + str(1))
+            net = record_network(net, h)
+
+            lyr = 1
             kl = 0
 
             while lyr < self.layers:
@@ -637,7 +646,9 @@ class dcespcn(object):
         with tf.name_scope('precision_network'):
             h = x + 0.0
             n_f = self.filters_num
-            lyr = 0
+            h = conv3d(h, filter_size=3, out_channels=n_f,
+                       name='conv_' + str(1))
+            lyr = 1
             kl_prec = 0  # kl-div for params of prec network
 
             while lyr < self.layers:
