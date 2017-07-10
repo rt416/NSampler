@@ -9,15 +9,14 @@ import common.sr_utility as sr_utility
 from common.sr_utility import forward_periodic_shuffle
 from common.utils import *
 
-
 # Main reconstruction code:
 def sr_reconstruct(opt):
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + name_network(opt) + '/output_recon.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output_recon.txt', 'w')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
-              + opt['save_dir'] + name_network(opt) + "/output_recon.txt")
+              + opt['save_dir'] + '/' + name_network(opt) + "/output_recon.txt")
         sys.stdout = f
 
     # Define directory and file names:

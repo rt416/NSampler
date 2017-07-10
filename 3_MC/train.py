@@ -145,10 +145,10 @@ def train_cnn(opt):
 
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + name_network(opt) + '/output.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output.txt', 'w')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
-              + opt['save_dir'] + name_network(opt) + "/output.txt")
+              + opt['save_dir'] + '/' + name_network(opt) + "/output.txt")
         sys.stdout = f
 
     # Set the directory for saving checkpoints:
@@ -337,8 +337,8 @@ def train_cnn(opt):
                              mi + 1, n_train_batches,
                              np.sqrt(this_tr_mse*10**10),
                              np.sqrt(this_val_mse*10**10),
-                             np.sqrt(this_tr_cost*10**10),
-                             np.sqrt(this_val_cost*10**10),
+                             this_tr_cost*10**5,
+                             this_val_cost*10**5,
                              end_time_epoch - start_time_epoch))
 
                     if opt['valid']:
