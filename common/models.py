@@ -97,7 +97,7 @@ class espcn(object):
     # variational dropout only.
     # todo: implement standard dropout i.e. binary and gaussian
 
-    def forwardpass_vardrop(self, x, y, phase, keep_prob, params):
+    def forwardpass_vardrop(self, x, y, phase, keep_prob, params, num_data):
         net = []
         net = record_network(net, x)
 
@@ -141,6 +141,7 @@ class espcn(object):
 
         with tf.name_scope('expected_negloglikelihood'):
             e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
+            e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
 
         with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
@@ -342,7 +343,7 @@ class espcn(object):
                 y_pred, y_std, cost = self.forwardpass_hetero(x, y, phase)
         else:
             if vardrop:  # var. drop
-                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob, params)
+                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob, params, num_data)
             else:        # standard network
                 y_pred, cost = self.forwardpass(x, y, phase)
             y_std = 1  # just constant number
@@ -368,7 +369,7 @@ class espcn(object):
             y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
-                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params)
+                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
             else:
                 y_norm, _ = self.forwardpass(x_scaled, y, phase)
 
@@ -464,7 +465,7 @@ class dcespcn(object):
     # variational dropout only.
     # todo: implement standard dropout i.e. binary and gaussian
 
-    def forwardpass_vardrop(self, x, y, phase, keep_prob, params):
+    def forwardpass_vardrop(self, x, y, phase, keep_prob, params, num_data):
         net = []
         net = record_network(net, x)
 
@@ -506,8 +507,8 @@ class dcespcn(object):
             tf.summary.scalar('kl_div_average', kl_div)
 
         with tf.name_scope('expected_negloglikelihood'):
-            e_negloglike = tf.reduce_mean(
-                tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
+            e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
 
         with tf.name_scope('loss'):  # negative evidence lower bound (ELBO)
@@ -696,19 +697,12 @@ class dcespcn(object):
                       num_data, cov_on, hetero, vardrop):
         if hetero:
             if vardrop:  # hetero + var. drop
-                y_pred, y_std, cost = self.forwardpass_hetero_vardrop(x, y,
-                                                                      phase,
-                                                                      keep_prob,
-                                                                      params,
-                                                                      trade_off,
-                                                                      num_data,
-                                                                      cov_on)
+                y_pred, y_std, cost = self.forwardpass_hetero_vardrop(x, y, phase, keep_prob, params, trade_off, num_data, cov_on)
             else:  # hetero
                 y_pred, y_std, cost = self.forwardpass_hetero(x, y, phase)
         else:
             if vardrop:  # var. drop
-                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob,
-                                                        params)
+                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob, params, num_data)
             else:  # standard network
                 y_pred, cost = self.forwardpass(x, y, phase)
             y_std = 1  # just constant number
@@ -727,24 +721,21 @@ class dcespcn(object):
 
         if hetero:
             if vardrop:
-                y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(
-                    x_scaled, y, phase, keep_prob, params, trade_off, num_data,
-                    cov_on)
+                y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(x_scaled, y, phase, keep_prob, params, trade_off, num_data, cov_on)
             else:
-                y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y,
-                                                                phase)
+                y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
             y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
-                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase,
-                                                     keep_prob, params)
+                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
             else:
                 y_norm, _ = self.forwardpass(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
             y_pred_std = 1  # just constant number
+        return y_pred, y_pred_std
 
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)
