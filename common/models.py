@@ -66,7 +66,7 @@ class espcn(object):
             x = tf.nn.relu(x, name='activation%d' % len(net))
             lyr += 1
 
-        y_pred = conv3d(tf.nn.relu(x),
+        y_pred = conv3d(x,
                         filter_size=3,
                         out_channels=self.out_channels*(self.upsampling_rate)** 3,
                         name='conv_last')
@@ -120,12 +120,12 @@ class espcn(object):
             # non-linearity + batch norm + noise injection:
             x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
             x = tf.nn.relu(x, name='activation%d' % len(net))
-            x, kl_tmp = normal_mult_noise(tf.nn.relu(x), keep_prob, params,
-                                      name='mulnoise%d'% len(net))
+            x, kl_tmp = normal_mult_noise(x, keep_prob, params,
+                                          name='mulnoise%d'% len(net))
             kl += kl_tmp
             lyr += 1
 
-        y_pred = conv3d(tf.nn.relu(x),
+        y_pred = conv3d(x,
                         filter_size=3,
                         out_channels=self.out_channels*(self.upsampling_rate)**3,
                         name='conv_last')
@@ -177,7 +177,7 @@ class espcn(object):
                 h = tf.nn.relu(h, name='activation%d' % len(net))
                 lyr += 1
 
-            y_pred = conv3d(tf.nn.relu(h),
+            y_pred = conv3d(h,
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate)**3,
                             name='conv_last')
@@ -207,7 +207,7 @@ class espcn(object):
                 h = tf.nn.relu(h, name='activation_' + str(lyr + 1))
                 lyr += 1
 
-            h_last = conv3d(tf.nn.relu(h),
+            h_last = conv3d(h,
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate)**3,
                             name='conv_last_prec')
@@ -263,7 +263,7 @@ class espcn(object):
                 kl += kl_tmp
                 lyr += 1
 
-            y_pred = conv3d(tf.nn.relu(h),
+            y_pred = conv3d(h,
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate) ** 3,
                             name='conv_last')
@@ -301,7 +301,7 @@ class espcn(object):
                     kl_prec += kl_tmp
                 lyr += 1
 
-            h_last = conv3d(tf.nn.relu(h),
+            h_last = conv3d(h,
                             filter_size=3,
                             out_channels=self.out_channels*(self.upsampling_rate) ** 3,
                             name='conv_last_prec')
