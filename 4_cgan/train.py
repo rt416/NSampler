@@ -6,7 +6,6 @@ from common.data_generator import prepare_data
 from common.ops import get_tensor_shape
 from common.utils import *
 
-
 def update_best_loss(this_loss, bests, iter_, current_step):
     bests['counter'] += 1
     if this_loss < bests['val_loss']:
@@ -100,54 +99,57 @@ def train_cnn(opt):
     # define place holders and network:
     # todo: need to define separately the number of input/output channels
     # todo: allow for input of even numbered size
+    # todo: write a proper optimizer lookup
 
     print()
     print("--------------------------")
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
-    x = tf.placeholder(tf.float32,[opt["batch_size"],side,side,side,
-                       opt['no_channels']],name='input_x')
+    x = tf.placeholder(tf.float32,
+                       [opt["batch_size"], side, side, side, opt['no_channels']],
+                       name='input_x')
+    y_real = tf.placeholder(tf.float32, name='input_y')
+    y_fake = tf.placeholder(tf.float32, name='input_y')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
     transform = tf.placeholder(tf.float32, name='norm_transform')
-
+    num_data = tf.placeholder(tf.float32, name='num_train_data')
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
+    # define network, loss and evaluation criteria:
     print("...Constructing network\n")
-    net = set_network_config(opt)
-
-    y_pred = net.forwardpass(x, phase_train)
-    # HACK: I don't like this at all!
-    y = tf.placeholder(tf.float32, get_tensor_shape(y_pred), name='input_y')
-
-    # define loss and evaluation criteria:
-    cost = net.cost(y, y_pred)
+    generator = set_network_config(opt)
+    y_pred, y_std, cost = generator.build_network(x, y_real, phase_train, keep_prob,
+                                            trade_off=trade_off,
+                                            num_data=num_data,
+                                            params=opt["params"],
+                                            cov_on=opt["cov_on"],
+                                            hetero=opt["hetero"],
+                                            vardrop=opt["vardrop"])
     mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
     tf.summary.scalar('mse', mse)
 
     # define training op
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    # TODO: write a proper optimizer lookup
-    #optim = get_optimizer(opt["optimizer"], lr)
-    optim = tf.train.AdamOptimizer(learning_rate=lr)
+    optim = get_optimizer(opt["optimizer"], lr)
     train_step = optim.minimize(cost, global_step=global_step)
 
-    # ----------------------- Directory settings -------------------------------
+    # ----------------------- DIRECTORY SETTINGS -------------------------------
     # compute the output radius (needed for defining the network name):
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'],
                                              opt['is_shuffle'])
 
     # Create the root model directory:
-    if not (os.path.exists(opt['save_dir'] + name_network(opt))):
-        os.makedirs(opt['save_dir'] + name_network(opt))
+    if not (os.path.exists(opt['save_dir'] + '/' + name_network(opt))):
+        os.makedirs(opt['save_dir'] + '/' + name_network(opt))
 
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + name_network(opt) + '/output.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output.txt', 'w')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
-              + opt['save_dir'] + name_network(opt) + "/output.txt")
+              + opt['save_dir'] + '/' + name_network(opt) + "/output.txt")
         sys.stdout = f
 
     # Set the directory for saving checkpoints:
@@ -215,7 +217,8 @@ def train_cnn(opt):
         n_valid_batches = opt['valid_noexamples'] // opt['batch_size']
 
         # Compute the trade-off values:
-        tradeoff_list = models.get_tradeoff_values_v2(opt['method'], opt['no_epochs'])
+        tradeoff_list = get_tradeoff_values(opt['hybrid_on'], opt['no_epochs'])
+        if not(opt['vardrop']): assert not(opt['hybrid_on'])
 
         # Define the normalisation tranform:
         norm_std = dataset._transform['output_std']
@@ -273,7 +276,8 @@ def train_cnn(opt):
                       keep_prob: 1.-opt['dropout_rate'],
                       trade_off:tradeoff_list[epoch],
                       phase_train:True,
-                      transform: norm_std}
+                      transform: norm_std,
+                      num_data: opt['train_noexamples']}
 
                 __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
                 total_tr_mse_epoch += tr_mse
@@ -284,7 +288,8 @@ def train_cnn(opt):
                         keep_prob: 1.-opt['dropout_rate'],
                         trade_off:tradeoff_list[epoch],
                         phase_train:False,
-                        transform: norm_std}
+                        transform: norm_std,
+                        num_data: opt['valid_noexamples']}
 
                 va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
@@ -333,8 +338,8 @@ def train_cnn(opt):
                              mi + 1, n_train_batches,
                              np.sqrt(this_tr_mse*10**10),
                              np.sqrt(this_val_mse*10**10),
-                             np.sqrt(this_tr_cost*10**10),
-                             np.sqrt(this_val_cost*10**10),
+                             this_tr_cost*10**5,
+                             this_val_cost*10**5,
                              end_time_epoch - start_time_epoch))
 
                     if opt['valid']:

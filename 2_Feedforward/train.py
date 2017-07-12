@@ -133,8 +133,8 @@ def train_cnn(opt):
                                              opt['is_shuffle'])
 
     # Create the root model directory:
-    if not (os.path.exists(opt['save_dir'] + name_network(opt))):
-        os.makedirs(opt['save_dir'] + name_network(opt))
+    if not (os.path.exists(opt['save_dir'] + '/' + name_network(opt))):
+        os.makedirs(opt['save_dir'] + '/' + name_network(opt))
 
     # Save displayed output to a text file:
     if opt['disp']:

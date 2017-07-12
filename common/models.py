@@ -751,7 +751,6 @@ class dcespcn(object):
     def get_output_shape(self):
         return get_tensor_shape(self.y_pred)
 
-
 class espcn_deconv(object):
     def __init__(self,
                  upsampling_rate,
