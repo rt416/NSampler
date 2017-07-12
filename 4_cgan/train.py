@@ -2,6 +2,7 @@
 import glob
 import shutil
 import timeit
+import models
 from common.data_generator import prepare_data
 from common.ops import get_tensor_shape
 from common.utils import *
@@ -90,6 +91,63 @@ def get_optimizer(optimizer, lr):
         raise Exception('Specified optimizer not available.')
     return optim
 
+def set_generator_config(opt):
+    """ Define the model type"""
+    if opt["method"] == "espcn":
+        assert opt["is_shuffle"]
+        net = models.espcn(upsampling_rate=opt['upsampling_rate'],
+                           out_channels=opt['no_channels'],
+                           filters_num=opt['no_filters'],
+                           layers=opt['no_layers'],
+                           bn=opt['is_BN'])
+
+    elif opt["method"] == "dcespcn" :
+        assert opt["is_shuffle"]
+        net = models.dcespcn(upsampling_rate=opt['upsampling_rate'],
+                             out_channels=opt['no_channels'],
+                             filters_num=opt['no_filters'],
+                             layers=opt['no_layers'],
+                             bn=opt['is_BN'])
+
+    elif opt["method"] == "espcn_deconv" :
+        assert not(opt["is_shuffle"])
+        net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
+                                  out_channels=opt['no_channels'],
+                                  filters_num=opt['no_filters'],
+                                  layers=opt['no_layers'],
+                                  bn=opt['is_BN'])
+    elif opt["method"] == "segnet":
+        assert not (opt["is_shuffle"])
+        net = models.unet(upsampling_rate=opt['upsampling_rate'],
+                          out_channels=opt['no_channels'],
+                          filters_num=opt['no_filters'],
+                          layers=opt['no_layers'],
+                          conv_num=2,
+                          bn=opt['is_BN'],
+                          is_concat=False)
+
+    elif opt["method"] == "unet":
+        assert not (opt["is_shuffle"])
+        net = models.unet(upsampling_rate=opt['upsampling_rate'],
+                          out_channels=opt['no_channels'],
+                          filters_num=opt['no_filters'],
+                          layers=opt['no_layers'],
+                          conv_num=2,
+                          bn=opt['is_BN'],
+                          is_concat=True)
+    else:
+        raise ValueError("The specified network type %s not available" %
+                        (opt["method"],))
+    return net
+
+
+def set_discriminator_config(opt):
+    assert opt["is_shuffle"]
+    net = models.discriminator(upsampling_rate=opt['upsampling_rate'],
+                               filters_num=opt['no_filters'],
+                               layers=opt['no_layers'],
+                               bn=opt['is_BN'])
+    return net
 
 def train_cnn(opt):
     # ----------------------- DEFINE THE MODEL ---------------------------------
@@ -108,8 +166,8 @@ def train_cnn(opt):
     x = tf.placeholder(tf.float32,
                        [opt["batch_size"], side, side, side, opt['no_channels']],
                        name='input_x')
-    y_real = tf.placeholder(tf.float32, name='input_y')
-    y_fake = tf.placeholder(tf.float32, name='input_y')
+    y_real = tf.placeholder(tf.float32, name='real_y')
+    L2_lambda = tf.placeholder(tf.float32, name='L2_lambda')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
     trade_off = tf.placeholder(tf.float32, name='trade_off')
@@ -117,27 +175,56 @@ def train_cnn(opt):
     num_data = tf.placeholder(tf.float32, name='num_train_data')
     global_step = tf.Variable(0, name="global_step", trainable=False)
 
-    # define network, loss and evaluation criteria:
-    print("...Constructing network\n")
-    generator = set_network_config(opt)
-    y_pred, y_std, cost = generator.build_network(x, y_real, phase_train, keep_prob,
-                                            trade_off=trade_off,
-                                            num_data=num_data,
-                                            params=opt["params"],
-                                            cov_on=opt["cov_on"],
-                                            hetero=opt["hetero"],
-                                            vardrop=opt["vardrop"])
-    mse = tf.reduce_mean(tf.square(transform * (y - y_pred)))
+    # define networks:
+    print("...Define generator and discriminator\n")
+    G = set_generator_config(opt)
+    D = set_discriminator_config(opt)
+
+    with tf.variable_scope("generator"):
+        y_fake, y_std, cost = G.build_network(x, y_real, phase_train, keep_prob,
+                                              trade_off=trade_off,
+                                              num_data=num_data,
+                                              params=opt["params"],
+                                              cov_on=opt["cov_on"],
+                                              hetero=opt["hetero"],
+                                              vardrop=opt["vardrop"])
+
+    with tf.variable_scope("discriminator"):
+        d_real, d_real_logits = D.forwardpass(x, y_real, phase_train, reuse=False)
+        d_fake, d_fake_logits = D.forwardpass(x, y_fake, phase_train, reuse=True)
+
+    # define losses:
+    d_loss_real = tf.reduce_mean(
+        tf.nn.sigmoid_cross_entropy_with_logits(logits=d_real_logits,
+                                                targets=tf.ones_like(d_real)))
+    d_loss_fake = tf.reduce_mean(
+        tf.nn.sigmoid_cross_entropy_with_logits(logits=d_fake_logits,
+                                                targets=tf.zeros_like(d_fake)))
+    d_loss = d_loss_real + d_loss_fake
+
+    g_loss_fake = tf.reduce_mean(
+        tf.nn.sigmoid_cross_entropy_with_logits(logits=d_fake_logits,
+                                                targets=tf.ones_like(d_fake)))
+    g_loss = g_loss_fake + L2_lambda * cost
+    # todo: also consider using L1 norm loss as in pix2pix
+
+    # evaluation metric:
+    mse = tf.reduce_mean(tf.square(transform * (y_real - y_fake)))
     tf.summary.scalar('mse', mse)
 
     # define training op
     lr = tf.placeholder(tf.float32, [], name='learning_rate')
-    optim = get_optimizer(opt["optimizer"], lr)
+    t_vars = tf.trainable_variables()
+    d_vars = [var for var in t_vars if var.name.startswith("discriminator")]
+    g_vars = [var for var in t_vars if var.name.startswith("generator")]
+    d_optim = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(d_loss, var_list=d_vars)
+    g_optim = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(g_loss, var_list=g_vars)
+
     train_step = optim.minimize(cost, global_step=global_step)
 
     # ----------------------- DIRECTORY SETTINGS -------------------------------
     # compute the output radius (needed for defining the network name):
-    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'],
+    opt['output_radius'] = get_output_radius(y_fake, opt['upsampling_rate'],
                                              opt['is_shuffle'])
 
     # Create the root model directory:

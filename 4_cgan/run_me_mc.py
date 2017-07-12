@@ -23,6 +23,7 @@ parser.add_argument('-pp', '--postprocess', dest='postprocess', action='store_tr
 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization method')
 parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float, default='1e-3', help='learning rate')
+parser.add_argument('--beta1', dest='beta1', type=float, default=0.9, help='momentum term of adam')
 parser.add_argument('--no_epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--batch_size', type=int, default=12, help='batch size')
 parser.add_argument('--validation_fraction', type=float, default=0.5, help='fraction of validation data')

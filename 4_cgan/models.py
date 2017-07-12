@@ -26,47 +26,35 @@ class discriminator(object):
         self.bn = bn
 
     def forwardpass(self, x, y, phase, reuse=False):
+        # Note: input = high-res patch y
+
+        # todo: need to crop, upscale and concatenate low-res input x
+        # with the high-res y input.
         net = []
-        net = record_network(net, x)
+        net = record_network(net, y)
 
         # define the network:
         n_f = self.filters_num
         lyr = 0
 
-        with tf.variable_scope("discriminator") as scope:
-            if reuse:
-                tf.get_variable_scope().reuse_variables()
-            else:
-                assert tf.get_variable_scope().reuse == False
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+        else:
+            assert tf.get_variable_scope().reuse == False
 
-            while lyr < self.layers:
-                x = conv3d(x, filter_size=3, out_channels=n_f, name='d_conv_' + str(lyr + 1))
-                net = record_network(net, x)
+        while lyr < self.layers:
+            y = conv3d(y, filter_size=3, out_channels=n_f, name='d_conv_' + str(lyr + 1))
+            net = record_network(net, y)
 
-                # non-linearity + batch norm:
-                # todo: need to optimise the kernel and stride size.
-                x = batchnorm(x, phase, on=self.bn, name='d_BN%d' % len(net))
-                x = lrelu(x, name='d_activation%d' % len(net))
-                lyr += 1
-                n_f = int(2 * n_f)
+            # non-linearity + batch norm:
+            # todo: need to optimise the kernel and stride size.
+            y = batchnorm(y, phase, on=self.bn, name='d_BN%d' % len(net))
+            y = lrelu(y, name='d_activation%d' % len(net))
+            lyr += 1
+            n_f = int(2 * n_f)
 
-            h_last = linear(tf.reshape(x, [int(x.get_shape()[0]), -1]), 1, 'd_lin')
-
-            # h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
-            # # h0 is (128 x 128 x self.df_dim)
-            # h1 = lrelu(
-            #     self.d_bn1(conv2d(h0, self.df_dim * 2, name='d_h1_conv')))
-            # # h1 is (64 x 64 x self.df_dim*2)
-            # h2 = lrelu(
-            #     self.d_bn2(conv2d(h1, self.df_dim * 4, name='d_h2_conv')))
-            # # h2 is (32x 32 x self.df_dim*4)
-            # h3 = lrelu(self.d_bn3(
-            #     conv2d(h2, self.df_dim * 8, d_h=1, d_w=1, name='d_h3_conv')))
-            # # h3 is (16 x 16 x self.df_dim*8)
-            # h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h3_lin')
-
-            return tf.nn.sigmoid(h_last), h_last
-
+        output = conv3d(y, filter_size=3, out_channels=1, name='d_conv_last')
+        return tf.nn.sigmoid(output), output
 
 
 
@@ -105,23 +93,23 @@ class espcn(object):
         lyr = 0
         while lyr < self.layers:
             if lyr==1: # second layer with kernel size 1 other layers three
-                x = conv3d(x, filter_size=1, out_channels=n_f, name='conv_'+str(lyr+1))
+                x = conv3d(x, filter_size=1, out_channels=n_f, name='g_conv_'+str(lyr+1))
             else:
-                x = conv3d(x, filter_size=3, out_channels=n_f, name='conv_'+str(lyr+1))
+                x = conv3d(x, filter_size=3, out_channels=n_f, name='g_conv_'+str(lyr+1))
 
             # double the num of features in the second lyr onward
             if lyr == 0: n_f = int(2 * n_f)
             net = record_network(net, x)
 
             # non-linearity + batch norm:
-            x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-            x = tf.nn.relu(x, name='activation%d' % len(net))
+            x = batchnorm(x, phase, on=self.bn, name='g_BN%d' % len(net))
+            x = tf.nn.relu(x, name='g_activation%d' % len(net))
             lyr += 1
 
         y_pred = conv3d(x,
                         filter_size=3,
                         out_channels=self.out_channels*(self.upsampling_rate)** 3,
-                        name='conv_last')
+                        name='g_conv_last')
 
         net = record_network(net, y_pred)
         print_network(net)
