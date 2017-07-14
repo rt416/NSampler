@@ -173,6 +173,7 @@ def super_resolve(dt_lowres, opt):
 
     # Specify the network parameters to be restored:
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
+
     nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
 
     # -------------------------- Reconstruct --------------------------------:

@@ -18,9 +18,9 @@ def update_best_loss(this_loss, bests, iter_, current_step):
 
 
 def update_best_loss_epoch(this_loss, bests, current_step):
-    if this_loss < bests['val_loss_save']:
-        bests['val_loss_save'] = this_loss
-        bests['step_save'] = current_step + 1
+    # if this_loss < bests['val_loss_save']:
+    bests['val_loss_save'] = this_loss
+    bests['step_save'] = current_step + 1
     return bests
 
 
@@ -217,10 +217,8 @@ def train_cnn(opt):
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if var.name.startswith("discriminator")]
     g_vars = [var for var in t_vars if var.name.startswith("generator")]
-    d_optim = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(d_loss, var_list=d_vars)
-    g_optim = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(g_loss, var_list=g_vars)
-
-    train_step = optim.minimize(cost, global_step=global_step)
+    train_d = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(d_loss, var_list=d_vars, global_step=global_step)
+    train_g = tf.train.AdamOptimizer(lr, beta1=opt["beta1"]).minimize(g_loss, var_list=g_vars, global_step=global_step)
 
     # ----------------------- DIRECTORY SETTINGS -------------------------------
     # compute the output radius (needed for defining the network name):
@@ -317,8 +315,10 @@ def train_cnn(opt):
         iter_valid = 0
         total_val_mse_epoch = 0
         total_tr_mse_epoch = 0
-        total_tr_cost_epoch = 0
-        total_val_cost_epoch = 0
+        total_tr_cost_d_epoch = 0
+        total_tr_cost_g_epoch = 0
+        total_val_cost_d_epoch = 0
+        total_val_cost_g_epoch = 0
 
         # Define dictionary to save some results:
         bests = {}
@@ -332,8 +332,11 @@ def train_cnn(opt):
         bests['last_epoch'] = 0
         bests['epoch_tr_mse'] = []
         bests['epoch_val_mse'] = []
-        bests['epoch_tr_cost'] = []
-        bests['epoch_val_cost'] = []
+        bests['epoch_tr_cost_d'] = []
+        bests['epoch_val_cost_d'] = []
+        bests['epoch_tr_cost_g'] = []
+        bests['epoch_val_cost_g'] = []
+
         validation_frequency = n_train_batches  # save every epoch basically.
         save_frequency = 1
 
@@ -359,28 +362,37 @@ def train_cnn(opt):
 
                 # train op and loss
                 current_step = tf.train.global_step(sess, global_step)
-                fd_t={x: xt, y: yt, lr: lr_,
-                      keep_prob: 1.-opt['dropout_rate'],
-                      trade_off:tradeoff_list[epoch],
-                      phase_train:True,
-                      transform: norm_std,
-                      num_data: opt['train_noexamples']}
+                fd_t = {x: xt, y_real: yt, lr: lr_,
+                        keep_prob: 1.-opt['dropout_rate'],
+                        L2_lambda: opt['L2_lambda'],
+                        trade_off:tradeoff_list[epoch],
+                        phase_train: True,
+                        transform: norm_std,
+                        num_data: opt['train_noexamples']}
 
-                __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
+                # update D network:
+                __, tr_cost_d = sess.run([train_d, d_loss], feed_dict=fd_t)
+
+                # update G network:
+                __, tr_cost_g, tr_mse = sess.run([train_g, g_loss, mse], feed_dict=fd_t)
+
                 total_tr_mse_epoch += tr_mse
-                total_tr_cost_epoch += tr_cost
+                total_tr_cost_d_epoch += tr_cost_d
+                total_tr_cost_g_epoch += tr_cost_g
 
                 # valid loss
-                fd_v = {x: xv, y: yv,
+                fd_v = {x: xv, y_real: yv,
                         keep_prob: 1.-opt['dropout_rate'],
+                        L2_lambda: opt['L2_lambda'],
                         trade_off:tradeoff_list[epoch],
                         phase_train:False,
                         transform: norm_std,
                         num_data: opt['valid_noexamples']}
 
-                va_mse, va_cost = sess.run([mse,cost], feed_dict=fd_v)
+                va_mse, va_cost_d, va_cost_g = sess.run([mse, d_loss, g_loss], feed_dict=fd_v)
                 total_val_mse_epoch += va_mse
-                total_val_cost_epoch += va_cost
+                total_val_cost_d_epoch += va_cost_d
+                total_val_cost_g_epoch += va_cost_g
 
                 # iteration number
                 iter_ = epoch * n_train_batches + mi
@@ -394,43 +406,52 @@ def train_cnn(opt):
                     valid_writer.add_summary(summary_v, iter_+1)
 
                     vl = np.sqrt(va_mse*10**10)
-                    vc = va_cost
+                    vc_d = va_cost_d
+                    vc_g= va_cost_g
 
                     sys.stdout.flush()
-                    sys.stdout.write('\tvalid mse: %.2f,  valid cost: %.3f \r' % (vl,vc))
+                    sys.stdout.write('\tvalid mse: %.2f,  valid D cost: %.3f, valid G cost: %.3f \r' % (vl,vc_d, vc_g))
 
                 if (iter_ + 1) % validation_frequency == 0:
                     # Print out the errors for each epoch:
                     this_val_mse = total_val_mse_epoch/iter_valid
                     this_tr_mse = total_tr_mse_epoch/iter_valid
-                    this_val_cost = total_val_cost_epoch/iter_valid
-                    this_tr_cost = total_tr_cost_epoch/iter_valid
+                    this_val_cost_d = total_val_cost_d_epoch/iter_valid
+                    this_tr_cost_d = total_tr_cost_d_epoch/iter_valid
+                    this_val_cost_g = total_val_cost_g_epoch/iter_valid
+                    this_tr_cost_g = total_tr_cost_g_epoch/iter_valid
 
                     end_time_epoch = timeit.default_timer()
 
                     bests['epoch_val_mse'].append(this_val_mse)
                     bests['epoch_tr_mse'].append(this_tr_mse)
-                    bests['epoch_val_cost'].append(this_val_cost)
-                    bests['epoch_tr_cost'].append(this_tr_cost)
+                    bests['epoch_val_cost_d'].append(this_val_cost_d)
+                    bests['epoch_tr_cost_d'].append(this_tr_cost_d)
+                    bests['epoch_val_cost_g'].append(this_val_cost_g)
+                    bests['epoch_tr_cost_g'].append(this_tr_cost_g)
 
                     epoch = dataset.epochs_completed
 
                     print('\nEpoch %i, minibatch %i/%i:\n' \
                           '\ttraining error (rmse) : %f times 1E-5\n' \
                           '\tvalidation error (rmse) : %f times 1E-5\n' \
-                          '\ttraining cost : %.2f \n'\
-                          '\tvalidation cost : %.2f \n'\
+                          '\tD training cost : %.2f \n'\
+                          '\tD validation cost : %.2f \n'\
+                          '\tG training cost : %.2f \n'\
+                          '\tG validation cost : %.2f \n'\
                           '\ttook %f secs'
                           % (epoch + 1 + epoch_init,
                              mi + 1, n_train_batches,
                              np.sqrt(this_tr_mse*10**10),
                              np.sqrt(this_val_mse*10**10),
-                             this_tr_cost*10**5,
-                             this_val_cost*10**5,
+                             this_tr_cost_d*10**5,
+                             this_val_cost_d*10**5,
+                             this_tr_cost_g*10**5,
+                             this_val_cost_g*10**5,
                              end_time_epoch - start_time_epoch))
 
                     if opt['valid']:
-                        this_val_loss = this_val_cost
+                        this_val_loss = this_val_cost_g
                     else:
                         this_val_loss = this_val_mse
 
@@ -442,19 +463,27 @@ def train_cnn(opt):
                     # Start counting again:
                     total_val_mse_epoch = 0
                     total_tr_mse_epoch = 0
-                    total_val_cost_epoch = 0
-                    total_tr_cost_epoch = 0
+                    total_val_cost_d_epoch = 0
+                    total_tr_cost_d_epoch = 0
+                    total_val_cost_g_epoch = 0
+                    total_tr_cost_g_epoch = 0
 
                     iter_valid = 0
                     start_time_epoch = timeit.default_timer()
 
+            # save the epoch-wise best results and checkpoint:
             if (epoch+1) % save_frequency == 0:
                 if opt['valid']:
-                    this_val_loss=this_val_cost
+                    this_val_loss=this_val_cost_g
                 else:
                     this_val_loss=this_val_mse
 
-                if this_val_loss < bests['val_loss_save']:
+                if opt['cherrypick']:
+                    if this_val_loss < bests['val_loss_save']:
+                        bests['last_epoch'] = epoch + 1
+                        bests = update_best_loss_epoch(this_val_loss, bests, current_step)
+                        save_model(opt, sess, saver, global_step, bests)
+                else:
                     bests['last_epoch'] = epoch + 1
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     save_model(opt, sess, saver, global_step, bests)
