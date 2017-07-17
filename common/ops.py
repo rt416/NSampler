@@ -276,7 +276,6 @@ def batchnorm(x, phase_train, on=True, name=None):
 
 
 class batch_norm(object):
-            # h1 = lrelu(tf.contrib.layers.batch_norm(conv2d(h0, self.df_dim*2, name='d_h1_conv'),decay=0.9,updates_collections=None,epsilon=0.00001,scale=True,scope="d_h1_conv"))
     def __init__(self, epsilon=1e-5, momentum = 0.9, name="batch_norm"):
         with tf.variable_scope(name):
             self.epsilon = epsilon
@@ -284,7 +283,14 @@ class batch_norm(object):
             self.name = name
 
     def __call__(self, x, train=True):
-         return tf.contrib.layers.batch_norm(x, decay=self.momentum, updates_collections=None, epsilon=self.epsilon, scale=True, scope=self.name)
+         return tf.contrib.layers.batch_norm(x,
+                                             decay=self.momentum,
+                                             updates_collections=None,
+                                             epsilon=self.epsilon,
+                                             scale=True,
+                                             is_training=train,
+                                             scope=self.name)
+
 
 def binary_cross_entropy(preds, targets, name=None):
     """Computes binary cross entropy given `preds`.

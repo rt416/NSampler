@@ -25,10 +25,8 @@ class discriminator(object):
         self.filters_num = filters_num
         self.bn = bn
 
-    def forwardpass(self, x, y, phase, reuse=False):
-        # Note: input = high-res patch y
-
-        # todo: need to crop, upscale and concatenate low-res input x
+    def forwardpass(self, x, y, phase, reuse=False, input_on=True):
+        # Note: input = high-res patch y and low-res patch x
         # with the high-res y input.
         net = []
         net = record_network(net, y)
@@ -36,24 +34,32 @@ class discriminator(object):
         # define the network:
         n_f = self.filters_num
         lyr = 0
+        with tf.variable_scope("forwardpass") as scope:
+            if reuse:
+                scope.reuse_variables()
+                # tf.get_variable_scope().reuse_variables()
+            else:
+                assert tf.get_variable_scope().reuse == False
 
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-        else:
-            assert tf.get_variable_scope().reuse == False
+            if input_on:
+                y = crop_and_or_concat_basic(x, y, name='concat1')
+                net = record_network(net, y)
 
-        while lyr < self.layers:
-            y = conv3d(y, filter_size=3, out_channels=n_f, name='d_conv_' + str(lyr + 1))
-            net = record_network(net, y)
+            while lyr < self.layers:
+                y = conv3d(y, filter_size=3, out_channels=n_f, name='d_conv_' + str(lyr + 1))
+                net = record_network(net, y)
 
-            # non-linearity + batch norm:
-            # todo: need to optimise the kernel and stride size.
-            y = batchnorm(y, phase, on=self.bn, name='d_BN%d' % len(net))
-            y = lrelu(y, name='d_activation%d' % len(net))
-            lyr += 1
-            n_f = int(2 * n_f)
+                # non-linearity + batch norm:
+                # todo: need to optimise the kernel and stride size.
+                # y = batchnorm(y, phase, on=self.bn, name='d_BN%d' % len(net))
+                y = batch_norm(name='d_BN%d' % len(net))(y, train=phase)
+                y = lrelu(y, name='d_activation%d' % len(net))
+                lyr += 1
+                n_f = int(2 * n_f)
 
-        output = conv3d(y, filter_size=3, out_channels=1, name='d_conv_last')
+            output = conv3d(y, filter_size=3, out_channels=1, name='d_conv_last')
+            net = record_network(net, output)
+            print_network(net)
         return tf.nn.sigmoid(output), output
 
 
@@ -84,7 +90,7 @@ class espcn(object):
         self.bn = bn
 
     # ------------- STANDARD NETWORK ----------------
-    def forwardpass(self, x, y, phase):
+    def forwardpass(self, x, phase):
         net = []
         net = record_network(net, x)
 
@@ -115,10 +121,14 @@ class espcn(object):
         print_network(net)
 
         # define the loss:
+        y = tf.placeholder(tf.float32,
+                           shape=get_tensor_shape(y_pred),
+                           name='real_y')
+
         with tf.name_scope('loss'):
             cost = tf.reduce_mean(tf.square(y - y_pred))
 
-        return y_pred, cost
+        return y_pred, y, cost
 
     def scaled_prediction(self, x, phase, transform):
         x_mean = tf.constant(np.float32(transform['input_mean']), name='x_mean')
@@ -129,7 +139,7 @@ class espcn(object):
         x_scaled = tf.div(x - x_mean, x_std)
 
         y = tf.placeholder(tf.float32, name='input_y')  # dummy: you don't need it.
-        y_norm, _ = self.forwardpass(x_scaled, y, phase)
+        y_norm, _, _ = self.forwardpass(x_scaled, y, phase)
         y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
         return y_pred
 
@@ -137,7 +147,7 @@ class espcn(object):
     # variational dropout only.
     # todo: implement standard dropout i.e. binary and gaussian
 
-    def forwardpass_vardrop(self, x, y, phase, keep_prob, params, num_data):
+    def forwardpass_vardrop(self, x, phase, keep_prob, params, num_data):
         net = []
         net = record_network(net, x)
 
@@ -174,6 +184,10 @@ class espcn(object):
         print_network(net)
 
         # define the loss:
+        y = tf.placeholder(tf.float32,
+                           shape=get_tensor_shape(y_pred),
+                           name='real_y')
+
         with tf.name_scope('kl_div'):
             down_sc = 1.0
             kl_div = down_sc*kl
@@ -188,10 +202,10 @@ class espcn(object):
             cost = tf.add(e_negloglike, -kl_div, name='neg_ELBO')
             tf.summary.scalar('neg_ELBO', cost)
 
-        return y_pred, cost
+        return y_pred, y, cost
 
     # ------------ HETEROSCEDASTIC NETWORK ------------
-    def forwardpass_hetero(self, x, y, phase):
+    def forwardpass_hetero(self, x, phase):
         # define the mean network:
         with tf.name_scope('mean_network'):
             h = x + 0.0
@@ -256,14 +270,18 @@ class espcn(object):
             y_std = tf.sqrt(1./y_prec, name='y_std')
 
         # define the loss:
+        y = tf.placeholder(tf.float32,
+                           shape=get_tensor_shape(y_pred),
+                           name='real_y')
+
         with tf.name_scope('loss'):
             cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
-        return y_pred, y_std, cost
+        return y_pred, y_std, y, cost
 
     # ------------ BAYESIAN HETEROSCEDASTIC NETWORK ------------
-    def forwardpass_hetero_vardrop(self, x, y, phase, keep_prob, params,
+    def forwardpass_hetero_vardrop(self, x, phase, keep_prob, params,
                                    trade_off, num_data, cov_on=False):
         """ We only perform variational dropout on the parameters of
         the mean network
@@ -350,6 +368,10 @@ class espcn(object):
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
         # define the loss:
+        y = tf.placeholder(tf.float32,
+                           shape=get_tensor_shape(y_pred),
+                           name='real_y')
+
         with tf.name_scope('kl_div'):
             down_sc = 1.0
             kl_div = down_sc * (kl+kl_prec)
@@ -371,23 +393,23 @@ class espcn(object):
             cost = trade_off*(e_negloglike-kl_div)+(1.-trade_off)*(mse_sum-kl_div)
             tf.summary.scalar('neg_ELBO', cost)
 
-        return y_pred, y_std, cost
+        return y_pred, y_std, y, cost
 
     # -------- UTILITY ----------------
-    def build_network(self, x, y, phase, keep_prob, params, trade_off,
+    def build_network(self, x, phase, keep_prob, params, trade_off,
                       num_data, cov_on, hetero, vardrop):
         if hetero:
             if vardrop:  # hetero + var. drop
-                y_pred, y_std, cost = self.forwardpass_hetero_vardrop(x, y, phase, keep_prob, params, trade_off, num_data, cov_on)
+                y_pred, y_std, y, cost = self.forwardpass_hetero_vardrop(x, phase, keep_prob, params, trade_off, num_data, cov_on)
             else:        # hetero
-                y_pred, y_std, cost = self.forwardpass_hetero(x, y, phase)
+                y_pred, y_std, y, cost = self.forwardpass_hetero(x, phase)
         else:
             if vardrop:  # var. drop
-                y_pred, cost = self.forwardpass_vardrop(x, y, phase, keep_prob, params, num_data)
+                y_pred, y, cost = self.forwardpass_vardrop(x, phase, keep_prob, params, num_data)
             else:        # standard network
-                y_pred, cost = self.forwardpass(x, y, phase)
+                y_pred, y, cost = self.forwardpass(x, phase)
             y_std = 1  # just constant number
-        return y_pred, y_std, cost
+        return y_pred, y_std, y, cost
 
     def scaled_prediction_mc(self, x, phase, keep_prob, params,
                              trade_off, num_data, cov_on, transform,
@@ -401,17 +423,17 @@ class espcn(object):
 
         if hetero:
             if vardrop:
-                y_norm, y_norm_std, _ = self.forwardpass_hetero_vardrop(x_scaled, y, phase, keep_prob, params, trade_off, num_data, cov_on)
+                y_norm, y_norm_std, _, _ = self.forwardpass_hetero_vardrop(x_scaled, y, phase, keep_prob, params, trade_off, num_data, cov_on)
             else:
-                y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
+                y_norm, y_norm_std, _, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
             y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
-                y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
+                y_norm, _, _ = self.forwardpass_vardrop(x_scaled, phase, keep_prob, params, num_data)
             else:
-                y_norm, _ = self.forwardpass(x_scaled, y, phase)
+                y_norm, _, _ = self.forwardpass(x_scaled, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
             y_pred_std = 1  # just constant number

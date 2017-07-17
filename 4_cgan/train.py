@@ -2,10 +2,17 @@
 import glob
 import shutil
 import timeit
+import os
+import sys
+import numpy as np
+import cPickle as pkl
+import tensorflow as tf
 import models
 from common.data_generator import prepare_data
 from common.ops import get_tensor_shape
-from common.utils import *
+from common.utils import define_checkpoint, define_logdir, name_network, \
+                         name_patchlib, get_tradeoff_values, save_model
+
 
 def update_best_loss(this_loss, bests, iter_, current_step):
     bests['counter'] += 1
@@ -163,10 +170,13 @@ def train_cnn(opt):
     print("--------------------------")
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
+    out_channels=opt['no_channels']*opt['upsampling_rate']**3 if opt['is_shuffle'] else opt['no_channels']
     x = tf.placeholder(tf.float32,
                        [opt["batch_size"], side, side, side, opt['no_channels']],
                        name='input_x')
-    y_real = tf.placeholder(tf.float32, name='real_y')
+    # y_real = tf.placeholder(tf.float32,
+    #                         [opt["batch_size"], None, None, None, out_channels],
+    #                         name='real_y')
     L2_lambda = tf.placeholder(tf.float32, name='L2_lambda')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
     keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
@@ -181,17 +191,18 @@ def train_cnn(opt):
     D = set_discriminator_config(opt)
 
     with tf.variable_scope("generator"):
-        y_fake, y_std, cost = G.build_network(x, y_real, phase_train, keep_prob,
-                                              trade_off=trade_off,
-                                              num_data=num_data,
-                                              params=opt["params"],
-                                              cov_on=opt["cov_on"],
-                                              hetero=opt["hetero"],
-                                              vardrop=opt["vardrop"])
+        y_fake, y_std, y_real, cost = G.build_network(x, phase_train, keep_prob,
+                                                      trade_off=trade_off,
+                                                      num_data=num_data,
+                                                      params=opt["params"],
+                                                      cov_on=opt["cov_on"],
+                                                      hetero=opt["hetero"],
+                                                      vardrop=opt["vardrop"])
 
     with tf.variable_scope("discriminator"):
-        d_real, d_real_logits = D.forwardpass(x, y_real, phase_train, reuse=False)
-        d_fake, d_fake_logits = D.forwardpass(x, y_fake, phase_train, reuse=True)
+        #todo: make input_on as an argparse argument
+        d_real, d_real_logits = D.forwardpass(x, y_real, phase_train, reuse=False, input_on=True)
+        d_fake, d_fake_logits = D.forwardpass(x, y_fake, phase_train, reuse=True, input_on=True)
 
     # define losses:
     d_loss_real = tf.reduce_mean(
