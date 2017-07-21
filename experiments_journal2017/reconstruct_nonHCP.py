@@ -7,7 +7,6 @@ import configuration
 rec = __import__('3_MC/reconstruct')
 tr = __import__('3_MC/train')
 
-
 # ---------------- Configurations ----------------------------
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
