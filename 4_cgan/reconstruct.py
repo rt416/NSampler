@@ -13,7 +13,7 @@ from common.utils import *
 def sr_reconstruct(opt):
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output_recon.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output_recon.txt', 'ab')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
               + opt['save_dir'] + '/' + name_network(opt) + "/output_recon.txt")

@@ -85,8 +85,10 @@ def models_update(idx, opt):
     return name, opt
 
 # base directories:
-base_input_dir = '/SAN/vision/hcp/Ryu/non-HCP/'
-base_recon_dir = '/SAN/vision/hcp/Ryu/non-HCP'
+# base_input_dir = '/SAN/vision/hcp/Ryu/non-HCP/'
+# base_recon_dir = '/SAN/vision/hcp/Ryu/non-HCP'
+base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data'
+base_recon_dir = '/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017'
 
 non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
@@ -99,23 +101,20 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
            'hcp2': {'subdir': 'HCP/904044',
                     'dt_file': 'dt_b1000_lowres_2_'},
            }
-
-models_list = range(1,8)
 # non_HCP = {'ms':{'subdir':'MS/B0410637-2010-00411',
 #                 'dt_file':'dt_b1200_'}}
 
-for model_idx in models_list:
-    for key in non_HCP:
-        print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
-        opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
-        opt['input_file_name'] = non_HCP[key]['dt_file']
-        opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
-        name, opt = models_update(model_idx,opt)
-        print('with model: ' + name)
 
-        # clear the graph:
-        tf.reset_default_graph()
-        analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type=key)
+# Reconstruct:
+key = 'tumour'
+print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
+opt['gt_dir'] = os.path.join(base_input_dir,non_HCP[key]['subdir'])
+opt['input_file_name'] = non_HCP[key]['dt_file']
+opt['recon_dir'] = os.path.join(base_recon_dir,non_HCP[key]['subdir'])
+
+# clear the graph:
+tf.reset_default_graph()
+analysis_miccai2017.nonhcp_reconstruct(opt, dataset_type=key)
 
 
 

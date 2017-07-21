@@ -138,7 +138,7 @@ def train_cnn(opt):
 
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output.txt', 'ab')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
               + opt['save_dir'] + '/' + name_network(opt) + "/output.txt")

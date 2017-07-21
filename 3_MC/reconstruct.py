@@ -13,7 +13,7 @@ from common.utils import *
 def sr_reconstruct(opt):
     # Save displayed output to a text file:
     if opt['disp']:
-        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output_recon.txt', 'w')
+        f = open(opt['save_dir'] + '/' + name_network(opt) + '/output_recon.txt', 'ab')
         # Redirect all the outputs to the text file:
         print("Redirecting the output to: "
               + opt['save_dir'] + '/' + name_network(opt) + "/output_recon.txt")
@@ -304,9 +304,9 @@ def mc_inference(fn, fn_std, fd, opt, sess):
             mean = sum_out / (1.*no_samples)
             std = np.sqrt(np.abs(sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
         else:
-            raise Exception('The specified method does not support MC inference.')
+            # raise Exception('The specified method does not support MC inference.')
             mean = fn.eval(feed_dict=fd)
-            std = None
+            std = 0.0
     return mean, std
 
 # Pad the volumes:
@@ -378,5 +378,90 @@ def clip_image(img, bkgv=0.0, tail_perc=0.1, head_perc=99.9):
     return img
 
 
+# --------------- reconstruct on non-HCP dataset  ----------------------
+def sr_reconstruct_nonhcp(opt, dataset_type):
+    # Define directory and file names:
+    print('\nStart reconstruction! \n')
+    recon_dir = opt['recon_dir']
+    gt_dir = opt['gt_dir']
+    subpath = opt['subpath']
+    subject = opt['subject']
+    no_channels = opt['no_channels']
+    input_file_name, _ = opt['input_file_name'].split('{')
+    gt_header, _ = opt['gt_header'].split('{')
+    if not('output_file_name' in opt):
+        opt['output_file_name'] = 'dt_recon_b1000.npy'
 
+    # Load the input low-res DT image:
+    input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
+    print('... loading the test low-res image ...')
+    dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
+    if not (dataset_type == 'life' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey'):
+        dt_lowres = sr_utility.resize_DTI(dt_lowres, opt['upsampling_rate'])
+    else:
+        print('HCP dataset: no need to resample.')
+
+    # Reconstruct:
+    tf.reset_default_graph()
+    start_time = timeit.default_timer()
+    nn_dir = name_network(opt)
+    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
+    dt_hr, dt_std = super_resolve(dt_lowres, opt)
+    end_time = timeit.default_timer()
+    print('\nIt took %f secs. \n' % (end_time - start_time))
+
+    # Post-processing:
+    if opt["postprocess"]:
+        # Clipping:
+        print('... post-processing the output image')
+        dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:],
+                                               bkgv=opt["background_value"],
+                                               tail_perc=0.01, head_perc=99.99)
+
+    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+
+    print('... saving MC-estimated high-res volume as %s' % output_file)
+    if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+        os.makedirs(os.path.join(recon_dir, subject, nn_dir))
+
+    # Save predicted high-res brain volume:
+    np.save(output_file, dt_hr)
+    print('\nSave each super-resolved channel separately as a nii file ...')
+    __, recon_file = os.path.split(output_file)
+    sr_utility.save_as_nifti(recon_file,
+                             os.path.join(recon_dir,subject,nn_dir),
+                             os.path.join(gt_dir,subject,subpath),
+                             no_channels=no_channels,
+                             gt_header=gt_header)
+
+    # Save uncertainty for probabilistic models:
+    if not(opt['hetero'] or opt['vardrop']):
+        print('... saving its uncertainty as %s' % output_file)
+        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
+        np.save(uncertainty_file, dt_std)
+        __, std_file = os.path.split(uncertainty_file)
+        print('\nSave the uncertainty separately for respective channels as a nii file ...')
+        sr_utility.save_as_nifti(std_file,
+                                 os.path.join(recon_dir, subject, nn_dir),
+                                 os.path.join(gt_dir, subject, subpath),
+                                 no_channels=no_channels,
+                                 gt_header=gt_header)
+
+    # todo: add a proper evaluation function here and save it to a common cfv file.
+    # # Compute the reconstruction error:
+    # print('\nCompute the evaluation statistics ...')
+    # mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
+    # mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
+    # rmse, rmse_whole, rmse_volume \
+    #     = sr_utility.compute_rmse(recon_file=recon_file,
+    #                               recon_dir=os.path.join(recon_dir,subject,nn_dir),
+    #                               gt_dir=os.path.join(gt_dir,subject,subpath),
+    #                               mask_choose=True,
+    #                               mask_dir=mask_dir_local,
+    #                               mask_file=mask_file,
+    #                               no_channels=no_channels,
+    #                               gt_header=gt_header)
+    #
+    # print('\nRMSE (no edge) is %f.' % rmse)
+    # print('\nRMSE (whole) is %f.' % rmse_whole)

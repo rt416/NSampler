@@ -392,7 +392,6 @@ def resize_DTI(dti, r):
     return dti_new
 
 
-
 # non-HCP data. Compute the mean and std of FA.
 def _MD_FA(dti_file, std_file=None, no_samples=500,
            save_dir=None, save_tail='',
