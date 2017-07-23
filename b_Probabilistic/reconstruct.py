@@ -399,7 +399,7 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     print('... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
-    if not (dataset_type == 'life' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey'):
+    if not (dataset_type == 'life' or dataset_type == 'hcp_abnormal' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey'):
         dt_lowres = sr_utility.resize_DTI(dt_lowres, opt['upsampling_rate'])
     else:
         print('HCP dataset: no need to resample.')
