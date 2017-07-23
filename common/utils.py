@@ -123,6 +123,7 @@ def name_patchlib(opt):
     """
     header = 'patchlib'
     if opt['is_map']: header = 'MAP_' + header
+    opt['receptive_field_radius'] = (2 * opt['input_radius'] - 2 * opt['output_radius'] + 1) // 2
 
     # problem definition:
     nn_var = (opt['upsampling_rate'],

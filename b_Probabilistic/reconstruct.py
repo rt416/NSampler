@@ -138,9 +138,6 @@ def super_resolve(dt_lowres, opt):
     """
 
     # --------------------------- Define the model--------------------------:
-    # Get the dir where the network is saved
-    network_dir = define_checkpoint(opt)
-
     # placeholders
     print()
     print("--------------------------")
@@ -172,6 +169,7 @@ def super_resolve(dt_lowres, opt):
     opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
 
     # Specify the network parameters to be restored:
+    network_dir = define_checkpoint(opt)
     model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
     nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
 
@@ -387,8 +385,11 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     subpath = opt['subpath']
     subject = opt['subject']
     no_channels = opt['no_channels']
-    input_file_name, _ = opt['input_file_name'].split('{')
-    gt_header, _ = opt['gt_header'].split('{')
+    input_file_name = opt['input_file_name']
+    gt_header = opt['gt_header']
+
+    # input_file_name, = opt['input_file_name'].split('{')
+    # gt_header, _ = opt['gt_header'].split('{')
     if not('output_file_name' in opt):
         opt['output_file_name'] = 'dt_recon_b1000.npy'
 
@@ -405,9 +406,9 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     # Reconstruct:
     tf.reset_default_graph()
     start_time = timeit.default_timer()
-    nn_dir = name_network(opt)
-    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
+    print('\nReconstructing high-res dti \n')
     dt_hr, dt_std = super_resolve(dt_lowres, opt)
+    nn_dir = name_network(opt)
     end_time = timeit.default_timer()
     print('\nIt took %f secs. \n' % (end_time - start_time))
 
@@ -436,7 +437,7 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
                              gt_header=gt_header)
 
     # Save uncertainty for probabilistic models:
-    if not(opt['hetero'] or opt['vardrop']):
+    if opt['hetero'] or opt['vardrop']:
         print('... saving its uncertainty as %s' % output_file)
         uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
         np.save(uncertainty_file, dt_std)

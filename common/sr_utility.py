@@ -113,6 +113,26 @@ def load_patchlib(
     return rval
 
 
+# double the size of non-HCP DTI:
+def resize_DTI(dti, r):
+    """ Resize the size of a brain volume.
+    Args:
+        dti: (4d np.array)
+        r: upsampling rate
+    """
+    s_old = dti.shape
+    s_new = (r*s_old[0],r*s_old[1],r*s_old[2],s_old[3])
+
+    dti_new = np.zeros(s_new)
+    shift_indices = [(i, j, k)
+                     for k in xrange(r)
+                     for j in xrange(r)
+                     for i in xrange(r)]
+
+    for (shift_x, shift_y, shift_z) in shift_indices:
+        dti_new[shift_x::r, shift_y::r, shift_z::r,:] = dti
+    return dti_new
+
 # Normalise training data:
 def standardise_data(X_train, Y_train, option='default'):
     # Add ZCA whitening

@@ -1,11 +1,10 @@
 """Ryu: main experiments script for non-HCP data reconstruction """
 import argparse
 import os
-from common.data_utils import fetch_subjects
 import configuration
+from common.data_utils import fetch_subjects
+import b_Probabilistic.reconstruct as reconstruct
 
-rec = __import__('3_MC/reconstruct')
-tr = __import__('3_MC/train')
 
 # ---------------- Configurations ----------------------------
 # Settings
@@ -45,23 +44,27 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                     'dt_file': 'dt_b1000_lowres_2_'},
            }
 
-# # Make directories to store results:
-# base_dir = os.path.join(opt['base_dir'], opt['experiment'], )
-# opt.update({
-#     "data_dir": os.path.join(base_dir,"data"),
-#     "save_dir": os.path.join(base_dir,"models"),
-#     "log_dir": os.path.join(base_dir,"log"),
-#     "recon_dir": os.path.join(base_dir,"recon")})
-
+# Make directories to store results:
+base_dir = os.path.join(opt['base_dir'], opt['experiment'], )
+opt.update({
+    "data_dir": os.path.join(base_dir,"data"),
+    "save_dir": os.path.join(base_dir,"models"),
+    "log_dir": os.path.join(base_dir,"log"),
+    "recon_dir": os.path.join(base_dir,"recon")})
 
 # Reconstruct:
 key = opt['dataset']
 print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
-opt['subject']=non_HCP[key]['subdir']
-opt['gt_dir'] = os.path.join(opt['base_input_dir'], opt['experiment'])
-opt['input_file_name'] = non_HCP[key]['dt_file']
+opt['subject'] = non_HCP[key]['subdir']
+opt['gt_dir'] = os.path.join(opt['base_input_dir'])
 opt['recon_dir'] = os.path.join(opt['base_recon_dir'], opt['experiment'])
-rec.sr_reconstruct_nonhcp(opt, dataset_type=key)
+
+opt['input_file_name'] = non_HCP[key]['dt_file']
+opt['gt_header'] = non_HCP[key]['dt_file']
+opt['output_file_name'] = opt['gt_header']+'x%i_recon_mc=%i.npy' % (opt['upsampling_rate'], opt["mc_no_samples"])
+opt['output_std_file_name'] = 'std_'+opt['output_file_name']
+
+reconstruct.sr_reconstruct_nonhcp(opt, dataset_type=key)
 
 
 
