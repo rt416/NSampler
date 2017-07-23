@@ -11,7 +11,7 @@ import b_Probabilistic.reconstruct as reconstruct
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
 parser = configuration.add_arguments_standard(parser=parser)
 parser.add_argument('--base_input_dir', type=str, default='/SAN/vision/hcp/Ryu/non-HCP', help='base directory where the input low-res images are stored')
-parser.add_argument('--base_recon_dir', type=str, default='/SAN/vision/hcp/Ryu/non-HCP', help='base directory where the output images are saved')
+parser.add_argument('--base_recon_dir', type=str, default='/SAN/vision/hcp/Ryu/non-HCP/recon', help='base directory where the output images are saved')
 parser.add_argument('--dataset', type=str, default='tumour', help='options availble: prisma, tumoour, ms, hcp1, hcp2')
 arg = parser.parse_args()
 opt = vars(arg)
@@ -42,6 +42,8 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                    'dt_file':'dt_b1000_lowres_2_'},
            'hcp2': {'subdir': 'HCP/904044',
                     'dt_file': 'dt_b1000_lowres_2_'},
+           'hcp_abnormal': {'subdir': 'HCP.S1200/105620',
+                            'dt_file': 'dt_b1000_lowres_2_'}
            }
 
 # Make directories to store results:
