@@ -13,6 +13,7 @@ python reconstruct_nonHCP.py --experiment 11July_dcespcn \
 
 
 : <<'END'
+# testing locally
 bid=/Users/ryutarotanno/DeepLearning/nsampler/data
 brd=/Users/ryutarotanno/DeepLearning/nsampler/recon/miccai2017
 dataset=tumour

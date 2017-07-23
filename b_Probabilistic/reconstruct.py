@@ -51,6 +51,8 @@ def sr_reconstruct(opt):
     nn_dir = name_network(opt)
     print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
     dt_hr, dt_std = super_resolve(dt_lowres, opt)
+    end_time = timeit.default_timer()
+    print('\nIt took %f secs. \n' % (end_time - start_time))
 
     # Post-processing:
     if opt["postprocess"]:
@@ -60,69 +62,67 @@ def sr_reconstruct(opt):
                                                bkgv=opt["background_value"],
                                                tail_perc=0.01, head_perc=99.99)
 
-    # Save:
+    # Save stuff:
     if opt["not_save"]:
         rmse, rmse_whole = 10**10, 10**10
     else:
         output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
-        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
-
         print('... saving MC-estimated high-res volume and its uncertainty as %s' % output_file)
-        if not (os.path.exists(os.path.join(recon_dir, subject))):
-            os.mkdir(os.path.join(recon_dir, subject))
-        if not(os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
-            os.mkdir(os.path.join(recon_dir, subject, nn_dir))
+        if not (os.path.exists(os.path.join(recon_dir, subject,nn_dir))):
+            os.makedirs(os.path.join(recon_dir, subject, nn_dir))
+
+        # Save predicted high-res brain volume:
         np.save(output_file, dt_hr)
-        np.save(uncertainty_file, dt_std)
-        end_time = timeit.default_timer()
-        print('\nIt took %f secs. \n' % (end_time - start_time))
-
-        # Save each estimated dti separately as a nifti file for visualisation:
-        __, recon_file = os.path.split(output_file)
         print('\nSave each super-resolved channel separately as a nii file ...')
+        __, recon_file = os.path.split(output_file)
         sr_utility.save_as_nifti(recon_file,
-                                 os.path.join(recon_dir,subject,nn_dir),
-                                 os.path.join(gt_dir,subject,subpath),
-                                 no_channels=no_channels,
-                                 gt_header=gt_header)
-
-        # Save each estimated uncertainty separately as a nifti:
-        __, std_file = os.path.split(uncertainty_file)
-        print('\nSave the uncertainty separately for respective channels as a nii file ...')
-        sr_utility.save_as_nifti(std_file,
                                  os.path.join(recon_dir, subject, nn_dir),
                                  os.path.join(gt_dir, subject, subpath),
                                  no_channels=no_channels,
                                  gt_header=gt_header)
 
-        # Compute the reconstruction error:
-        print('\nCompute the evaluation statistics ...')
-        mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
-        mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
-        rmse, rmse_whole, rmse_volume \
-            = sr_utility.compute_rmse(recon_file=recon_file,
-                                      recon_dir=os.path.join(recon_dir,subject,nn_dir),
-                                      gt_dir=os.path.join(gt_dir,subject,subpath),
-                                      mask_choose=True,
-                                      mask_dir=mask_dir_local,
-                                      mask_file=mask_file,
-                                      no_channels=no_channels,
-                                      gt_header=gt_header)
+        # Save uncertainty for probabilistic models:
+        if opt['hetero'] or opt['vardrop']:
+            uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
+            print('... saving its uncertainty as %s' % uncertainty_file)
+            np.save(uncertainty_file, dt_std)
+            __, std_file = os.path.split(uncertainty_file)
+            print(
+            '\nSave the uncertainty separately for respective channels as a nii file ...')
+            sr_utility.save_as_nifti(std_file,
+                                     os.path.join(recon_dir, subject, nn_dir),
+                                     os.path.join(gt_dir, subject, subpath),
+                                     no_channels=no_channels,
+                                     gt_header=gt_header)
 
-        print('\nRMSE (no edge) is %f.' % rmse)
-        print('\nRMSE (whole) is %f.' % rmse_whole)
+    # Compute the reconstruction error:
+    print('\nCompute the evaluation statistics ...')
+    mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
+    mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
+    rmse, rmse_whole, rmse_volume \
+        = sr_utility.compute_rmse(recon_file=recon_file,
+                                  recon_dir=os.path.join(recon_dir,subject,nn_dir),
+                                  gt_dir=os.path.join(gt_dir,subject,subpath),
+                                  mask_choose=True,
+                                  mask_dir=mask_dir_local,
+                                  mask_file=mask_file,
+                                  no_channels=no_channels,
+                                  gt_header=gt_header)
 
-        # Save the RMSE on the chosen test subject:
-        print('Save it to settings.skl')
-        network_dir = define_checkpoint(opt)
-        model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
-        if not('subject_rmse' in model_details):
-            model_details['subject_rmse'] = {opt['subject']:rmse}
-        else:
-            model_details['subject_rmse'].update({opt['subject']:rmse})
+    print('\nRMSE (no edge) is %f.' % rmse)
+    print('\nRMSE (whole) is %f.' % rmse_whole)
 
-        with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
-            pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    # Save the RMSE on the chosen test subject:
+    print('Save it to settings.skl')
+    network_dir = define_checkpoint(opt)
+    model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
+    if not('subject_rmse' in model_details):
+        model_details['subject_rmse'] = {opt['subject']:rmse}
+    else:
+        model_details['subject_rmse'].update({opt['subject']:rmse})
+
+    with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
+        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
 
     return rmse, rmse_whole
 
