@@ -229,7 +229,8 @@ def super_resolve(dt_lowres, opt):
                   phase_train: False}
 
             opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
-            # opatch, opatch_std = y_pred.eval(feed_dict=fd)
+
+
 
             if opt["is_shuffle"]:  # only apply shuffling if necessary
                 opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
@@ -304,7 +305,7 @@ def mc_inference(fn, fn_std, fd, opt, sess):
         else:
             # raise Exception('The specified method does not support MC inference.')
             mean = fn.eval(feed_dict=fd)
-            std = 0.0
+            std = 0.0*mean  # zero in every entry
     return mean, std
 
 # Pad the volumes:
