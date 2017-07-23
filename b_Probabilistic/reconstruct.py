@@ -421,12 +421,13 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
                                                bkgv=opt["background_value"],
                                                tail_perc=0.01, head_perc=99.99)
 
+    # Saving stuff:
+    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
     print('... saving MC-estimated high-res volume as %s' % output_file)
     if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
         os.makedirs(os.path.join(recon_dir, subject, nn_dir))
 
     # Save predicted high-res brain volume:
-    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
     np.save(output_file, dt_hr)
     print('\nSave each super-resolved channel separately as a nii file ...')
     __, recon_file = os.path.split(output_file)
