@@ -191,6 +191,8 @@ def super_resolve(dt_lowres, opt):
         # Prepare high-res skeleton:
         dt_hires = np.zeros(dt_lowres.shape)
         dt_hires[:, :, :, 0] = dt_lowres[:, :, :, 0]  # same brain mask as input
+        dt_hires[:, :, :, 1] = dt_lowres[:, :, :, 1]
+
         dt_hires_std = np.zeros(dt_lowres.shape)
         dt_hires_std[:, :, :, 0] = dt_lowres[:, :, :, 0]
         print("Size of dt_hires after padding: %s", (dt_hires.shape,))
