@@ -310,6 +310,7 @@ def mc_inference(fn, fn_std, fd, opt, sess):
             std = 0.0*mean  # zero in every entry
     return mean, std
 
+
 # Pad the volumes:
 def dt_pad(dt_volume, upsampling_rate, input_radius):
     """ Pad a volume with zeros before reconstruction """

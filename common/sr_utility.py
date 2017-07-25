@@ -535,3 +535,4 @@ def forward_periodic_shuffle(patch, upsampling_rate=2):
                                         np.mod(k, upsampling_rate) * (upsampling_rate**2) +
                                         c * (upsampling_rate**3)]
     return patch_ps
+

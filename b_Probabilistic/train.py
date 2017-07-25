@@ -233,7 +233,7 @@ def train_cnn(opt):
         total_val_cost_epoch = 0
 
         # Define dictionary to save some results:
-        bests = {}
+        bests = opt.copy()
         bests['val_loss'] = np.inf  # best valid loss itr wise
         bests['val_loss_save'] = np.inf  # best valid loss in saved checkpoints
         bests['iter_'] = 0
