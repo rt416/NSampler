@@ -150,7 +150,7 @@ def train_cnn(opt):
     opt["checkpoint_dir"] = checkpoint_dir
     with open(checkpoint_dir + '/config.txt', 'w') as fp:
         for p in sorted(opt.iteritems(), key=lambda (k, v): (v, k)):
-            fp.write("%s:%s\n" % p)
+            fp.write("%s:%s" % p)
 
     # Exit if network is already trained unless specified otherwise:
     if os.path.exists(os.path.join(checkpoint_dir, 'settings.pkl')):

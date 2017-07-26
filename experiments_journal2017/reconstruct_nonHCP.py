@@ -27,6 +27,9 @@ opt['patchlib_idx'] = 1
 for key, val in opt.iteritems():
     print("{}: {}".format(key, val))
 
+if opt['is_map']:
+    opt['no_channels'] = 22
+
 # ----------------- Directories set-up --------------------------
 # base directories:
 # base_input_dir = '/Users/ryutarotanno/DeepLearning/nsampler/data'
@@ -34,6 +37,8 @@ for key, val in opt.iteritems():
 
 non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                      'dt_file':'dt_all_'},
+           'prisma_map': {'subdir': 'Prisma/Diffusion_2.5mm',
+                          'dt_file': 'h4_all_'},
            'tumour':{'subdir':'Tumour/06_FORI',
                      'dt_file':'dt_b700_'},
            'ms':{'subdir':'MS/B0410637-2010-00411',
