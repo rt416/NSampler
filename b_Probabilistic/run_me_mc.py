@@ -16,6 +16,7 @@ parser.add_argument('--valid', action='store_true', help='pick the best model ba
 parser.add_argument('--overwrite', action='store_true', help='restart the training completelu')
 parser.add_argument('--continue', action='store_true', help='continue training from previous epoch')
 parser.add_argument('--is_reset', action='store_true', help='reset the patch library?')
+parser.add_argument('--is_samples', action='store_true', help='want to monitor intermediate samples?')
 parser.add_argument('--gpu', type=str, default="0", help='which GPU to use')
 parser.add_argument('--not_save', action='store_true', help='evoke not to save reconstructed output.')
 parser.add_argument('--disp', action='store_true', help='save the displayed outputs?')

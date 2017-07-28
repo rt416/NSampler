@@ -455,6 +455,26 @@ class Data(object):
 
         return inp_patches, out_patches
 
+    def _load_selected_patchpair(self, sub_idx, c_1, c_2, c_3,
+                                 inpN, outM, us_rate, is_shuffle):
+
+        # load the input patch:
+        inp = self._inp_images[sub_idx][c_1 - inpN:c_1 + inpN + 1,
+                                        c_2 - inpN:c_2 + inpN + 1,
+                                        c_3 - inpN:c_3 + inpN + 1, ...]
+        # get the corresponding output patch:
+        c = 1 if is_shuffle else us_rate
+
+        # print(shuffle, c, outM, r, out_images[r[0]].shape)
+        out = self._out_images[sub_idx][c * (c_1 - outM):c * (c_1 + outM + 1),
+                                        c * (c_2 - outM):c * (c_2 + outM + 1),
+                                        c * (c_3 - outM):c * (c_3 + outM + 1), ...]
+
+        # normalise the input and output patch:
+        inp, out = self._normalise(inp, out)
+
+        return inp, out
+
     def _select_patch_indices(self, size, vox_indx):
         """ Select the indices of patches to be extracted
         Args:
@@ -619,6 +639,20 @@ class Data(object):
                                 self._transform['output_std'])
 
         return inp, out
+
+    def _unnormalise(self, inp, out, out_pred, out_std=None):
+
+        """ Assumes both inp and output are in the normalised space
+        """
+
+        inp = inp * self._transform['input_std'] + self._transform['input_mean']
+        out = out * self._transform['output_std'] + self._transform['output_mean']
+        out_pred = out_pred * self._transform['output_std'] + self._transform['output_mean']
+
+        if not(out_std ==  None):
+            out_std = out_std * self._transform['output_std']
+
+        return inp, out, out_pred, out_std
 
     def _diag_whiten(self, mini_batch, mean, std):
         return (mini_batch - mean)/std

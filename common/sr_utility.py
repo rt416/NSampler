@@ -13,6 +13,11 @@ import os
 import nibabel as nib
 import sys
 
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
 # Load in a DT volume .nii:
 def read_dt_volume(nameroot='/Users/ryutarotanno/DeepLearning/Test_1/data/dt_b1000_',
                    no_channels=6):
@@ -536,3 +541,95 @@ def forward_periodic_shuffle(patch, upsampling_rate=2):
                                         c * (upsampling_rate**3)]
     return patch_ps
 
+
+# Define new plotting functions:
+def get_2dslices(x,y,y_pred,y_std=None, us=2, inpN=12, outM=3, is_shuffle=True, ch_idx=0):
+    ''' Retrieve the corresponding axial slices from input x, ground truth y,]
+    prediction y_pred, and predictive uncertainty y_std.
+
+    Args:
+        x, y, y_pred, y_std (4D or 5D np.arrays): input, output, prediction, uncertainty
+        us(int):upsampling rate
+        inpN: input radius
+        inpM: ouput radius in low-res space
+        is_shuffle (boolean): whether y needs to shuffled or not
+        ch_idx (int): which channel
+    Return:
+        slices(list): the list of extracted slices of input, output, prediction, uncertainty
+    '''
+
+    slices = []
+
+    x = np.squeeze(x); y=np.squeeze(y); y_pred=np.squeeze(y_pred);
+    if is_shuffle:
+        y = forward_periodic_shuffle(y, us)
+        y_pred = forward_periodic_shuffle(y_pred, us)
+
+    # print("The shapes of x and y are: %s,  %s" % (x.shape, y.shape))
+
+    slices.append(x[:,:,inpN,ch_idx])
+    slices.append(y[:,:,us*outM,ch_idx])
+    slices.append(y_pred[:,:,us*outM,ch_idx])
+    if not(y_std==None):
+        y_std=np.squeeze(y_std)
+        if is_shuffle: y_std = forward_periodic_shuffle(y_std, us)
+        slices.append(y_std[:,:,us*outM,ch_idx])
+
+    return slices
+
+def visualise_patches(slices,
+                      us,
+                      save_name=None,
+                      figsize=(6,6),
+                      _vmin=0.0, _vmax=0.0015):
+    """ Visualise 2d patches of uncertainty, etc
+    Args:
+        x_slice (2d np.array):input
+        y_slice (2d np.array):output
+        us (int): upsampling rate
+        figsize (tuple):figure size
+    """
+
+    fig, axes = plt.subplots(1, len(slices)+2, figsize=figsize)
+    x_slice = slices[0]
+    y_slice = slices[1]
+    y_pred = slices[2]
+
+
+    # input low-res patch x:
+    axes[0].imshow(x_slice.T, cmap="gray", origin="lower", vmin=_vmin, vmax=_vmax)
+    axes[0].set_title('input')
+    inpN  = x_slice.shape[0]//2
+    patch_radius = (y_slice.shape[0]//us)//2
+    off =  inpN - patch_radius
+    axes[0].add_patch(patches.Rectangle((off, off),
+                                        2*patch_radius+1, 2*patch_radius+1,
+                                        fill=False, edgecolor='red'))
+    # input zoomed in:
+    x_slice_zoom=x_slice[inpN-patch_radius:inpN+patch_radius+1, inpN-patch_radius:inpN+patch_radius+1]
+    axes[1].imshow(x_slice_zoom.T, cmap="gray", origin="lower", vmin=_vmin, vmax=_vmax)
+    axes[1].set_title('input (zoomed)')
+
+    # ground truth output patch y:
+    axes[2].imshow(y_slice.T, cmap="gray", origin="lower", vmin=_vmin, vmax=_vmax)
+    axes[2].set_title('GT')
+
+    # predicted output patch y:
+    axes[3].imshow(y_pred.T, cmap="gray", origin="lower", vmin=_vmin, vmax=_vmax)
+    axes[3].set_title('Prediction')
+
+    # RMSE:
+    rmse = np.sqrt((y_slice-y_pred)**2)
+    axes[4].imshow(rmse.T, cmap="hot", origin="lower")
+    axes[4].set_title('RMSE')
+
+    # Uncertainty:
+    if len(slices)>3:
+        y_std = slices[3]
+        axes[5].imshow(y_std.T, cmap="hot", origin="lower")
+        axes[5].set_title('Uncertainty')
+
+    #Save
+    if not(save_name==None):
+        fig.savefig(save_name, bbox_inches='tight')
+        print("Saving "+ save_name)

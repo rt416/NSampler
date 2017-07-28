@@ -2,9 +2,17 @@
 import glob
 import shutil
 import timeit
+import os
+import sys
+import cPickle as pkl
+import tensorflow as tf
+import numpy as np
 from common.data_generator import prepare_data
 from common.ops import get_tensor_shape
-from common.utils import *
+from common.sr_utility import get_2dslices, visualise_patches
+from common.utils import name_network, name_patchlib, set_network_config,\
+                         define_checkpoint, define_logdir, save_model,\
+                         mc_inference, get_tradeoff_values
 
 def update_best_loss(this_loss, bests, iter_, current_step):
     bests['counter'] += 1
@@ -361,6 +369,8 @@ def train_cnn(opt):
                     start_time_epoch = timeit.default_timer()
 
             if (epoch+1) % save_frequency == 0:
+
+                # save the model:
                 if opt['valid']:
                     this_val_loss=this_val_cost
                 else:
@@ -370,6 +380,26 @@ def train_cnn(opt):
                     bests['last_epoch'] = epoch + 1
                     bests = update_best_loss_epoch(this_val_loss, bests, current_step)
                     save_model(opt, sess, saver, global_step, bests)
+
+                # generate intermediate samples and save:
+                if opt['is_samples']:
+                    inp_s, out_s = dataset._load_selected_patchpair(sub_idx=0,c_1=30,c_2=30,c_3=30,
+                                                                    inpN=opt['input_radius'],
+                                                                    outM=opt['ourput_radius'],
+                                                                    us_rate=opt['upsampling_rate'],
+                                                                    is_shuffle=opt['is_shuffle'])
+                    fd_s = {x: inp_s, keep_prob:1.0-opt['dropout_rate'], trade_off: 1.0, phase_train: False}
+
+                    out_pred_s, out_std_s = mc_inference(y_pred, y_std, fd_s, opt, sess)
+                    inp_s, out_s, out_pred_s, out_std_s = dataset._unnormalise(inp_s, out_s, out_pred_s, out_std_s)
+
+                    slices = get_2dslices(inp_s, out_s, out_pred_s, out_std_s, us=opt['upsampling_rate'], inpN=opt['input_radius'], outM=opt['ourput_radius'])
+
+                    sample_dir = os.path.join(opt['checkpoint_dir'],'samples')
+                    if not(os.path.exists(sample_dir)): os.makedirs(sample_dir)
+
+                    visualise_patches(slices, us=opt['upsampling_rate'], figsize=(20, 20), save_name= sample_dir +'/epoch_{:02d}.png'.format(epoch))
+
 
         # close the summary writers:
         train_writer.close()

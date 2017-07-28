@@ -3,11 +3,13 @@ import timeit
 import cPickle as pkl
 import numpy as np
 import tensorflow as tf
+import os
+import sys
 
 from train import get_output_radius
 import common.sr_utility as sr_utility
 from common.sr_utility import forward_periodic_shuffle
-from common.utils import *
+from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference
 
 # Main reconstruction code:
 def sr_reconstruct(opt):
@@ -265,50 +267,6 @@ def super_resolve(dt_lowres, opt):
 
         print("Size of dt_hires after trimming: %s", (dt_hires.shape,))
     return dt_hires, dt_hires_std
-
-
-# Monte-Carlo inference:
-def mc_inference(fn, fn_std, fd, opt, sess):
-    """ Compute the mean and std of samples drawn from stochastic function"""
-    no_samples = opt['mc_no_samples']
-    if opt['hetero']:
-        if opt['cov_on']:
-            sum_out = 0.0
-            sum_out2 = 0.0
-            sum_var = 0.0
-            for i in xrange(no_samples):
-                current, current_std = sess.run([fn, fn_std], feed_dict=fd)
-                sum_out += current
-                sum_out2 += current ** 2
-                sum_var += current_std ** 2
-            mean = sum_out / (1. * no_samples)
-            std = np.sqrt((np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) + sum_var) / no_samples)
-        else:
-            sum_out = 0.0
-            sum_out2 = 0.0
-            for i in xrange(no_samples):
-                current = 1. * fn.eval(feed_dict=fd)
-                sum_out += current
-                sum_out2 += current ** 2
-            mean = sum_out / (1. * no_samples)
-            std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
-            std += 1. * fn_std.eval(feed_dict=fd)
-    else:
-        if opt['vardrop']:
-            sum_out = 0.0
-            sum_out2 = 0.0
-            for i in xrange(no_samples):
-                current = 1. * fn.eval(feed_dict=fd)
-                sum_out += current
-                sum_out2 += current ** 2
-
-            mean = sum_out / (1.*no_samples)
-            std = np.sqrt(np.abs(sum_out2 - 2*mean*sum_out + no_samples*mean**2)/no_samples)
-        else:
-            # raise Exception('The specified method does not support MC inference.')
-            mean = fn.eval(feed_dict=fd)
-            std = 0.0*mean  # zero in every entry
-    return mean, std
 
 
 # Pad the volumes:
