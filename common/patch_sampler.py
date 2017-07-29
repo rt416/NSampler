@@ -472,6 +472,8 @@ class Data(object):
 
         # normalise the input and output patch:
         inp, out = self._normalise(inp, out)
+        inp = inp[np.newaxis, :]
+        out = out[np.newaxis, :]
 
         return inp, out
 
