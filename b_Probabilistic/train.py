@@ -114,7 +114,7 @@ def train_cnn(opt):
     print("...Setting up placeholders")
     side = 2*opt["input_radius"] + 1
     x = tf.placeholder(tf.float32,
-                       [opt["batch_size"], side, side, side, opt['no_channels']],
+                       [None, side, side, side, opt['no_channels']],
                        name='input_x')
     y = tf.placeholder(tf.float32, name='input_y')
     phase_train = tf.placeholder(tf.bool, name='phase_train')
