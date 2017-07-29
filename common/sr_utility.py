@@ -14,7 +14,8 @@ import nibabel as nib
 import sys
 
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
