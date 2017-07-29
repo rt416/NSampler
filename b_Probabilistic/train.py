@@ -385,7 +385,7 @@ def train_cnn(opt):
                 if opt['is_samples']:
                     inp_s, out_s = dataset._load_selected_patchpair(sub_idx=0,c_1=30,c_2=30,c_3=30,
                                                                     inpN=opt['input_radius'],
-                                                                    outM=opt['ourput_radius'],
+                                                                    outM=opt['output_radius'],
                                                                     us_rate=opt['upsampling_rate'],
                                                                     is_shuffle=opt['is_shuffle'])
                     fd_s = {x: inp_s, keep_prob:1.0-opt['dropout_rate'], trade_off: 1.0, phase_train: False}
