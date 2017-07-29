@@ -393,7 +393,7 @@ def train_cnn(opt):
                     out_pred_s, out_std_s = mc_inference(y_pred, y_std, fd_s, opt, sess)
                     inp_s, out_s, out_pred_s, out_std_s = dataset._unnormalise(inp_s, out_s, out_pred_s, out_std_s)
 
-                    slices = get_2dslices(inp_s, out_s, out_pred_s, out_std_s, us=opt['upsampling_rate'], inpN=opt['input_radius'], outM=opt['ourput_radius'])
+                    slices = get_2dslices(inp_s, out_s, out_pred_s, out_std_s, us=opt['upsampling_rate'], inpN=opt['input_radius'], outM=opt['output_radius'])
 
                     sample_dir = os.path.join(opt['checkpoint_dir'],'samples')
                     if not(os.path.exists(sample_dir)): os.makedirs(sample_dir)
