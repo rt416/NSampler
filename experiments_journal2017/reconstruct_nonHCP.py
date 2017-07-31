@@ -47,8 +47,27 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
                    'dt_file':'dt_b1000_lowres_2_'},
            'hcp2': {'subdir': 'HCP/904044',
                     'dt_file': 'dt_b1000_lowres_2_'},
+           'hcp1_map': {'subdir': 'HCP/117324',
+                        'dt_file': 'h4_all_lowres_2_'},
+           'hcp2_map': {'subdir': 'HCP/904044',
+                        'dt_file': 'h4_all_lowres_2_'},
+           'hcp1_x2': {'subdir': 'HCP/117324',
+                       'dt_file': 'dt_b1000_'},
+           'hcp2_x2': {'subdir': 'HCP/904044',
+                       'dt_file': 'dt_b1000_'},
+           'hcp1_map_x2': {'subdir': 'HCP/117324',
+                           'dt_file': 'h4_all_'},
+           'hcp2_map_x2': {'subdir': 'HCP/904044',
+                           'dt_file': 'h4_all_'},
            'hcp_abnormal': {'subdir': 'HCP.S1200/105620',
-                            'dt_file': 'dt_b1000_lowres_2_'}
+                            'dt_file': 'dt_b1000_lowres_2_'},
+           'hcp_abnormal_map': {'subdir': 'HCP.S1200/105620',
+                                'dt_file': 'h4_all_lowres_2_'},
+           'hcp_abnormal_x2': {'subdir': 'HCP.S1200/105620',
+                               'dt_file': 'dt_b1000_'},
+           'hcp_abnormal_map_x2': {'subdir': 'HCP.S1200/105620',
+                                   'dt_file': 'h4_all_'}
+
            }
 
 # Make directories to store results:
