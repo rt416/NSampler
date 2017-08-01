@@ -281,3 +281,72 @@ def mc_inference(fn, fn_std, fd, opt, sess):
             mean = fn.eval(feed_dict=fd)
             std = 0.0*mean  # zero in every entry
     return mean, std
+
+
+# Pad the volumes:
+def dt_pad(dt_volume, upsampling_rate, input_radius):
+    """ Pad a volume with zeros before reconstruction """
+    # --------------------- Pad ---------------:
+    # Pad with zeros so all brain-voxel-centred pathces are extractable and
+    # each dimension is divisible by upsampling rate.
+    dim_x_highres, dim_y_highres, dim_z_highres, dim_channels = dt_volume.shape
+    pad_min = (input_radius + 1) * upsampling_rate
+
+    pad_x = pad_min if np.mod(2*pad_min + dim_x_highres, upsampling_rate) == 0 \
+        else pad_min + \
+             (upsampling_rate - np.mod(2*pad_min + dim_x_highres, upsampling_rate))
+
+    pad_y = pad_min if np.mod(2*pad_min + dim_y_highres, upsampling_rate) == 0 \
+        else pad_min + \
+             (upsampling_rate - np.mod(2*pad_min + dim_y_highres, upsampling_rate))
+
+    pad_z = pad_min if np.mod(2*pad_min + dim_z_highres, upsampling_rate) == 0 \
+        else pad_min + \
+             (upsampling_rate - np.mod(2*pad_min + dim_z_highres, upsampling_rate))
+
+    dt_volume[:, :, :, 1] += 1
+
+    pd = ((pad_min, pad_x),
+          (pad_min, pad_y),
+          (pad_min, pad_z), (0, 0))
+
+    dt_volume = np.pad(dt_volume,
+                       pad_width=pd,
+                       mode='constant', constant_values=0)
+    dt_volume[:, :, :, 1] -= 1
+    return dt_volume, pd
+
+
+# Trim the volume:
+def dt_trim(dt_volume, pd):
+    """ Trim the dt volume back to the original size
+    according to the padding applied
+
+    Args:
+        dt_volume (numpy array): 4D numpy dt volume
+        pd (tuple): padding applied to dt_volume
+    """
+    dt_volume = dt_volume[pd[0][0]:-pd[0][1],
+                          pd[1][0]:-pd[1][1],
+                          pd[2][0]:-pd[2][1],
+                          :]
+    return dt_volume
+
+
+# Clip images:
+def clip_image(img, bkgv=0.0, tail_perc=0.1, head_perc=99.9):
+    """ Truncate 3d volume by the specified percentile
+    Assumptions:
+        img is 4d numpy array with last dim being channels e.g. DTI components
+        back ground value is consistently given by bkgv.
+
+    Args:
+    """
+    assert img.ndim == 4
+    brain_mask = img[..., 0] != bkgv # get the foreground voxels
+    for ch_idx in range(img.shape[-1]):
+        v_ch=img[...,ch_idx][brain_mask]
+        inp_perc_tail = np.percentile(v_ch, tail_perc)
+        inp_perc_head = np.percentile(v_ch, head_perc)
+        img[...,ch_idx][brain_mask]=np.clip(v_ch, inp_perc_tail, inp_perc_head)
+    return img

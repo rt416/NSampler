@@ -578,6 +578,7 @@ def get_2dslices(x,y,y_pred,y_std=None, us=2, inpN=12, outM=3, is_shuffle=True, 
 
     return slices
 
+
 def visualise_patches(slices,
                       us,
                       save_name=None,
@@ -634,3 +635,6 @@ def visualise_patches(slices,
     if not(save_name==None):
         fig.savefig(save_name, bbox_inches='tight')
         print("Saving "+ save_name)
+
+
+def compute_stats():
