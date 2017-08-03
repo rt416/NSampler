@@ -137,14 +137,19 @@ train_cnn(opt)
 
 # Reconstruct:
 subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
-rmse_average = 0
-rmse_whole_average = 0
 for subject in subjects_list:
     opt['subject'] = subject
-    rmse, rmse_whole = reconstruct.sr_reconstruct(opt)
-    rmse_average += rmse
-    rmse_whole_average += rmse_whole
-print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
-      % (rmse_average / len(subjects_list),))
-print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
-      % (rmse_whole_average / len(subjects_list),))
+    reconstruct.sr_reconstruct(opt)
+
+# subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
+# rmse_average = 0
+# rmse_whole_average = 0
+# for subject in subjects_list:
+#     opt['subject'] = subject
+#     rmse, rmse_whole = reconstruct.sr_reconstruct(opt)
+#     rmse_average += rmse
+#     rmse_whole_average += rmse_whole
+# print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
+#       % (rmse_average / len(subjects_list),))
+# print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
+#       % (rmse_whole_average / len(subjects_list),))

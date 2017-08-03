@@ -101,7 +101,7 @@ else:
     opt['save_as_ijk'] = True
     opt['gt_available'] = False
 
-opt['output_file_name'] = opt['gt_header']+'x%i_recon_mc=%i.npy' % (opt['upsampling_rate'], opt["mc_no_samples"])
+opt['output_file_name'] = opt['input_file_name']+'x%i_recon_mc=%i.npy' % (opt['upsampling_rate'], opt["mc_no_samples"])
 opt['output_std_file_name'] = 'std_'+opt['output_file_name']
 
 reconstruct.sr_reconstruct_nonhcp(opt, dataset_type=key)
