@@ -44,13 +44,17 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
            'ms':{'subdir':'MS/B0410637-2010-00411',
                  'dt_file':'dt_test_b1200_'},
            'hcp1':{'subdir':'HCP/117324',
-                   'dt_file':'dt_b1000_lowres_2_'},
+                   'dt_file':'dt_b1000_lowres_2_',
+                   'gt_header':'dt_b1000_'},
            'hcp2': {'subdir': 'HCP/904044',
-                    'dt_file': 'dt_b1000_lowres_2_'},
+                    'dt_file': 'dt_b1000_lowres_2_',
+                    'gt_header': 'dt_b1000_'},
            'hcp1_map': {'subdir': 'HCP/117324',
-                        'dt_file': 'h4_all_lowres_2_'},
+                        'dt_file': 'h4_all_lowres_2_',
+                        'gt_header': 'h4_all_'},
            'hcp2_map': {'subdir': 'HCP/904044',
-                        'dt_file': 'h4_all_lowres_2_'},
+                        'dt_file': 'h4_all_lowres_2_',
+                        'gt_header': 'h4_all_'},
            'hcp1_x2': {'subdir': 'HCP/117324',
                        'dt_file': 'dt_b1000_'},
            'hcp2_x2': {'subdir': 'HCP/904044',
@@ -60,14 +64,15 @@ non_HCP = {'prisma':{'subdir':'Prisma/Diffusion_2.5mm',
            'hcp2_map_x2': {'subdir': 'HCP/904044',
                            'dt_file': 'h4_all_'},
            'hcp_abnormal': {'subdir': 'HCP.S1200/105620',
-                            'dt_file': 'dt_b1000_lowres_2_'},
+                            'dt_file': 'dt_b1000_lowres_2_',
+                            'gt_header': 'dt_b1000_'},
            'hcp_abnormal_map': {'subdir': 'HCP.S1200/105620',
-                                'dt_file': 'h4_all_lowres_2_'},
+                                'dt_file': 'h4_all_lowres_2_',
+                                'gt_header': 'h4_all_'},
            'hcp_abnormal_x2': {'subdir': 'HCP.S1200/105620',
                                'dt_file': 'dt_b1000_'},
            'hcp_abnormal_map_x2': {'subdir': 'HCP.S1200/105620',
                                    'dt_file': 'h4_all_'}
-
            }
 
 # Make directories to store results:
@@ -86,7 +91,16 @@ opt['gt_dir'] = os.path.join(opt['base_input_dir'])
 opt['recon_dir'] = os.path.join(opt['base_recon_dir'], opt['experiment'])
 
 opt['input_file_name'] = non_HCP[key]['dt_file']
-opt['gt_header'] = non_HCP[key]['dt_file']
+
+if 'gt_header' in non_HCP[key].keys():  # for some datasets, ground truths are not available.
+    opt['gt_header'] = non_HCP[key]['gt_header']
+    opt['save_as_ijk'] = False
+    opt['gt_available'] = True
+else:
+    opt['gt_header'] = None
+    opt['save_as_ijk'] = True
+    opt['gt_available'] = False
+
 opt['output_file_name'] = opt['gt_header']+'x%i_recon_mc=%i.npy' % (opt['upsampling_rate'], opt["mc_no_samples"])
 opt['output_std_file_name'] = 'std_'+opt['output_file_name']
 

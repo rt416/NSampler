@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import random
+import os
 import numpy as np
 from skimage.measure import compare_ssim as ssim
 import nibabel as nib
@@ -91,6 +92,26 @@ def scatter_plot_with_correlation_line(x, y, graph_filepath=None):
                     dpi=300, format='png', bbox_inches='tight')
 
 
+
+def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels):
+
+    # Compute the L2 deviation and SSIM:
+    rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
+    ssim_volume = compute_mssim(img_gt, img_est, mask, volume=True)
+
+    # Save the error maps:
+    save_dir, file_name = os.path.split(outputfile)
+    header, ext = os.path.splitext(file_name)
+
+    for k in range(no_channels):
+        img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], np.eye(4))
+        img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], np.eye(4))
+
+        print('... saving the error (RMSE) and SSIM map for ' + str(k + 1) + ' th dt element')
+        nib.save(img_1, os.path.join(save_dir, 'error_' + header + '_' + str(k + 3) + '.nii'))
+        nib.save(img_2, os.path.join(save_dir, 'ssim_' + header + '_' + str(k + 3) + '.nii'))
+
+
 def compare_images(img_gt, img_est, mask):
     """Compute RMSE, PSNR, MSSIM:
      img_gt: (4D numpy array with the last dim being channels)
@@ -102,21 +123,57 @@ def compare_images(img_gt, img_est, mask):
     m = compute_rmse(img_gt,img_est,mask)
     p = compute_psnr(img_gt, img_est, mask)
     s = compute_mssim(img_gt,img_est,mask)
-    # print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
+    #print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
     return m,p,s
+
+# Compute statistics:
+
+def compare_images_and_get_stats(img_gt, img_est, mask, name=''):
+    """Compute RMSE, PSNR, MSSIM:
+    Args:
+         img_gt: (4D numpy array with the last dim being channels)
+         ground truth volume
+         img_est: (4D numpy array) predicted volume
+         mask: (3D array) the mask whose the tissue voxles
+         are labelled as 1 and the rest as 0
+     Returns:
+         m : RMSE
+         m2: median of voxelwise RMSE
+         p: PSNR
+         s: MSSIM
+     """
+    m = compute_rmse(img_gt, img_est, mask)
+    m2= compute_rmse_median(img_gt, img_est, mask)
+    p = compute_psnr(img_gt, img_est, mask)
+    s = compute_mssim(img_gt, img_est, mask)
+    print("Errors (%s)"
+          "\nRMSE: %.10f \nMedian: %.10f "
+          "\nPSNR: %.6f \nSSIM: %.6f" % (name, m, m2, p, s))
+
+    return m, m2, p, s
 
 
 def compute_rmse(img1, img2, mask):
     if img1.shape != img2.shape:
         print("shape of img1 and img2: %s and %s" % (img1.shape, img2.shape))
         raise ValueError("the size of img 1 and img 2 do not match")
-
     mse = np.sum(((img1-img2)**2)*mask[...,np.newaxis]) \
           /(mask.sum()*img1.shape[-1])
     return np.sqrt(mse)
 
+def compute_rmse_median(img1, img2, mask):
+    if img1.shape != img2.shape:
+        print("shape of img1 and img2: %s and %s" % (img1.shape, img2.shape))
+        raise ValueError("the size of img 1 and img 2 do not match")
 
-def compute_mssim(img1, img2, mask):
+    # compute the voxel-wise average error:
+    rmse_vol = np.sqrt(np.sum(((img1 - img2) ** 2) * mask[..., np.newaxis], axis=-1) \
+                  / img1.shape[-1])
+
+    return np.median(rmse_vol[rmse_vol!=0])
+
+
+def compute_mssim(img1, img2, mask, volume=False):
     if img1.shape != img2.shape:
         print("shape of img1 and img2: %s and %s" % (img1.shape, img2.shape))
         raise ValueError("the size of img 1 and img 2 do not match")
@@ -124,16 +181,17 @@ def compute_mssim(img1, img2, mask):
     img2=img2*mask[...,np.newaxis]
 
     m, S = ssim(img1,img2,
-                dynamic_range=np.max(img1)-np.min(img1[mask]),
+                dynamic_range=np.max(img1[mask])-np.min(img1[mask]),
                 gaussian_weights=True,
-                sigma=1.5,
+                sigma= 2.5, #1.5,
                 use_sample_covariance=False,
                 full=True,
                 multichannel=True)
-
-    mssim = np.sum(S * mask[..., np.newaxis]) / (mask.sum() * img1.shape[-1])
-
-    return mssim
+    if volume:
+        return S * mask[..., np.newaxis]
+    else:
+        mssim = np.sum(S * mask[..., np.newaxis]) / (mask.sum() * img1.shape[-1])
+        return mssim
 
 
 def compute_psnr(img1, img2, mask):

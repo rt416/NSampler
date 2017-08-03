@@ -350,3 +350,35 @@ def clip_image(img, bkgv=0.0, tail_perc=0.1, head_perc=99.9):
         inp_perc_head = np.percentile(v_ch, head_perc)
         img[...,ch_idx][brain_mask]=np.clip(v_ch, inp_perc_tail, inp_perc_head)
     return img
+
+
+def save_stats(csv_file, subject, headers, stats):
+    """
+    Args:
+        csv_file (str) : the whole path to the csv file
+        subject (str): subject ID
+        headers (list): list of metrics e.g. ['subject name', 'rmse ', 'median', 'psnr', 'mssim']
+        stats (list): the errors for the corresponding subject e.g [1,2,3,4]
+
+    """
+    # if csv file exists, just update with the new entries:
+    assert len(headers) == len(subject + stats)
+
+    if os.path.exists(csv_file):
+        with open(csv_file, 'rb') as f:
+            r = csv.reader(f)
+            rows = list(r)
+            rows_new = []
+            for row in rows:
+                if row[0] == subject: # update for the corresponding subject
+                    rows_new.append(subject+stats)
+                else:
+                    rows_new.append(row)
+    else:
+        rows_new = [headers, subject+stats]
+
+    # save it to a csv file:
+    with open(csv_file, 'wb') as g:
+        w = csv.writer(g)
+        for row in rows_new:
+            w.writerow(row)

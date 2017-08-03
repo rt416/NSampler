@@ -102,18 +102,53 @@ def compare_images(img_gt, img_est, mask):
     m = compute_rmse(img_gt,img_est,mask)
     p = compute_psnr(img_gt, img_est, mask)
     s = compute_mssim(img_gt,img_est,mask)
-    # print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
+    #print("RMSE: %.10f \nPSNR: %.6f \nSSIM: %.6f" % (m,p,s))
     return m,p,s
 
+# Compute statistics:
+
+def compare_images_and_get_stats(img_gt, img_est, mask, name=''):
+    """Compute RMSE, PSNR, MSSIM:
+    Args:
+         img_gt: (4D numpy array with the last dim being channels)
+         ground truth volume
+         img_est: (4D numpy array) predicted volume
+         mask: (3D array) the mask whose the tissue voxles
+         are labelled as 1 and the rest as 0
+     Returns:
+         m : RMSE
+         m2: median of voxelwise RMSE
+         p: PSNR
+         s: MSSIM
+     """
+    m = compute_rmse(img_gt, img_est, mask)
+    m2= compute_rmse_median(img_gt, img_est, mask)
+    p = compute_psnr(img_gt, img_est, mask)
+    s = compute_mssim(img_gt, img_est, mask)
+    print("Errors (%s)"
+          "\nRMSE: %.10f \nMedian: %.10f "
+          "\nPSNR: %.6f \nSSIM: %.6f" % (name, m, m2, p, s))
+
+    return m, m2, p, s
 
 def compute_rmse(img1, img2, mask):
     if img1.shape != img2.shape:
         print("shape of img1 and img2: %s and %s" % (img1.shape, img2.shape))
         raise ValueError("the size of img 1 and img 2 do not match")
-
     mse = np.sum(((img1-img2)**2)*mask[...,np.newaxis]) \
           /(mask.sum()*img1.shape[-1])
     return np.sqrt(mse)
+
+def compute_rmse_median(img1, img2, mask):
+    if img1.shape != img2.shape:
+        print("shape of img1 and img2: %s and %s" % (img1.shape, img2.shape))
+        raise ValueError("the size of img 1 and img 2 do not match")
+
+    # compute the voxel-wise average error:
+    rmse_vol = np.sqrt(np.sum(((img1 - img2) ** 2) * mask[..., np.newaxis], axis=-1) \
+                  / img1.shape[-1])
+
+    return np.median(rmse_vol[rmse_vol!=0])
 
 
 def compute_mssim(img1, img2, mask):

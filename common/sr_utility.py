@@ -179,7 +179,7 @@ def standardise_data(X_train, Y_train, option='default'):
 def save_as_nifti(recon_file, recon_dir, gt_dir,
                   save_as_ijk=False,
                   no_channels=6,
-                  gt_header = 'dt_b1000_'):
+                  gt_header = None):
     """Save each estimated dti separately as a nifti file for visualisation.
     Args:
         recon_file: file name of estimated DTI volume (4D numpy array)
@@ -636,5 +636,3 @@ def visualise_patches(slices,
         fig.savefig(save_name, bbox_inches='tight')
         print("Saving "+ save_name)
 
-
-def compute_stats():

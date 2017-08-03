@@ -5,11 +5,14 @@ import numpy as np
 import tensorflow as tf
 import os
 import sys
+import nibabel as nib
 
 from train import get_output_radius
 import common.sr_utility as sr_utility
 from common.sr_utility import forward_periodic_shuffle
-from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference, dt_trim, dt_pad, clip_image
+from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference, dt_trim, dt_pad, clip_image, save_stats
+from common.sr_analysis import compare_images_and_get_stats, compute_differencemaps
+
 
 # Main reconstruction code:
 def sr_reconstruct(opt):
@@ -33,6 +36,7 @@ def sr_reconstruct(opt):
     if not('output_file_name' in opt):
         opt['output_file_name'] = 'dt_recon_b1000.npy'
 
+    # ------------------------- Perform synthesis -----------------------------
     # Load the input low-res DT image:
     input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
     print('... loading the test low-res image ...')
@@ -45,30 +49,35 @@ def sr_reconstruct(opt):
     #     dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
     #                                             bkgv=opt["background_value"])
 
-    # clear the graph (is it necessary?)
+    # clear the graph:
     tf.reset_default_graph()
 
     # Reconstruct:
-    start_time = timeit.default_timer()
     nn_dir = name_network(opt)
-    print('\nReconstruct high-res dti with the network: \n%s.' % nn_dir)
-    dt_hr, dt_std = super_resolve(dt_lowres, opt)
-    end_time = timeit.default_timer()
-    print('\nIt took %f secs. \n' % (end_time - start_time))
+    print('\n ... reconstructing high-res dti with network: \n%s.' % nn_dir)
 
-    # Post-processing:
-    if opt["postprocess"]:
-        # Clipping:
-        print('... post-processing the output image')
-        dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:],
-                                               bkgv=opt["background_value"],
-                                               tail_perc=0.01, head_perc=99.99)
-
-    # Save stuff:
-    if opt["not_save"]:
-        rmse, rmse_whole = 10**10, 10**10
+    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+    if os.path.exists(output_file):
+        print("Reconstruction already exists: " + output_file)
+        print("Move on. ")
     else:
-        output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+        start_time = timeit.default_timer()
+        dt_hr, dt_std = super_resolve(dt_lowres, opt)
+        end_time = timeit.default_timer()
+        print('\nIt took %f secs. \n' % (end_time - start_time))
+
+        # Post-processing:
+        if opt["postprocess"]:
+            # Clipping:
+            print('... post-processing the output image')
+            dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:], bkgv=opt["background_value"], tail_perc=0.01, head_perc=99.99)
+
+    # ---------------------------  Save stuff --------------------------------
+    if opt["not_save"]:
+        print("Selected not to save the outputs")
+    elif os.path.exists(output_file):
+        print("Reconstruction already exists: " + output_file)
+    else:
         print('... saving MC-estimated high-res volume and its uncertainty as %s' % output_file)
         if not (os.path.exists(os.path.join(recon_dir, subject,nn_dir))):
             os.makedirs(os.path.join(recon_dir, subject, nn_dir))
@@ -97,36 +106,45 @@ def sr_reconstruct(opt):
                                      no_channels=no_channels,
                                      gt_header=gt_header)
 
-    # Compute stats (e.g. errors, etc :
+    # ------------- Compute stats (e.g. errors, difference maps, etc) ---------
     print('\nCompute the evaluation statistics ...')
-    mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
-    mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
-    rmse, rmse_whole, rmse_volume \
-        = sr_utility.compute_rmse(recon_file=recon_file,
-                                  recon_dir=os.path.join(recon_dir,subject,nn_dir),
-                                  gt_dir=os.path.join(gt_dir,subject,subpath),
-                                  mask_choose=True,
-                                  mask_dir=mask_dir_local,
-                                  mask_file=mask_file,
-                                  no_channels=no_channels,
-                                  gt_header=gt_header)
 
-    print('\nRMSE (no edge) is %f.' % rmse)
-    print('\nRMSE (whole) is %f.' % rmse_whole)
+    # load the ground truth image and mask:
+    dt_gt = sr_utility.read_dt_volume(nameroot=os.path.join(gt_dir, subject, subpath, gt_header), no_channels=no_channels)
+    if os.path.exists(output_file): dt_hr = np.load(output_file)
+    mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"], 5)
+    mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"], "masks")
 
-    # Save the RMSE on the chosen test subject:
-    print('Save it to settings.skl')
-    network_dir = define_checkpoint(opt)
-    model_details = pkl.load(open(os.path.join(network_dir, 'settings.pkl'), 'rb'))
-    if not('subject_rmse' in model_details):
-        model_details['subject_rmse'] = {opt['subject']:rmse}
+    if os.path.exists(os.path.join(mask_dir_local, mask_file)):
+        img = nib.load(os.path.join(mask_dir_local, mask_file))
+        mask_interior = img.get_data() == 0
+        mask = dt_hr[:, :, :, 0] == 0
+        mask_edge = mask * (1- mask_interior)
+
+        m, m2, p, s = compare_images_and_get_stats(dt_gt[...,2:], dt_hr[...,2:], mask, "whole")
+        m_int, m2_int, p_int, s_int = compare_images_and_get_stats(dt_gt[...,2:], dt_hr[...,2:], mask_interior, "interior")
+        m_ed, m2_ed, p_ed, s_ed = compare_images_and_get_stats(dt_gt[...,2:], dt_hr[...,2:], mask_edge, "edge")
+
+        csv_file = os.path.join(define_checkpoint(opt), 'stats.csv')
+        headers = ['subject',
+                   'RMSE(interior)', 'RMSE(edge)', 'RMSE(whole)',
+                   'Median(interior)', 'Median(edge)', 'Median(whole)',
+                   'PSNR(interior)', 'PSNR(edge)', 'PSNR(whole)',
+                   'MSSIM(interior)', 'MSSIM(edge)', 'MSSIM(whole)']
+        stats = [m_int, m_ed, m, m2_int, m2_ed, m2, p_int, p_ed, p, s_int, s_ed, s]
     else:
-        model_details['subject_rmse'].update({opt['subject']:rmse})
+        print("Mask for the interior region NOT FOUND")
+        mask = dt_hr[:, :, :, 0] == 0
+        m, m2, p, s = compare_images_and_get_stats(dt_gt[...,2:], dt_hr[...,2:], mask, "whole")
+        csv_file = os.path.join(define_checkpoint(opt), 'stats_brain.csv')
+        headers = ['subject','RMSE(whole)', 'Median(whole)','PSNR(whole)','MSSIM(whole)']
+        stats = [m, m2, p, s]
 
-    with open(os.path.join(network_dir, 'settings.pkl'), 'wb') as fp:
-        pkl.dump(model_details, fp, protocol=pkl.HIGHEST_PROTOCOL)
+    # Save the stats to a CSV file:
+    save_stats(csv_file, opt['subject'], headers, stats)
 
-    return rmse, rmse_whole
+    # Compute difference maps and save:
+    compute_differencemaps(dt_gt[...,2:], dt_hr[...,2:], mask, output_file, no_channels)
 
 
 # Reconstruct with shuffling:
@@ -281,14 +299,10 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     input_file_name = opt['input_file_name']
     gt_header = opt['gt_header']
 
-    # input_file_name, = opt['input_file_name'].split('{')
-    # gt_header, _ = opt['gt_header'].split('{')
-    if not('output_file_name' in opt):
-        opt['output_file_name'] = 'dt_recon_b1000.npy'
-
+    # ------------------------- Perform synthesis -----------------------------
     # Load the input low-res DT image:
     input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
-    print('... loading the test low-res image ...')
+    print('\n ... loading the test low-res image ...')
     dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
 
     if not (dataset_type == 'life' or dataset_type == 'hcp_abnormal' or dataset_type == 'hcp_abnormal_map' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey' or dataset_type == 'hcp1_map' or dataset_type == 'hcp2_map' ):
@@ -298,64 +312,118 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
 
     # Reconstruct:
     tf.reset_default_graph()
-    start_time = timeit.default_timer()
-    print('\nReconstructing high-res dti \n')
-    dt_hr, dt_std = super_resolve(dt_lowres, opt)
+    print('\n ... reconstructing high-res dti \n')
     nn_dir = name_network(opt)
-    end_time = timeit.default_timer()
-    print('\nIt took %f secs. \n' % (end_time - start_time))
-
-    # Post-processing:
-    if opt["postprocess"]:
-        # Clipping:
-        print('... post-processing the output image')
-        dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:],
-                                               bkgv=opt["background_value"],
-                                               tail_perc=0.01, head_perc=99.99)
-
-    # Saving stuff:
     output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
-    print('... saving MC-estimated high-res volume as %s' % output_file)
-    if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
-        os.makedirs(os.path.join(recon_dir, subject, nn_dir))
 
-    # Save predicted high-res brain volume:
-    np.save(output_file, dt_hr)
-    print('\nSave each super-resolved channel separately as a nii file ...')
-    __, recon_file = os.path.split(output_file)
-    sr_utility.save_as_nifti(recon_file,
-                             os.path.join(recon_dir,subject,nn_dir),
-                             os.path.join(gt_dir,subject,subpath),
-                             no_channels=no_channels,
-                             gt_header=gt_header)
+    if os.path.exists(output_file):
+        print("reconstruction already exists: " + output_file)
+        print("move on. ")
+    else:
+        start_time = timeit.default_timer()
+        dt_hr, dt_std = super_resolve(dt_lowres, opt)
+        end_time = timeit.default_timer()
+        print('\nIt took %f secs. \n' % (end_time - start_time))
 
-    # Save uncertainty for probabilistic models:
-    if opt['hetero'] or opt['vardrop']:
-        uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
-        print('... saving its uncertainty as %s' % uncertainty_file)
-        np.save(uncertainty_file, dt_std)
-        __, std_file = os.path.split(uncertainty_file)
-        print('\nSave the uncertainty separately for respective channels as a nii file ...')
-        sr_utility.save_as_nifti(std_file,
-                                 os.path.join(recon_dir, subject, nn_dir),
-                                 os.path.join(gt_dir, subject, subpath),
+        # Post-processing:
+        if opt["postprocess"]:
+            # Clipping:
+            print('... post-processing the output image')
+            dt_hr[..., -no_channels:] = clip_image(dt_hr[..., -no_channels:],
+                                                   bkgv=opt["background_value"],
+                                                   tail_perc=0.01, head_perc=99.99)
+
+    # ------------------- Saving stuff ------------------------
+    print("\n ... saving stuff")
+    if opt["not_save"]:
+        print("Selected not to save the outputs")
+    elif os.path.exists(output_file):
+        print("reconstruction already exists: " + output_file)
+    else:
+        print('saving MC-estimated high-res volume as %s' % output_file)
+        if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
+            os.makedirs(os.path.join(recon_dir, subject, nn_dir))
+
+        # Save predicted high-res brain volume:
+        np.save(output_file, dt_hr)
+        print('\nsave each super-resolved channel separately as a nii file ...')
+        __, recon_file = os.path.split(output_file)
+        sr_utility.save_as_nifti(recon_file, os.path.join(recon_dir,subject,nn_dir),
+                                 os.path.join(gt_dir,subject,subpath),
                                  no_channels=no_channels,
-                                 gt_header=gt_header)
+                                 save_as_ijk=opt['save_as_ijk'],
+                                 gt_header=opt['gt_header'])
 
-    # todo: add a proper evaluation function here and save it to a common cfv file.
-    # # Compute the reconstruction error:
-    # print('\nCompute the evaluation statistics ...')
-    # mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"],5)
-    # mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"],"masks")
-    # rmse, rmse_whole, rmse_volume \
-    #     = sr_utility.compute_rmse(recon_file=recon_file,
-    #                               recon_dir=os.path.join(recon_dir,subject,nn_dir),
-    #                               gt_dir=os.path.join(gt_dir,subject,subpath),
-    #                               mask_choose=True,
-    #                               mask_dir=mask_dir_local,
-    #                               mask_file=mask_file,
-    #                               no_channels=no_channels,
-    #                               gt_header=gt_header)
-    #
-    # print('\nRMSE (no edge) is %f.' % rmse)
-    # print('\nRMSE (whole) is %f.' % rmse_whole)
+        # Save uncertainty for probabilistic models:
+        if opt['hetero'] or opt['vardrop']:
+            uncertainty_file = os.path.join(recon_dir, subject, nn_dir, opt['output_std_file_name'])
+            print('... saving its uncertainty as %s' % uncertainty_file)
+            np.save(uncertainty_file, dt_std)
+            __, std_file = os.path.split(uncertainty_file)
+            print('\nsave the uncertainty separately for respective channels as a nii file ...')
+            sr_utility.save_as_nifti(std_file,
+                                     os.path.join(recon_dir, subject, nn_dir),
+                                     os.path.join(gt_dir, subject, subpath),
+                                     no_channels=no_channels,
+                                     save_as_ijk=opt['save_as_ijk'],
+                                     gt_header=opt['gt_header'])
+
+    # ----------------- Compute stats ---------------------------
+    print('\n ... compute the evaluation statistics ...')
+
+    if opt['gt_available']:
+        # load the ground truth image and mask:
+        dt_gt = sr_utility.read_dt_volume(nameroot=os.path.join(gt_dir, subject, subpath, gt_header), no_channels=no_channels)
+        if os.path.exists(output_file): dt_hr = np.load(output_file)
+        mask_file = "mask_us={:d}_rec={:d}.nii".format(opt["upsampling_rate"], 5)
+        mask_dir_local = os.path.join(opt["mask_dir"], subject, opt["mask_subpath"], "masks")
+
+        if os.path.exists(os.path.join(mask_dir_local, mask_file)):
+            img = nib.load(os.path.join(mask_dir_local, mask_file))
+            mask_interior = img.get_data() == 0
+            mask = dt_hr[:, :, :, 0] == 0
+            mask_edge = mask * (1 - mask_interior)
+
+            m, m2, p, s = compare_images_and_get_stats(dt_gt[..., 2:], dt_hr[..., 2:], mask, "whole")
+            m_int, m2_int, p_int, s_int = compare_images_and_get_stats(dt_gt[..., 2:], dt_hr[..., 2:], mask_interior, "interior")
+            m_ed, m2_ed, p_ed, s_ed = compare_images_and_get_stats(dt_gt[..., 2:], dt_hr[..., 2:], mask_edge, "edge")
+
+            csv_file = os.path.join(define_checkpoint(opt), 'stats.csv')
+            headers = ['subject',
+                       'RMSE(interior)', 'RMSE(edge)', 'RMSE(whole)',
+                       'Median(interior)', 'Median(edge)', 'Median(whole)',
+                       'PSNR(interior)', 'PSNR(edge)', 'PSNR(whole)',
+                       'MSSIM(interior)', 'MSSIM(edge)', 'MSSIM(whole)']
+            stats = [m_int, m_ed, m, m2_int, m2_ed, m2, p_int, p_ed, p, s_int,
+                     s_ed, s]
+        else:
+            print("Mask for the interior region NOT FOUND")
+            mask = dt_hr[:, :, :, 0] == 0
+            m, m2, p, s = compare_images_and_get_stats(dt_gt[..., 2:], dt_hr[..., 2:], mask, "whole")
+            csv_file = os.path.join(define_checkpoint(opt), 'stats_brain.csv')
+            headers = ['subject', 'RMSE(whole)', 'Median(whole)', 'PSNR(whole)', 'MSSIM(whole)']
+            stats = [m, m2, p, s]
+
+        # Save the stats to a CSV file:
+        save_stats(csv_file, opt['subject'], headers, stats)
+
+        # Compute difference maps and save:
+        compute_differencemaps(dt_gt[..., 2:], dt_hr[..., 2:], mask, output_file, no_channels)
+
+    else:
+        print(" Ground truth data not available. Finished.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
