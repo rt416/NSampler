@@ -369,11 +369,18 @@ def save_stats(csv_file, subject, headers, stats):
             r = csv.reader(f)
             rows = list(r)
             rows_new = []
+
+            # copy the old table and update if necessary:
             for row in rows:
                 if row[0] == subject: # update for the corresponding subject
                     rows_new.append([subject]+stats)
                 else:
                     rows_new.append(row)
+
+            # add the new entry if it does not exist in the old table.
+            if not(subject in [row[0] for row in rows_new]):
+                rows_new.append([subject] + stats)
+
     else:
         rows_new = [headers, [subject]+stats]
 
