@@ -33,34 +33,29 @@ def sr_reconstruct(opt):
     no_channels = opt['no_channels']
     input_file_name, _ = opt['input_file_name'].split('{')
     gt_header, _ = opt['gt_header'].split('{')
-    if not('output_file_name' in opt):
-        opt['output_file_name'] = 'dt_recon_b1000.npy'
+    nn_dir = name_network(opt)
+    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
 
     # ------------------------- Perform synthesis -----------------------------
-    # Load the input low-res DT image:
-    input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
-    print('... loading the test low-res image ...')
-    dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
-
-    # Seems to aggravate performance, so currently ignored.
-    # Clip the input DTI:
-    # if opt["is_clip"]:
-    #     print('... clipping the input image')
-    #     dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
-    #                                             bkgv=opt["background_value"])
-
-    # clear the graph:
-    tf.reset_default_graph()
-
-    # Reconstruct:
-    nn_dir = name_network(opt)
     print('\n ... reconstructing high-res dti with network: \n%s.' % nn_dir)
-
-    output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
     if os.path.exists(output_file):
         print("Reconstruction already exists: " + output_file)
         print("Move on. ")
     else:
+        # Load the input low-res DT image:
+        print('... loading the test low-res image ...')
+        input_file = os.path.join(gt_dir, subject, subpath, input_file_name)
+        dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
+
+        # Seems to aggravate performance, so currently ignored.
+        # Clip the input DTI:
+        # if opt["is_clip"]:
+        #     print('... clipping the input image')
+        #     dt_lowres[...,-no_channels:]=clip_image(dt_lowres[...,-no_channels:],
+        #                                             bkgv=opt["background_value"])
+
+        # Reconstruct:
+        tf.reset_default_graph()
         start_time = timeit.default_timer()
         dt_hr, dt_std = super_resolve(dt_lowres, opt)
         end_time = timeit.default_timer()
@@ -298,28 +293,28 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     no_channels = opt['no_channels']
     input_file_name = opt['input_file_name']
     gt_header = opt['gt_header']
-
-    # ------------------------- Perform synthesis -----------------------------
-    # Load the input low-res DT image:
-    input_file = os.path.join(gt_dir,subject,subpath,input_file_name)
-    print('\n ... loading the test low-res image ...')
-    dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
-
-    if not (dataset_type == 'life' or dataset_type == 'hcp_abnormal' or dataset_type == 'hcp_abnormal_map' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey' or dataset_type == 'hcp1_map' or dataset_type == 'hcp2_map' ):
-        dt_lowres = sr_utility.resize_DTI(dt_lowres, opt['upsampling_rate'])
-    else:
-        print('HCP dataset: no need to resample.')
-
-    # Reconstruct:
-    tf.reset_default_graph()
-    print('\n ... reconstructing high-res dti \n')
     nn_dir = name_network(opt)
     output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+
+    # ------------------------- Perform synthesis -----------------------------
+    tf.reset_default_graph()
+    print('\n ... reconstructing high-res dti \n')
 
     if os.path.exists(output_file):
         print("reconstruction already exists: " + output_file)
         print("move on. ")
     else:
+        # Load the input low-res DT image:
+        input_file = os.path.join(gt_dir, subject, subpath, input_file_name)
+        print('\n ... loading the test low-res image ...')
+        dt_lowres = sr_utility.read_dt_volume(input_file, no_channels=no_channels)
+
+        if not (dataset_type == 'life' or dataset_type == 'hcp_abnormal' or dataset_type == 'hcp_abnormal_map' or dataset_type == 'hcp1' or dataset_type == 'hcp2' or dataset_type == 'monkey' or dataset_type == 'hcp1_map' or dataset_type == 'hcp2_map'):
+            dt_lowres = sr_utility.resize_DTI(dt_lowres, opt['upsampling_rate'])
+        else:
+            print('HCP dataset: no need to resample.')
+
+        # Reconstruct:
         start_time = timeit.default_timer()
         dt_hr, dt_std = super_resolve(dt_lowres, opt)
         end_time = timeit.default_timer()
