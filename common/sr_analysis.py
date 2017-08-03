@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import random
-import os
+import os,sys
 import numpy as np
 from skimage.measure import compare_ssim as ssim
 import nibabel as nib
@@ -97,7 +97,9 @@ def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels):
 
     # Compute the L2 deviation and SSIM:
     rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
+    blockPrint()
     ssim_volume = compute_mssim(img_gt, img_est, mask, volume=True)
+    enablePrint()
 
     # Save the error maps:
     save_dir, file_name = os.path.split(outputfile)
@@ -142,10 +144,13 @@ def compare_images_and_get_stats(img_gt, img_est, mask, name=''):
          p: PSNR
          s: MSSIM
      """
+    blockPrint()
     m = compute_rmse(img_gt, img_est, mask)
     m2= compute_rmse_median(img_gt, img_est, mask)
     p = compute_psnr(img_gt, img_est, mask)
     s = compute_mssim(img_gt, img_est, mask)
+    enablePrint()
+
     print("Errors (%s)"
           "\nRMSE: %.10f \nMedian: %.10f "
           "\nPSNR: %.6f \nSSIM: %.6f" % (name, m, m2, p, s))
@@ -327,7 +332,13 @@ def compute_tr_and_fp(img_err, img_std, mask, acceptable_err, no_points=10000):
 
 
 
+####### Misc ######
 
+# Disable printing
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
 
-
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
 
