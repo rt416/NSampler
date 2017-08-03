@@ -4,7 +4,7 @@ import os
 import sys
 import time
 sys.path.append("../2_ESPCN")
-
+import csv
 import cPickle as pkl
 import numpy as np
 import tensorflow as tf
@@ -362,7 +362,7 @@ def save_stats(csv_file, subject, headers, stats):
 
     """
     # if csv file exists, just update with the new entries:
-    assert len(headers) == len(subject + stats)
+    assert len(headers) == len([subject] + stats)
 
     if os.path.exists(csv_file):
         with open(csv_file, 'rb') as f:
@@ -371,11 +371,11 @@ def save_stats(csv_file, subject, headers, stats):
             rows_new = []
             for row in rows:
                 if row[0] == subject: # update for the corresponding subject
-                    rows_new.append(subject+stats)
+                    rows_new.append([subject]+stats)
                 else:
                     rows_new.append(row)
     else:
-        rows_new = [headers, subject+stats]
+        rows_new = [headers, [subject]+stats]
 
     # save it to a csv file:
     with open(csv_file, 'wb') as g:
