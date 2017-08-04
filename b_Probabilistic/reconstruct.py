@@ -36,7 +36,8 @@ def sr_reconstruct(opt):
     nn_dir = name_network(opt)
     output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
     save_stats_dir = os.path.join(opt['stats_dir'], nn_dir)
-
+    if not (os.path.exists(save_stats_dir)):
+        os.makedirs(save_stats_dir)
     # ------------------------- Perform synthesis -----------------------------
     print('\n ... reconstructing high-res dti with network: \n%s.' % nn_dir)
     if os.path.exists(output_file):
@@ -306,7 +307,8 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
     nn_dir = name_network(opt)
     output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
     save_stats_dir = os.path.join(opt['stats_dir'], nn_dir)
-
+    if not (os.path.exists(save_stats_dir)):
+        os.makedirs(save_stats_dir)
     # ------------------------- Perform synthesis -----------------------------
     tf.reset_default_graph()
     print('\n ... reconstructing high-res dti \n')
