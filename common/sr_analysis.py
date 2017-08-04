@@ -93,7 +93,8 @@ def scatter_plot_with_correlation_line(x, y, graph_filepath=None):
 
 
 
-def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels):
+def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels,
+                           save_as_ijk=True, gt_dir=None, gt_header=None):
 
     # Compute the L2 deviation and SSIM:
     rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
@@ -106,8 +107,21 @@ def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels):
     header, ext = os.path.splitext(file_name)
 
     for k in range(no_channels):
-        img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], np.eye(4))
-        img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], np.eye(4))
+        if not (save_as_ijk):
+            print("Fetching affine transform and header from GT.")
+            if no_channels > 7:
+                gt_file = gt_header + '%02i.nii' % (k + 1,)
+                dt_gt = nib.load(os.path.join(gt_dir, gt_file))
+            else:
+                dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))
+
+            affine = dt_gt.get_affine()  # fetch its affine transfomation
+            header = dt_gt.get_header()  # fetch its header
+            img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], affine=affine, header=header)
+            img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], affine=affine, header=header)
+        else:
+            img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], np.eye(4))
+            img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], np.eye(4))
 
         print('... saving the error (RMSE) and SSIM map for ' + str(k + 1) + ' th dt element')
         nib.save(img_1, os.path.join(save_dir, 'error_' + header + '_' + str(k + 3) + '.nii'))

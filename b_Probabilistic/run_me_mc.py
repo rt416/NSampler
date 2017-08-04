@@ -116,16 +116,9 @@ if opt['is_dt_all']:
     opt['output_file_name'] = 'dt_recon_all.npy'
     opt['output_std_file_name'] = 'dt_std_all.npy'
 
-# -------------------- Train and test --------------------------------:
-# if not(os.path.exists(opt['save_dir']+name_network(opt))):
-#     os.makedirs(opt['save_dir'] + name_network(opt))
-#
-# if opt['disp']:
-#     f = open(opt['save_dir']+name_network(opt)+'/output.txt', 'w')
-#     # Redirect all the outputs to the text file:
-#     print("Redirecting the output to: "
-#           +opt['save_dir']+name_network(opt)+"/output.txt")
-#     sys.stdout = f
+# Others:
+opt['save_as_ijk'] = False
+opt['gt_available'] = True
 
 # Print options
 for key, val in opt.iteritems():
@@ -135,11 +128,14 @@ for key, val in opt.iteritems():
 train_cnn(opt)
 
 
-# Reconstruct:
+# RECONSTRUCT:
 subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
 for subject in subjects_list:
     opt['subject'] = subject
     reconstruct.sr_reconstruct(opt)
+
+# STATS:
+
 
 # subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
 # rmse_average = 0

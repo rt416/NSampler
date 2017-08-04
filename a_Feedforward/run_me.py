@@ -108,18 +108,12 @@ if opt['is_dt_all']:
     opt['input_file_name'] = 'dt_all_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
     opt['gt_header'] = 'dt_all_{:d}.nii'
 
+# Others:
+opt['save_as_ijk'] = False
+opt['gt_available'] = True
 
-# -------------------- Train and test --------------------------------:
-# if not(os.path.exists(opt['save_dir']+name_network(opt))):
-#     os.makedirs(opt['save_dir'] + name_network(opt))
-#
-# if opt['disp']:
-#     f = open(opt['save_dir']+name_network(opt)+'/output.txt', 'w')
-#     # Redirect all the outputs to the text file:
-#     print("Redirecting the output to: "
-#           +opt['save_dir']+name_network(opt)+"/output.txt")
-#     sys.stdout = f
 
+# ------------------------------ START ---------------------------------------
 # Print options
 for key, val in opt.iteritems():
     print("{}: {}".format(key, val))
@@ -128,16 +122,26 @@ for key, val in opt.iteritems():
 train_cnn(opt)
 
 
-# Reconstruct:
+# RECONSTRUCT:
 subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
-rmse_average = 0
-rmse_whole_average = 0
 for subject in subjects_list:
     opt['subject'] = subject
-    rmse, rmse_whole = reconstruct.sr_reconstruct(opt)
-    rmse_average += rmse
-    rmse_whole_average += rmse_whole
-print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
-      % (rmse_average / len(subjects_list),))
-print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
-      % (rmse_whole_average / len(subjects_list),))
+    reconstruct.sr_reconstruct(opt)
+
+# STATS:
+
+
+
+# subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
+# rmse_average = 0
+# rmse_whole_average = 0
+# for subject in subjects_list:
+#     opt['subject'] = subject
+#     rmse, rmse_whole = reconstruct.sr_reconstruct(opt)
+#     rmse_average += rmse
+#     rmse_whole_average += rmse_whole
+# print('\n Average RMSE (interior) on Diverse dataset is %.15f.'
+#       % (rmse_average / len(subjects_list),))
+# print('\n Average RMSE (whole) on Diverse dataset is %.15f.'
+#       % (rmse_whole_average / len(subjects_list),))
+
