@@ -116,9 +116,9 @@ def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels,
                 dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(k + 1) + '.nii'))
 
             affine = dt_gt.get_affine()  # fetch its affine transfomation
-            header = dt_gt.get_header()  # fetch its header
-            img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], affine=affine, header=header)
-            img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], affine=affine, header=header)
+            nii_header = dt_gt.get_header()  # fetch its header
+            img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], affine=affine, header=nii_header)
+            img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], affine=affine, header=nii_header)
         else:
             img_1 = nib.Nifti1Image(rmse_volume[:, :, :, k], np.eye(4))
             img_2 = nib.Nifti1Image(ssim_volume[:, :, :, k], np.eye(4))
