@@ -106,6 +106,8 @@ def sr_reconstruct(opt):
 
     # ------------- Compute stats (e.g. errors, difference maps, etc) ---------
     print('\nCompute the evaluation statistics ...')
+    if not (os.path.exists(opt["recon_dir"])):
+        os.makedirs(opt["stats_dir"])
 
     # load the ground truth image and mask:
     dt_gt = sr_utility.read_dt_volume(nameroot=os.path.join(gt_dir, subject, subpath, gt_header), no_channels=no_channels)
