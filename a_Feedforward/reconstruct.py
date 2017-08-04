@@ -33,6 +33,7 @@ def sr_reconstruct(opt):
     gt_header, _ = opt['gt_header'].split('{')
     nn_dir = name_network(opt)
     output_file = os.path.join(recon_dir, subject, nn_dir, opt['output_file_name'])
+    save_stats_dir = os.path.join(opt['stats_dir'], nn_dir)
 
     # ------------------------- Perform synthesis -----------------------------
     print('\n ... reconstructing high-res dti with network: \n%s.' % nn_dir)
@@ -120,23 +121,21 @@ def sr_reconstruct(opt):
                                                                mask_edge,
                                                                "edge")
 
-        csv_file = os.path.join(define_checkpoint(opt), 'stats.csv')
+        csv_file = os.path.join(save_stats_dir, 'stats.csv')
         headers = ['subject',
                    'RMSE(interior)', 'RMSE(edge)', 'RMSE(whole)',
                    'Median(interior)', 'Median(edge)', 'Median(whole)',
                    'PSNR(interior)', 'PSNR(edge)', 'PSNR(whole)',
                    'MSSIM(interior)', 'MSSIM(edge)', 'MSSIM(whole)']
-        stats = [m_int, m_ed, m, m2_int, m2_ed, m2, p_int, p_ed, p, s_int, s_ed,
-                 s]
+        stats = [m_int, m_ed, m, m2_int, m2_ed, m2, p_int, p_ed, p, s_int, s_ed,s]
     else:
         print("Mask for the interior region NOT FOUND")
         mask = dt_hr[:, :, :, 0] == 0
         m, m2, p, s = compare_images_and_get_stats(dt_gt[..., 2:],
                                                    dt_hr[..., 2:], mask,
                                                    "whole")
-        csv_file = os.path.join(define_checkpoint(opt), 'stats_brain.csv')
-        headers = ['subject', 'RMSE(whole)', 'Median(whole)', 'PSNR(whole)',
-                   'MSSIM(whole)']
+        csv_file = os.path.join(save_stats_dir, 'stats_brain.csv')
+        headers = ['subject', 'RMSE(whole)', 'Median(whole)', 'PSNR(whole)', 'MSSIM(whole)']
         stats = [m, m2, p, s]
 
     # Save the stats to a CSV file:

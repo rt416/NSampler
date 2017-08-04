@@ -81,7 +81,8 @@ opt.update({
     "data_dir": os.path.join(base_dir,"data"),
     "save_dir": os.path.join(base_dir,"models"),
     "log_dir": os.path.join(base_dir,"log"),
-    "recon_dir": os.path.join(base_dir,"recon")})
+    "recon_dir": os.path.join(base_dir,"recon"),
+    "stats_dir": os.path.join(base_dir, "stats")})
 
 # Reconstruct:
 key = opt['dataset']
