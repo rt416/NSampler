@@ -363,6 +363,48 @@ def compute_MD_and_FA(dti):
     return md, fa
 
 
+# compute colour FA:
+def compute_CFA(dti):
+    """ Compute the colour coded FA:
+        Args
+            dti (numpy array): dti (2d or 3d) where the last dimension
+            corresponds to dti.
+        Retruns:
+            cfa (numpy array): RGB
+        """
+    if dti.shape[-1] != 6:
+        print('dti_shape[-1] is ' + str(dti.shape[-1]))
+        raise ValueError('the last dimension contains more than 6 values!')
+
+    cfa = np.zeros(dti.shape[:-1] + (3,))
+    fa = np.zeros(dti.shape[:-1])
+
+    XSIZE, YSIZE, ZSIZE, junk = dti.shape
+    for i in range(XSIZE):
+        for j in range(YSIZE):
+            for k in range(ZSIZE):
+                if dti[i, j, k, 0] > 0:
+                    ldt=dti[i, j, k, :]
+                    ldt=make_dt_matrix(ldt[0],ldt[1],ldt[2],ldt[3],ldt[4],ldt[5])
+                    D, V = np.linalg.eigh(ldt)
+                    fa[i,j,k] = np.sqrt(1.5*np.sum((D - D.mean())**2)/np.sum(D**2))
+                    cfa[i, j, k,:] = fa[i,j,k] * np.abs(V[:, D.argmax()])
+    return fa, cfa
+
+
+def make_dt_matrix(d11, d12, d13, d22, d23, d33):
+    """ Makes a diffusion tensor matrix out of the six elements.
+        dt = MakeDT_Matrix(d11, d12, d13, d22, d23, d33)
+        returns the matrix
+        [d11 d12 d13]
+        [d12 d22 d23]
+        [d13 d23 d33]
+    """
+    dt = np.array([[d11, d12, d13],
+                   [d12, d22, d23],
+                   [d13, d23, d33]])
+    return dt
+
 # A more general function for nifti conversion:
 def ndarray_to_nifti(array,nifti_file,ref_file=None):
     """ Save numpy ndarray as .nii

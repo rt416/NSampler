@@ -415,12 +415,15 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
         # Save the stats to a CSV file:
         save_stats(csv_file, opt['subject'], headers, stats)
 
-        # Compute difference maps and save:
-        compute_differencemaps(dt_gt[..., 2:], dt_hr[..., 2:],
-                               mask, output_file, no_channels,
-                               save_as_ijk=opt['save_as_ijk'],
-                               gt_dir=os.path.join(gt_dir, subject, subpath),
-                               gt_header=opt['gt_header'])
+        if opt["not_save"]:
+            print('Difference maps are not saved.')
+        else:
+            # Compute difference maps and save:
+            compute_differencemaps(dt_gt[..., 2:], dt_hr[..., 2:],
+                                   mask, output_file, no_channels,
+                                   save_as_ijk=opt['save_as_ijk'],
+                                   gt_dir=os.path.join(gt_dir, subject, subpath),
+                                   gt_header=opt['gt_header'])
 
     else:
         print(" Ground truth data not available. Finished.")

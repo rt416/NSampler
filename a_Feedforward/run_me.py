@@ -8,6 +8,7 @@ import sys
 
 from common.data_utils import fetch_subjects
 from train import name_network, train_cnn
+import b_Probabilistic.stats as stats
 
 # Settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')
@@ -129,7 +130,7 @@ for subject in subjects_list:
     reconstruct.sr_reconstruct(opt)
 
 # STATS:
-
+stats.compute_stats(opt, subjects_list)
 
 
 # subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
