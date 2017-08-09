@@ -105,10 +105,6 @@ if opt['is_map']:
     opt['gt_header'] = 'h4_all_{:02d}.nii'
     opt['no_channels'] = 22
 
-if opt['is_dt_all']:
-    opt['input_file_name'] = 'dt_all_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
-    opt['gt_header'] = 'dt_all_{:d}.nii'
-
 # Others:
 opt['save_as_ijk'] = False
 opt['gt_available'] = True
