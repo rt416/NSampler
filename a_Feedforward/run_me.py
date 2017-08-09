@@ -1,8 +1,8 @@
 """Ryu: main experiments script"""
 
 import argparse
-import os
-
+import os, sys
+sys.path.append('./..')
 from common.data_utils import fetch_subjects
 import common.stats as stats
 import train
