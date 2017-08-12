@@ -146,11 +146,14 @@ def sr_reconstruct(opt):
     save_stats(csv_file, opt['subject'], headers, stats)
 
     # Compute difference maps and save:
-    compute_differencemaps(dt_gt[...,2:], dt_hr[...,2:],
-                           mask, output_file, no_channels,
-                           save_as_ijk=opt['save_as_ijk'],
-                           gt_dir=os.path.join(gt_dir, subject, subpath),
-                           gt_header=gt_header)
+    if opt["not_save"]:
+        print(" Difference maps not computed")
+    else:
+        compute_differencemaps(dt_gt[...,2:], dt_hr[...,2:],
+                               mask, output_file, no_channels,
+                               save_as_ijk=opt['save_as_ijk'],
+                               gt_dir=os.path.join(gt_dir, subject, subpath),
+                               gt_header=gt_header)
 
 
 # Reconstruct with shuffling:
