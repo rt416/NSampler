@@ -217,7 +217,10 @@ class espcn(object):
 
         # define the loss:
         with tf.name_scope('loss'):
-            cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # (previous ver, 12 Aug):
+            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            #        - tf.reduce_mean(tf.log(y_prec))
+            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
