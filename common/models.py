@@ -473,30 +473,31 @@ class espcn_LRT(object):
         n_f = self.filters_num
         lyr = 0
         kl = 0
+        h = x + 0.0
 
         while lyr < self.layers:
             if lyr == 1:  # second layer with kernel size 1 other layers three
-                x, kl_tmp = conv3d_vardrop_LRT(x, n_f, params, keep_prob, filter_size=1, name='conv_' + str(lyr + 1))
+                h, kl_tmp = conv3d_vardrop_LRT(h, n_f, params, keep_prob, filter_size=1, name='conv_' + str(lyr + 1))
             else:
-                x, kl_tmp = conv3d_vardrop_LRT(x, n_f, params, keep_prob, filter_size=3, name='conv_' + str(lyr + 1))
+                h, kl_tmp = conv3d_vardrop_LRT(h, n_f, params, keep_prob, filter_size=3, name='conv_' + str(lyr + 1))
 
             # double the num of features in the second lyr onward
             if lyr == 0: n_f = int(2 * n_f)
-            net = record_network(net, x)
+            net = record_network(net, h)
 
             # non-linearity + batch norm + noise injection:
-            x = batchnorm(x, phase, on=self.bn, name='BN%d' % len(net))
-            x = tf.nn.relu(x, name='activation%d' % len(net))
+            h = batchnorm(h, phase, on=self.bn, name='BN%d' % len(net))
+            h = tf.nn.relu(h, name='activation%d' % len(net))
             kl += kl_tmp
             lyr += 1
 
         n_f = self.out_channels*(self.upsampling_rate)**3
-        y_pred, kl_tmp = conv3d_vardrop_LRT(x, n_f, params, keep_prob, filter_size=3, name='conv_last')
+        y_pred, kl_tmp = conv3d_vardrop_LRT(h, n_f, params, keep_prob, filter_size=3, name='conv_last')
         kl += kl_tmp
         net = record_network(net, y_pred)
         print_network(net)
 
-        # y_pred = conv3d(x,
+        # y_pred = conv3d(h,
         #                 filter_size=3,
         #                 out_channels=self.out_channels * (self.upsampling_rate) ** 3,
         #                 name='conv_last')
