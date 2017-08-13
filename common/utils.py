@@ -177,6 +177,14 @@ def set_network_config(opt):
                            layers=opt['no_layers'],
                            bn=opt['is_BN'])
 
+    elif opt["method"] == "espcnlrt":
+        assert opt["is_shuffle"]
+        net = models.espcn_LRT(upsampling_rate=opt['upsampling_rate'],
+                               out_channels=opt['no_channels'],
+                               filters_num=opt['no_filters'],
+                               layers=opt['no_layers'],
+                               bn=opt['is_BN'])
+
     elif opt["method"] == "dcespcn" :
         assert opt["is_shuffle"]
         net = models.dcespcn(upsampling_rate=opt['upsampling_rate'],
