@@ -70,6 +70,65 @@ def conv3d(input_batch, out_channels, filter_size=3, stride=1, name='',
     return z
 
 
+def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
+                       filter_size=3, stride=1, determinisitc=False,
+                       name='', summary=True, padding='VALID'):
+    """
+    Return the activation function after 3D convolution with variational dropout
+    and the corresponding KL term.
+    """
+
+    with tf.name_scope(name):
+
+        in_channels = int(input_batch.get_shape()[-1])
+
+        # mean of the filter
+        w = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels])
+        variable_summaries(w, summary)
+        b = tf.Variable(tf.constant(1e-2, dtype=tf.float32, shape=[out_channels]))
+        variable_summaries(b, summary)
+        mean = tf.nn.conv3d(input_batch, w, strides=(1, stride, stride, stride, 1), padding=padding)
+        mean = tf.nn.bias_add(mean, b)
+
+        if determinisitc:  # turn off the multiplicative noise
+            kl = 0
+            return mean, kl
+
+        # std of the filter
+        if params=='weight':  # separate variational parameter for each weight
+            w_init = tf.constant(np.float32(1e-4 * np.ones((filter_size, filter_size, filter_size, in_channels, out_channels))))
+            rho = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels], W_init=w_init, name='rho')
+            alpha = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+            kl = kl_log_uniform_prior(alpha, name='kl')
+            variable_summaries(alpha, summary)
+            std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
+
+        elif params=='channel': # separate variational parameter for each kernel
+            w_init = tf.constant(np.float32(1e-4 * np.ones((1, 1, 1, 1, out_channels))))
+            rho = get_weights([1, 1, 1, 1, out_channels], W_init=w_init, name='rho')
+            alpha = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+            kl = np.prod(get_tensor_shape(w)[:4]) * kl_log_uniform_prior(alpha, name='kl')
+            variable_summaries(alpha, summary)
+            std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
+        elif params == 'layer':  # separate variational parameter for each layer
+            w_init = tf.constant(np.float32(1e-4))
+            rho = get_weights(filter_shape=None, W_init=w_init, name='rho')
+            alpha = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+            kl = np.prod(get_tensor_shape(w)) * kl_log_uniform_prior(alpha, name='kl')
+            variable_summaries(alpha, summary)
+            std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
+
+        elif params=='fixed': # standard Gaussian dropout with fixed parameters.
+            alpha = (1.-keep_prob) / keep_prob
+            std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
+            kl = 0
+
+        # compute:
+        a_sample = mean + std * tf.random_normal(tf.shape(mean))
+        variable_summaries(a_sample, summary)
+
+    return a_sample, kl
+
 def deconv3d(input_batch, out_channels, filter_size=6, stride=2,
              name="deconv", padding='VALID',with_w=False):
 
