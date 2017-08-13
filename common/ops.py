@@ -276,7 +276,7 @@ def kl_log_uniform_prior(varQ, name=None, average=False):
     c1 = 1.16145124
     c2 = -1.50204118
     c3 = 0.58629921
-    kl_mtx = 0.5*tf.log(varQ) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+    kl_mtx = 0.5*tf.log(tf.clip_by_value(varQ,1e-10,1.0)) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
     if average:
         kl_div = tf.reduce_mean(kl_mtx, name=name)
     else:
