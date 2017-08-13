@@ -325,8 +325,12 @@ class espcn(object):
             tf.summary.scalar('mse_sum', mse_sum)
 
             # expected NLL for heteroscedastic network
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
-                         - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
+            # (previous ver, 12 Aug):
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
+
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+                           - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
 
@@ -588,7 +592,9 @@ class dcespcn(object):
 
         # define the loss:
         with tf.name_scope('loss'):
-            cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            #        - tf.reduce_mean(tf.log(y_prec))
+            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
@@ -686,16 +692,17 @@ class dcespcn(object):
 
         with tf.name_scope('expected_negloglikelihood'):
             # expected NLL for mean network
-            mse_sum = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]),
-                                     0)
+            mse_sum = tf.reduce_mean(tf.reduce_sum(tf.square(y - y_pred), [1, 2, 3, 4]), 0)
             mse_sum *= num_data
             tf.summary.scalar('mse_sum', mse_sum)
 
             # expected NLL for heteroscedastic network
-            e_negloglike = tf.reduce_mean(
-                tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
-                           - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]),
-                                            0)
+            # (previous ver, 12 Aug):
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
+
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+                         - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
 
