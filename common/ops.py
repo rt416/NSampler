@@ -72,7 +72,7 @@ def conv3d(input_batch, out_channels, filter_size=3, stride=1, name='',
 
 def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
                        filter_size=3, stride=1, determinisitc=False,
-                       name='', summary=False, padding='VALID'):
+                       name='', summary=True, padding='VALID'):
     """
     Return the activation function after 3D convolution with variational dropout
     and the corresponding KL term.
@@ -277,6 +277,8 @@ def kl_log_uniform_prior(varQ, name=None, average=False):
     c2 = -1.50204118
     c3 = 0.58629921
     kl_mtx = 0.5*tf.log(tf.clip_by_value(varQ,1e-10,1.0)) + c1*varQ + c2*tf.pow(varQ,2) + c3*tf.pow(varQ,3)
+    # (previous version): kl_mtx = 0.5 * tf.log(varQ) + c1 * varQ + c2 * tf.pow(varQ,2) + c3 * tf.pow(varQ, 3)
+
     if average:
         kl_div = tf.reduce_mean(kl_mtx, name=name)
     else:
