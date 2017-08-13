@@ -473,7 +473,6 @@ class espcn_LRT(object):
         n_f = self.filters_num
         lyr = 0
         kl = 0
-        kl_tmp = 0
 
         while lyr < self.layers:
             if lyr == 1:  # second layer with kernel size 1 other layers three
@@ -491,10 +490,15 @@ class espcn_LRT(object):
             kl += kl_tmp
             lyr += 1
 
-        y_pred, kl_tmp = conv3d_vardrop_LRT(x,
-                                            out_channels=self.out_channels*(self.upsampling_rate)**3,
-                                            params=params, keep_prob=keep_prob, filter_size=3, name='conv_last')
-        kl += kl_tmp
+        y_pred = conv3d(x,
+                        filter_size=3,
+                        out_channels=self.out_channels * (self.upsampling_rate) ** 3,
+                        name='conv_last')
+
+        # y_pred, kl_tmp = conv3d_vardrop_LRT(x,
+        #                                     out_channels=self.out_channels*(self.upsampling_rate)**3,
+        #                                     params=params, keep_prob=keep_prob, filter_size=3, name='conv_last')
+        # kl += kl_tmp
         net = record_network(net, y_pred)
         print_network(net)
 
