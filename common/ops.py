@@ -96,9 +96,11 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
 
         # std of the filter
         if params=='weight':  # separate variational parameter for each weight
-            w_init = tf.constant(np.float32(1e-4 * np.ones((filter_size, filter_size, filter_size, in_channels, out_channels))))
-            rho = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels], W_init=w_init, name='rho')
-            alpha = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+            # w_init = tf.constant(np.float32(-0.92989165 * np.ones((filter_size,filter_size,filter_size,in_channels,out_channels))))
+            # w_init = tf.constant(np.float32(1e-4 * np.ones((filter_size, filter_size, filter_size, in_channels, out_channels))))
+            # alpha = tf.minimum(tf.nn.softplus(rho) + 1e-6, 1., name='std')
+            rho = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels], name='rho')
+            alpha = tf.sigmoid(rho, name='var_params')
             kl = kl_log_uniform_prior(alpha, name='kl')
             variable_summaries(alpha, summary)
             std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
