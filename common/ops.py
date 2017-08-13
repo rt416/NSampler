@@ -72,7 +72,7 @@ def conv3d(input_batch, out_channels, filter_size=3, stride=1, name='',
 
 def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
                        filter_size=3, stride=1, determinisitc=False,
-                       name='', summary=True, padding='VALID'):
+                       name='', summary=False, padding='VALID'):
     """
     Return the activation function after 3D convolution with variational dropout
     and the corresponding KL term.
