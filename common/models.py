@@ -492,7 +492,7 @@ class espcn_LRT(object):
             lyr += 1
 
         n_f = self.out_channels*(self.upsampling_rate)**3
-        y_pred, kl_tmp = conv3d_vardrop_LRT(h, n_f, params, keep_prob, filter_size=3, determinisitc=False, name='conv_last')
+        y_pred, kl_tmp = conv3d_vardrop_LRT(h, n_f, params, keep_prob, filter_size=3, determinisitc=True, name='conv_last')
         kl += kl_tmp
         net = record_network(net, y_pred)
         print_network(net)

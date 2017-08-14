@@ -86,12 +86,13 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
         with tf.name_scope('vardrop_mean'):
             w = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels], name='weight_mean')
             # w = tf.Print(w, [w], message=name+":weight mean")
-            variable_summaries(w, summary)
+            variable_summaries(w, summary, name='mean_weight-')
             b = tf.Variable(tf.constant(1e-2, dtype=tf.float32, shape=[out_channels]), name='bias_mean')
-            variable_summaries(b, summary)
+            variable_summaries(b, summary, name='bias-')
             mean = tf.nn.conv3d(input_batch, w, strides=(1, stride, stride, stride, 1), padding=padding)
             mean = tf.nn.bias_add(mean, b)
             # mean = tf.Print(mean,[mean],message=name+":mean activation")
+            variable_summaries(b, summary, name='activation_mean-')
 
         if determinisitc:  # turn off the multiplicative noise
             print("Turning off noise injection ...")
@@ -110,20 +111,28 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
                     # rho= tf.Print(rho, [rho], message=name+':rho')
 
                     alpha = tf.nn.sigmoid(rho)
-                    # alpha = tf.Print(alpha, [alpha], message=name+':alpha rates')
-                    kl = kl_log_uniform_prior(alpha, name='kl')
-                    variable_summaries(alpha, summary)
+                    # alpha = tf.Print(alpha, [alpha, tf.reduce_min(alpha)], message=name+':alpha rates')
+                    variable_summaries(alpha, summary, name='alpha-')
 
-                    w_std = tf.mul(alpha,tf.square(w),name='weight_std')
-                    w_std = tf.Print(w_std, [w_std], message=name+":weight noise ")
+                    kl = kl_log_uniform_prior(alpha, name='kl')
+                    variable_summaries(kl, summary, name='kl-')
+
+                    w_std = tf.mul(alpha,tf.square(w),name='weight_std')\
+                            + 1e-8   # adding a small number for stability
+                    # w_std = tf.Print(w_std, [w_std], message=name+":weight noise ")
+                    variable_summaries(w_std, summary, name='weight_noise-')
+
                     std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), w_std , strides=(1, stride, stride, stride, 1), padding=padding))
                     # std = tf.Print(std, [std], message=name+":activation noise value")
+                    variable_summaries(w_std, summary, name='activation_noise-')
+
                 elif params=='channel': # separate variational parameter for each kernel
-                    w_init = tf.constant(np.float32(1e-4 * np.ones((1, 1, 1, 1, out_channels))))
+                    w_init = tf.constant(np.float32(-2.0794415 * np.ones((1, 1, 1, 1, out_channels))))
                     rho = get_weights([1, 1, 1, 1, out_channels], W_init=w_init, name='rho')
-                    alpha = tf.minimum(tf.nn.softplus(rho), 1., name='std')
+                    alpha = tf.nn.sigmoid(rho)
+                    variable_summaries(alpha, summary, name='alpha-')
                     kl = np.prod(get_tensor_shape(w)[:4]) * kl_log_uniform_prior(alpha, name='kl')
-                    variable_summaries(alpha, summary)
+                    variable_summaries(kl, summary, name='kl-')
                     std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha * tf.square(w), strides=(1, stride, stride, stride, 1), padding=padding))
                 elif params == 'layer':  # separate variational parameter for each layer
                     w_init = tf.constant(np.float32(1e-4))
@@ -144,7 +153,7 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
             with tf.name_scope('vardrop_sample'):
                 a_sample = mean + std * tf.random_normal(tf.shape(mean))
                 # a_sample = tf.Print(a_sample, [a_sample], message=name+":sampled activation")
-                variable_summaries(a_sample, summary)
+                variable_summaries(a_sample, summary, name='activation_sample-')
 
             return a_sample, kl
 
@@ -218,10 +227,10 @@ def get_output_shape_3d(input_batch, filter_shape, strides, out_channels, paddin
     return output_shape
 
 
-def variable_summaries(var, default=False):
+def variable_summaries(var, default=False, name = ''):
     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
     if default:
-        with tf.name_scope('summaries'):
+        with tf.name_scope(name+'summaries'):
             mean = tf.reduce_mean(var)
             tf.summary.scalar('mean', mean)
             with tf.name_scope('stddev'):
