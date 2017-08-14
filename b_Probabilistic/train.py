@@ -260,6 +260,9 @@ def train_cnn(opt):
         # Initialise:
         epoch_init=initialise_model(sess, saver, phase_train, checkpoint_dir, bests, opt)
 
+        # Check for NaN:
+        # check_op = tf.add_check_numerics_ops()
+
         # Start training!
         while (epoch < opt['no_epochs']) and (not done_looping):
 
@@ -279,6 +282,8 @@ def train_cnn(opt):
 
                 # train op and loss
                 current_step = tf.train.global_step(sess, global_step)
+                # print("current step %i" % (current_step,))
+
                 fd_t={x: xt, y: yt, lr: lr_,
                       keep_prob: 1.-opt['dropout_rate'],
                       trade_off:tradeoff_list[epoch],
@@ -286,7 +291,9 @@ def train_cnn(opt):
                       transform: norm_std,
                       num_data: opt['train_noexamples']}
 
-                __, tr_mse, tr_cost = sess.run([train_step, mse, cost],feed_dict=fd_t)
+                # __, __, tr_mse, tr_cost = sess.run([train_step, check_op, mse, cost],feed_dict=fd_t)
+                __, tr_mse, tr_cost = sess.run([train_step, mse, cost], feed_dict=fd_t)
+
                 total_tr_mse_epoch += tr_mse
                 total_tr_cost_epoch += tr_cost
 
