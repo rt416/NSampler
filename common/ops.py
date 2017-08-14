@@ -117,14 +117,16 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
                     kl = kl_log_uniform_prior(alpha, name='kl')
                     variable_summaries(kl, summary, name='kl-')
 
-                    w_std = tf.mul(alpha,tf.square(w),name='weight_std')\
+                    w_std = tf.mul(alpha,tf.square(w),name='weight_std') \
                             + 1e-8   # adding a small number for stability
+
                     # w_std = tf.Print(w_std, [w_std], message=name+":weight noise ")
                     variable_summaries(w_std, summary, name='weight_noise-')
 
-                    std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), w_std , strides=(1, stride, stride, stride, 1), padding=padding))
+                    std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), w_std , strides=(1, stride, stride, stride, 1), padding=padding)) \
+                          + 1e-10  # add a small number for stability
                     # std = tf.Print(std, [std], message=name+":activation noise value")
-                    variable_summaries(w_std, summary, name='activation_noise-')
+                    variable_summaries(std, summary, name='activation_noise-')
 
                 elif params=='channel': # separate variational parameter for each kernel
                     w_init = tf.constant(np.float32(-2.0794415 * np.ones((1, 1, 1, 1, out_channels))))
@@ -148,6 +150,18 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
                     std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), w_std, strides=(1, stride, stride, stride, 1), padding=padding))
                     # std = tf.Print(std, [std], message="var. noise value")
                     kl = 0
+
+                elif params=='separate':
+                    w_init = tf.constant(np.float32(-10.0 * np.ones((filter_size, filter_size, filter_size, in_channels, out_channels))))
+                    rho = get_weights([filter_size, filter_size, filter_size, in_channels, out_channels], W_init=w_init, name='rho')
+                    alpha = tf.nn.sigmoid(rho) + 1e-8
+                    variable_summaries(alpha, summary, name='alpha-')
+
+                    kl = kl_log_uniform_prior(alpha, name='kl')
+                    variable_summaries(kl, summary, name='kl-')
+
+                    std = tf.sqrt(tf.nn.conv3d(tf.square(input_batch), alpha, strides=(1, stride, stride, stride, 1), padding=padding))
+                    variable_summaries(std, summary, name='activation_noise-')
 
             # compute:
             with tf.name_scope('vardrop_sample'):
