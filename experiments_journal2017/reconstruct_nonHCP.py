@@ -13,6 +13,8 @@ parser = configuration.add_arguments_standard(parser=parser)
 parser.add_argument('--base_input_dir', type=str, default='/SAN/vision/hcp/Ryu/non-HCP', help='base directory where the input low-res images are stored')
 parser.add_argument('--base_recon_dir', type=str, default='/SAN/vision/hcp/Ryu/non-HCP/recon', help='base directory where the output images are saved')
 parser.add_argument('--dataset', type=str, default='tumour', help='options availble: prisma, tumoour, ms, hcp1, hcp2')
+parser.add_argument('--subject', type=str, default=None, help='subject name')
+
 arg = parser.parse_args()
 opt = vars(arg)
 
@@ -87,7 +89,11 @@ opt.update({
 # Reconstruct:
 key = opt['dataset']
 print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
-opt['subject'] = non_HCP[key]['subdir']
+if opt['subject'] is not None:
+    opt['subject'] = non_HCP[key]['subdir']
+else:
+    print("Subject ID specified: %s " %(opt['subject'],))
+
 opt['gt_dir'] = os.path.join(opt['base_input_dir'])
 opt['recon_dir'] = os.path.join(opt['base_recon_dir'], opt['experiment'])
 
