@@ -90,9 +90,9 @@ opt.update({
 key = opt['dataset']
 print('Reconstructing: %s' %(non_HCP[key]['subdir'],))
 if opt['subject'] is not None:
-    opt['subject'] = non_HCP[key]['subdir']
+    print("Subject ID specified: %s " % (opt['subject'],))
 else:
-    print("Subject ID specified: %s " %(opt['subject'],))
+    opt['subject'] = non_HCP[key]['subdir']
 
 opt['gt_dir'] = os.path.join(opt['base_input_dir'])
 opt['recon_dir'] = os.path.join(opt['base_recon_dir'], opt['experiment'])
