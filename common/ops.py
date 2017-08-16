@@ -59,19 +59,19 @@ def conv3d(input_batch, out_channels, filter_size=3, stride=1, name='',
     with tf.name_scope(name):
         in_channels=int(input_batch.get_shape()[-1])
         w = get_weights([filter_size,filter_size,filter_size,in_channels,out_channels])
-        variable_summaries(w, summary)
+        variable_summaries(w, summary, name='weights-')
 
         b = tf.Variable(tf.constant(1e-2,dtype=tf.float32,shape=[out_channels]))
-        variable_summaries(b, summary)
+        variable_summaries(b, summary, name='bias-')
 
         z = tf.nn.conv3d(input_batch, w, strides=(1, stride, stride, stride, 1), padding=padding)
         z = tf.nn.bias_add(z, b)
-        variable_summaries(z, summary)
+        variable_summaries(z, summary, name='preactivation-')
     return z
 
 
 def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
-                       filter_size=3, stride=1, determinisitc=False,
+                       filter_size=3, stride=1, deterministic=False,
                        name='', summary=True, padding='VALID'):
     """
     Return the activation function after 3D convolution with variational dropout
@@ -94,7 +94,7 @@ def conv3d_vardrop_LRT(input_batch, out_channels, params, keep_prob,
             # mean = tf.Print(mean,[mean],message=name+":mean activation")
             variable_summaries(b, summary, name='activation_mean-')
 
-        if determinisitc:  # turn off the multiplicative noise
+        if deterministic:  # turn off the multiplicative noise
             print("Turning off noise injection ...")
             kl = 0
             return mean, kl
@@ -206,8 +206,31 @@ def conv_dc_3d(input_old, phase, bn_on, out_channels, filter_size=3,
         input_new = conv3d(input_new, out_channels, filter_size, stride,
                            name='conv1', padding=padding)
         input_old = crop_and_or_concat_basic(input_old, input_new, name='concat1')
-        variable_summaries(input_old, summary)
+        variable_summaries(input_old, summary, 'concatenated_featuremaps-')
     return input_old
+
+
+def conv_dc_3d_LRT(input_old, params, keep_prob, phase, bn_on, out_channels,
+                   filter_size=3, stride=1, deterministic=False,
+                   name='', summary=True, padding='VALID'):
+    """
+    Densely connected layer with local reparametrisation trick:
+    BN => ReLu => Convolution => Concatenate the output feature map with the
+    input feature map.
+    Note: input feature maps are cropped before concatenation.
+    """
+    with tf.variable_scope(name):
+        input_new = batchnorm(input_old, phase, on=bn_on, name='BN1')
+        input_new = tf.nn.relu(input_new)
+
+        input_new, kl = conv3d_vardrop_LRT(input_new, out_channels, params, keep_prob,
+                                           filter_size, stride,
+                                           deterministic=deterministic,
+                                           name='conv1', padding=padding)
+        input_old = crop_and_or_concat_basic(input_old, input_new, name='concat1')
+        variable_summaries(input_old, summary, 'concatenated_featuremaps-')
+    return input_old, kl
+
 
 def get_output_shape_3d(input_batch, filter_shape, strides, out_channels, padding='VALID'):
     """ Get the output shape of 3D de-convolution.
