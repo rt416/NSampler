@@ -111,7 +111,8 @@ def sr_reconstruct(opt):
         img = nib.load(os.path.join(mask_dir_local, mask_file))
         mask_interior = img.get_data() == 0
         mask = dt_hr[:, :, :, 0] == 0
-        mask_edge = mask * (1 - mask_interior)
+        complement_mask_noedge = img.get_data() != 0
+        mask_edge = mask * complement_mask_noedge
 
         m, m2, p, s = compare_images_and_get_stats(dt_gt[..., 2:],
                                                    dt_hr[..., 2:], mask,
