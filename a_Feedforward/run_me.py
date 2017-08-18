@@ -85,7 +85,8 @@ opt.update({
     "data_dir": os.path.join(base_dir,"data"),
     "save_dir": os.path.join(base_dir,"models"),
     "log_dir": os.path.join(base_dir,"log"),
-    "recon_dir": os.path.join(base_dir,"recon")
+    "recon_dir": os.path.join(base_dir,"recon"),
+    "stats_dir": os.path.join(base_dir, "stats")
 })
 
 if not(os.path.exists(base_dir)):
@@ -94,6 +95,7 @@ if not(os.path.exists(base_dir)):
     os.makedirs(opt["save_dir"])
     os.makedirs(opt["log_dir"])
     os.makedirs(opt["recon_dir"])
+    os.makedirs(opt["stats_dir"])
 
 # Mean Apparent Propagator MRI
 opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.nii'
