@@ -229,6 +229,7 @@ def super_resolve(dt_lowres, opt):
                                 for i in np.arange(opt['input_radius']+1,
                                                    xsize-opt['input_radius']+1,
                                                    2*opt['output_radius']+1)]
+
         for i, j, k in recon_indx:
             sys.stdout.flush()
             sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
@@ -237,27 +238,33 @@ def super_resolve(dt_lowres, opt):
                                    (j - opt['input_radius'] - 1):(j + opt['input_radius']),
                                    (k - opt['input_radius'] - 1):(k + opt['input_radius']),
                                     2:comp]
+            ipatch_mask = dt_lowres[(i - opt['output_radius'] - 1):(i + opt['output_radius']),
+                                    (j - opt['output_radius'] - 1):(j + opt['output_radius']),
+                                    (k - opt['output_radius'] - 1):(k + opt['output_radius']),
+                                    0]
 
-            ipatch = ipatch_tmp[np.newaxis, ...]
+            # only process if any pixel in the output patch is in the brain.
+            if np.max(ipatch_mask)>=0:
+                ipatch = ipatch_tmp[np.newaxis, ...]
 
-            # Predict high-res patch:
-            fd = {x: ipatch,
-                  keep_prob: 1.0-opt['dropout_rate'],
-                  trade_off: 0.0,
-                  phase_train: False}
-            opatch = y_pred.eval(feed_dict=fd)
+                # Predict high-res patch:
+                fd = {x: ipatch,
+                      keep_prob: 1.0-opt['dropout_rate'],
+                      trade_off: 0.0,
+                      phase_train: False}
+                opatch = y_pred.eval(feed_dict=fd)
 
-            if opt["is_shuffle"]:  # only apply shuffling if necessary
-                opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
+                if opt["is_shuffle"]:  # only apply shuffling if necessary
+                    opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
 
-            dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (i + opt['output_radius']),
-                     opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (j + opt['output_radius']),
-                     opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (k + opt['output_radius']),
-                     2:] \
-            = opatch
+                dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (i + opt['output_radius']),
+                         opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (j + opt['output_radius']),
+                         opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                         opt['upsampling_rate'] * (k + opt['output_radius']),
+                         2:] \
+                = opatch
 
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
