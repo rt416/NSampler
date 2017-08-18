@@ -251,39 +251,44 @@ def super_resolve(dt_lowres, opt):
                                    (k - opt['input_radius'] - 1):(k + opt['input_radius']),
                                     2:comp]
 
-            ipatch = ipatch_tmp[np.newaxis, ...]
+            ipatch_mask = dt_lowres[(i - opt['output_radius'] - 1):(i + opt['output_radius']),
+                                    (j - opt['output_radius'] - 1):(j + opt['output_radius']),
+                                    (k - opt['output_radius'] - 1):(k + opt['output_radius']),
+                                    0]
 
-            # Estimate high-res patch and its associeated uncertainty:
-            fd = {x: ipatch,
-                  keep_prob: 1.0-opt['dropout_rate'],
-                  trade_off: 1.0,
-                  phase_train: False}
+            # only process if any pixel in the output patch is in the brain.
+            if np.max(ipatch_mask) >= 0:
+                ipatch = ipatch_tmp[np.newaxis, ...]
 
-            opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
+                # Estimate high-res patch and its associeated uncertainty:
+                fd = {x: ipatch,
+                      keep_prob: 1.0-opt['dropout_rate'],
+                      trade_off: 1.0,
+                      phase_train: False}
 
+                opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
 
+                if opt["is_shuffle"]:  # only apply shuffling if necessary
+                    opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
+                    opatch_std = forward_periodic_shuffle(opatch_std, opt['upsampling_rate'])
 
-            if opt["is_shuffle"]:  # only apply shuffling if necessary
-                opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
-                opatch_std = forward_periodic_shuffle(opatch_std, opt['upsampling_rate'])
-
-            dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (i + opt['output_radius']),
-                     opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (j + opt['output_radius']),
-                     opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (k + opt['output_radius']),
-                     2:] \
-            = opatch
-
-            dt_hires_std[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (i + opt['output_radius']),
                          opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (j + opt['output_radius']),
                          opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (k + opt['output_radius']),
                          2:] \
-            = opatch_std
+                = opatch
+
+                dt_hires_std[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (i + opt['output_radius']),
+                             opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (j + opt['output_radius']),
+                             opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (k + opt['output_radius']),
+                             2:] \
+                = opatch_std
 
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
