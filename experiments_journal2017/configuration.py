@@ -40,6 +40,7 @@ def add_arguments_standard(parser):
     parser.add_argument('--params', type=str, default='weight', help='parameters of var. dropout. Other options: layer, channel')
     parser.add_argument('--cov_on', action='store_true', help='want to perform variational dropout on the covariance network?')
     parser.add_argument('--hybrid_on', action='store_true', help='want to perform hybrid training for var + hetero models?')
+    parser.add_argument('--decompose', action='store_true', help='want to decompose uncertainty?')
 
     parser.add_argument('--is_BN', action='store_true', help='want to use batch normalisation?')
     parser.add_argument('-dr', '--dropout_rate', dest='dropout_rate', type=float, default='0.0', help='drop-out rate')

@@ -40,6 +40,8 @@ parser.add_argument('--vardrop', action='store_true', help='want to perform vari
 parser.add_argument('--params', type=str, default='weight', help='parameters of var. dropout. Other options: layer, channel')
 parser.add_argument('--cov_on', action='store_true', help='want to perform variational dropout on the covariance network?')
 parser.add_argument('--hybrid_on', action='store_true', help='want to perform hybrid training for var + hetero models?')
+parser.add_argument('--decompose', action='store_true', help='want to decompose uncertainty?')
+
 
 parser.add_argument('--is_BN', action='store_true', help='want to use batch normalisation?')
 parser.add_argument('-dr', '--dropout_rate', dest='dropout_rate', type=float, default='0.0', help='drop-out rate')
@@ -107,6 +109,9 @@ opt['input_file_name'] = 'dt_b1000_lowres_'+str(opt['upsampling_rate'])+'_{:d}.n
 opt['gt_header'] = 'dt_b1000_{:d}.nii'
 opt['output_file_name'] = 'dt_recon_mc=%i.npy' % opt["mc_no_samples"]
 opt['output_std_file_name'] = 'dt_std_mc=%i.npy' % opt["mc_no_samples"]
+opt['output_var_random_file_name'] = 'var_random_mc=%i.npy' % opt["mc_no_samples"]
+opt['output_var_model_file_name'] = 'var_model_mc=%i.npy' % opt["mc_no_samples"]
+
 
 if opt['is_map']:
     opt['input_file_name'] = 'h4_all_lowres_'+str(opt['upsampling_rate'])+'_{:02d}.nii'

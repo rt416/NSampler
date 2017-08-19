@@ -110,6 +110,8 @@ else:
 
 opt['output_file_name'] = opt['input_file_name']+'x%i_recon_mc=%i.npy' % (opt['upsampling_rate'], opt["mc_no_samples"])
 opt['output_std_file_name'] = 'std_'+opt['output_file_name']
+opt['output_var_random_file_name'] = 'var_random_mc=%i.npy' % opt["mc_no_samples"]
+opt['output_var_model_file_name'] = 'var_model_mc=%i.npy' % opt["mc_no_samples"]
 
 reconstruct.sr_reconstruct_nonhcp(opt, dataset_type=key)
 
