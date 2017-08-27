@@ -376,6 +376,7 @@ def compute_CFA(dti):
         print('dti_shape[-1] is ' + str(dti.shape[-1]))
         raise ValueError('the last dimension contains more than 6 values!')
 
+    dti = np.squeeze(dti)
     cfa = np.zeros(dti.shape[:-1] + (3,))
     # fa = np.zeros(dti.shape[:-1])
 
