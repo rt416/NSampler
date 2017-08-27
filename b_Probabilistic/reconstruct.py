@@ -905,7 +905,7 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
         mean_cfa, base = os.path.splitext(cfa_mean_file)
 
         if opt['gt_header'] is not None:
-            ref_file = os.path.join(gt_dir,subject,subpath, opt['gt_header']+'_1.nii')
+            ref_file = os.path.join(gt_dir,subject,subpath, opt['gt_header']+'1.nii')
         sr_utility.ndarray_to_nifti(dt_md_mean, mean_md + '.nii', ref_file)
         sr_utility.ndarray_to_nifti(dt_fa_mean, mean_fa + '.nii', ref_file)
         sr_utility.ndarray_to_nifti(dt_cfa_mean, mean_cfa + '.nii', ref_file)
