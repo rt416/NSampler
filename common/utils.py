@@ -365,7 +365,7 @@ def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
         if opt['cov_on']:
             for i in range(no_samples):
                 dti_mean, dti_std = sess.run([fn, fn_std], feed_dict=fd)
-                dti_noise = dti_std*np.random.randn(dti_std.shape)
+                dti_noise = dti_std*np.random.normal(size=dti_std.shape)
                 current = dti_mean + dti_noise
                 if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
 
@@ -397,7 +397,7 @@ def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
 
             for i in range(no_samples):
                 # dti_sample = np.random.normal(0, like_std)
-                dti_sample = like_std * np.random.randn(like_std.shape)
+                dti_sample = like_std * np.random.normal(size=like_std.shape)
                 current = 1. * fn.eval(feed_dict=fd) + dti_sample
                 if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
 
