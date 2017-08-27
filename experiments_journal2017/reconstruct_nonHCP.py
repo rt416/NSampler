@@ -113,7 +113,10 @@ opt['output_std_file_name'] = 'std_'+opt['output_file_name']
 opt['output_var_random_file_name'] = 'var_random_mc=%i.npy' % opt["mc_no_samples"]
 opt['output_var_model_file_name'] = 'var_model_mc=%i.npy' % opt["mc_no_samples"]
 
-reconstruct.sr_reconstruct_nonhcp(opt, dataset_type=key)
+if opt['is_mdfacfa']:
+    reconstruct.sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type=key)
+else:
+    reconstruct.sr_reconstruct_nonhcp(opt, dataset_type=key)
 
 
 

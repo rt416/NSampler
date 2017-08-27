@@ -54,6 +54,7 @@ def add_arguments_standard(parser):
     parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=2, help='upsampling rate')
     parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, default=5, help='input radius')
     parser.add_argument('-or', '--output_radius', dest="output_radius", type=int, default=3, help='output radius')
+    parser.add_argument('--is_mdfacfa', action='store_true', help='compute MD, FA and CFA')
 
     # Directories:
     parser.add_argument('--base_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017', help='base directory')

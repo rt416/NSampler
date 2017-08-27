@@ -69,6 +69,7 @@ parser.add_argument('--pad_size', type=int, default=-1, help='size of padding ap
 parser.add_argument('--is_clip', action='store_true', help='want to clip the images (0.1% - 99.9% percentile) for preprocessing?')
 parser.add_argument('--is_shuffle', action='store_true', help='want to reverse shuffle the HR output into LR space?')
 parser.add_argument('--is_dt_all', action='store_true', help='use the dt_all files')
+parser.add_argument('--is_mdfacfa', action='store_true', help='compute MD, FA and CFA')
 
 
 arg = parser.parse_args()
