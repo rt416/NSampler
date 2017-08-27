@@ -315,7 +315,7 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
                 sum_out2 += current ** 2
                 sum_var += current_std ** 2
             mean = sum_out / (1. * no_samples)
-            var_model = sum_out2/(1.*no_samples) - mean**2
+            var_model = np.abs(sum_out2/(1.*no_samples) - mean**2)
             var_random = sum_var / no_samples
 
         else:
@@ -327,7 +327,7 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
                 sum_out2 += current ** 2
 
             mean = sum_out / (1. * no_samples)
-            var_model = sum_out2/(1.*no_samples) - mean**2
+            var_model = np.abs(sum_out2/(1.*no_samples) - mean**2)
             var_random = fn_std.eval(feed_dict=fd)
 
     else:
@@ -340,7 +340,7 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
                 sum_out2 += current ** 2
 
             mean = sum_out / (1.*no_samples)
-            var_model = sum_out2/(1.*no_samples) - mean**2
+            var_model = np.abs(sum_out2/(1.*no_samples) - mean**2)
             var_random = 0.0*mean
         else:
             # raise Exception('The specified method does not support MC inference.')
@@ -350,28 +350,33 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
     return mean, var_model, var_random
 
 
-def mc_inference_MD_CFA_MD(fn, fn_std, fd, opt, sess):
+def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
     """ Compute the mean and std of samples drawn from stochastic function"""
     no_samples = opt['mc_no_samples']
 
+    md_sum_out = 0.0
+    md_sum_out2 = 0.0
+    fa_sum_out = 0.0
+    fa_sum_out2 = 0.0
+    cfa_sum_out = 0.0
+    cfa_sum_out2 = 0.0
+
     if opt['hetero']:
         if opt['cov_on']:
-            md_sum_out = 0.0
-            md_sum_out2 = 0.0
-            fa_sum_out = 0.0
-            fa_sum_out2 = 0.0
-
             for i in range(no_samples):
                 dti_mean, dti_std = sess.run([fn, fn_std], feed_dict=fd)
                 dti_noise = np.random.normal(0, dti_std)
                 current = dti_mean + dti_noise
-                current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+                if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
 
                 md_sample, fa_sample = compute_MD_and_FA(current)
+                cfa_sample = compute_CFA(current)
                 md_sum_out += md_sample
                 md_sum_out2 += md_sample ** 2
                 fa_sum_out += fa_sample
                 fa_sum_out2 += fa_sample ** 2
+                cfa_sum_out += cfa_sample
+                cfa_sum_out2 += cfa_sample **2
 
             md_mean = md_sum_out / no_samples
             md_std = np.sqrt(np.abs(md_sum_out2 -
@@ -382,48 +387,56 @@ def mc_inference_MD_CFA_MD(fn, fn_std, fd, opt, sess):
             fa_std = np.sqrt(np.abs(fa_sum_out2 -
                                     2 * fa_mean * fa_sum_out +
                                     no_samples * fa_mean ** 2) / no_samples)
-        else:
-            md_sum_out = 0.0
-            md_sum_out2 = 0.0
-            fa_sum_out = 0.0
-            fa_sum_out2 = 0.0
 
+            cfa_mean = cfa_sum_out / no_samples
+            cfa_std = np.sqrt(np.abs(cfa_sum_out2 -
+                                     2 * cfa_mean * cfa_sum_out +
+                                     no_samples * cfa_mean ** 2) / no_samples)
+        else:
             like_std = fn_std.eval(feed_dict=fd)  # add noise from the likelihood model.
 
             for i in range(no_samples):
                 dti_sample = np.random.normal(0, like_std)
                 current = 1. * fn.eval(feed_dict=fd) + dti_sample
-                current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+                if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+
                 md_sample, fa_sample = compute_MD_and_FA(current)
+                cfa_sample = compute_CFA(current)
+
                 md_sum_out += md_sample
                 md_sum_out2 += md_sample ** 2
                 fa_sum_out += fa_sample
                 fa_sum_out2 += fa_sample ** 2
+                cfa_sum_out += cfa_sample
+                cfa_sum_out2 += cfa_sample ** 2
 
             md_mean = md_sum_out / no_samples
             md_std = np.sqrt(np.abs(md_sum_out2 -
                                     2 * md_mean * md_sum_out +
                                     no_samples * md_mean ** 2) / no_samples)
-
             fa_mean = fa_sum_out / no_samples
             fa_std = np.sqrt(np.abs(fa_sum_out2 -
                                     2 * fa_mean * fa_sum_out +
                                     no_samples * fa_mean ** 2) / no_samples)
+            cfa_mean = cfa_sum_out / no_samples
+            cfa_std = np.sqrt(np.abs(cfa_sum_out2 -
+                                     2 * cfa_mean * cfa_sum_out +
+                                     no_samples * cfa_mean ** 2) / no_samples)
+
     else:
         if opt['vardrop']:
-            md_sum_out = 0.0
-            md_sum_out2 = 0.0
-            fa_sum_out = 0.0
-            fa_sum_out2 = 0.0
-
             for i in range(no_samples):
                 current = 1. * fn.eval(feed_dict=fd)
-                current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+                if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
                 md_sample, fa_sample = compute_MD_and_FA(current)
+                cfa_sample = compute_CFA(current)
+
                 md_sum_out += md_sample
                 md_sum_out2 += md_sample ** 2
                 fa_sum_out += fa_sample
                 fa_sum_out2 += fa_sample ** 2
+                cfa_sum_out += cfa_sample
+                cfa_sum_out2 += cfa_sample ** 2
 
             md_mean = md_sum_out / no_samples
             md_std = np.sqrt(np.abs(md_sum_out2 -
@@ -434,12 +447,22 @@ def mc_inference_MD_CFA_MD(fn, fn_std, fd, opt, sess):
             fa_std = np.sqrt(np.abs(fa_sum_out2 -
                                     2 * fa_mean * fa_sum_out +
                                     no_samples * fa_mean ** 2) / no_samples)
+            cfa_mean = cfa_sum_out / no_samples
+            cfa_std = np.sqrt(np.abs(cfa_sum_out2 -
+                                     2 * cfa_mean * cfa_sum_out +
+                                     no_samples * cfa_mean ** 2) / no_samples)
         else:
-            # raise Exception('The specified method does not support MC inference.')
-            mean = fn.eval(feed_dict=fd)
-            std = 0.0 * mean  # zero in every entry
+            raise Exception('The specified method does not support MC inference.')
+            current = fn.eval(feed_dict=fd)
+            if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+            md_mean, fa_mean = compute_MD_and_FA(current)
+            cfa_mean = compute_CFA(current)
 
-    return md_mean, md_std, fa_mean, fa_std
+            md_std = 0.0 * md_mean
+            fa_std = 0.0 * fa_mean
+            cfa_std = 0.0 * cfa_mean
+
+    return md_mean, md_std, fa_mean, fa_std, cfa_mean, cfa_std
 
 
 # Pad the volumes:

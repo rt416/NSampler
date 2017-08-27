@@ -377,7 +377,7 @@ def compute_CFA(dti):
         raise ValueError('the last dimension contains more than 6 values!')
 
     cfa = np.zeros(dti.shape[:-1] + (3,))
-    fa = np.zeros(dti.shape[:-1])
+    # fa = np.zeros(dti.shape[:-1])
 
     XSIZE, YSIZE, ZSIZE, junk = dti.shape
     for i in range(XSIZE):
@@ -387,9 +387,10 @@ def compute_CFA(dti):
                     ldt=dti[i, j, k, :]
                     ldt=make_dt_matrix(ldt[0],ldt[1],ldt[2],ldt[3],ldt[4],ldt[5])
                     D, V = np.linalg.eigh(ldt)
-                    fa[i,j,k] = np.sqrt(1.5*np.sum((D - D.mean())**2)/np.sum(D**2))
-                    cfa[i, j, k,:] = fa[i,j,k] * np.abs(V[:, D.argmax()])
-    return fa, cfa
+                    fa = np.sqrt(1.5*np.sum((D - D.mean())**2)/np.sum(D**2))
+                    # fa[i,j,k] = np.sqrt(1.5 * np.sum((D - D.mean()) ** 2) / np.sum(D ** 2))
+                    cfa[i, j, k,:] = fa * np.abs(V[:, D.argmax()])
+    return cfa
 
 
 def make_dt_matrix(d11, d12, d13, d22, d23, d33):

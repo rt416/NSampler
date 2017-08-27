@@ -28,6 +28,7 @@ parser.add_argument('--gt_dir', type=str, default='/SAN/vision/hcp/DCA_HCP.2013.
 parser.add_argument('--subpath', type=str, default='T1w/Diffusion', help='subdirectory in gt_dir')
 parser.add_argument('--mask_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017/hcp_masks', help='directory of segmentation masks')
 parser.add_argument('--mask_subpath', type=str, default='', help='subdirectory in mask_dir')
+parser.add_argument('--mask_name', type=str, default='', help='mask nifti name')
 
 # Model:
 parser.add_argument('-m', '--method', dest='method', type=str, default='espcn', help='network type')
