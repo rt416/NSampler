@@ -552,7 +552,9 @@ def super_resolve_mdfacfa(dt_lowres, opt):
         mask = dt_lowres[:, :, :, 0] != -1
 
         # Apply padding:
+        print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
         dt_lowres, padding = dt_pad(dt_lowres, opt['upsampling_rate'], opt['input_radius'])
+        print("Size of dt_lowres after padding %s: %s", (padding, dt_lowres.shape))
 
         # Prepare high-res MD, FA and CFA skeleton:
         dt_md_mean = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
@@ -561,6 +563,8 @@ def super_resolve_mdfacfa(dt_lowres, opt):
         dt_fa_std = np.zeros(dt_lowres.shape[:-1])  # model uncertainty
         dt_cfa_mean = np.zeros(dt_lowres.shape[:-1]+(3,))
         dt_cfa_std = np.zeros(dt_lowres.shape[:-1]+(3,))
+
+        print("Size of dt_lmv_mean after padding: %s", (dt_md_mean.shape,))
 
         # Downsample:
         dt_lowres = dt_lowres[::opt['upsampling_rate'],
@@ -657,6 +661,7 @@ def super_resolve_mdfacfa(dt_lowres, opt):
                 = cfa_std
 
         # Trim unnecessary padding:
+
         dt_md_mean = dt_trim(dt_md_mean, padding); dt_md_mean *= mask
         dt_md_std = dt_trim(dt_md_std, padding); dt_md_std *= mask
         dt_fa_mean = dt_trim(dt_fa_mean, padding); dt_fa_mean *= mask
