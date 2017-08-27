@@ -892,8 +892,6 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     print("\n ... saving stuff")
     if opt["not_save"]:
         print("Selected not to save the outputs")
-    elif os.path.exists(md_mean_file):
-        print("reconstruction already exists: " + md_mean_file)
     else:
         if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
             os.makedirs(os.path.join(recon_dir, subject, nn_dir))
