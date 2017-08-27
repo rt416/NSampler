@@ -661,7 +661,7 @@ def super_resolve_mdfacfa(dt_lowres, opt):
                 = cfa_std
 
         # Trim unnecessary padding:
-
+        print("shape of dt_md_mean is %s" % (dt_cfa_mean.shape,))
         dt_md_mean = dt_trim(dt_md_mean, padding); dt_md_mean *= mask
         dt_md_std = dt_trim(dt_md_std, padding); dt_md_std *= mask
         dt_fa_mean = dt_trim(dt_fa_mean, padding); dt_fa_mean *= mask

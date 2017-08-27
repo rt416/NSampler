@@ -508,10 +508,15 @@ def dt_trim(dt_volume, pd):
         dt_volume (numpy array): 4D numpy dt volume
         pd (tuple): padding applied to dt_volume
     """
-    dt_volume = dt_volume[pd[0][0]:-pd[0][1],
-                          pd[1][0]:-pd[1][1],
-                          pd[2][0]:-pd[2][1],
-                          :]
+    if dt_volume.ndim == 3:
+        dt_volume = dt_volume[pd[0][0]:-pd[0][1],
+                              pd[1][0]:-pd[1][1],
+                              pd[2][0]:-pd[2][1]]
+    elif dt_volume.ndim ==4:
+        dt_volume = dt_volume[pd[0][0]:-pd[0][1],
+                              pd[1][0]:-pd[1][1],
+                              pd[2][0]:-pd[2][1],
+                              :]
     return dt_volume
 
 
