@@ -328,6 +328,7 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
 
             mean = sum_out / (1. * no_samples)
             var_model = np.abs(sum_out2/(1.*no_samples) - mean**2)
+            # TODO: should fix below to var_random = fn_std.eval(feed_dict=fd)**2
             var_random = fn_std.eval(feed_dict=fd)
 
     else:
