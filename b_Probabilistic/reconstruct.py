@@ -288,38 +288,38 @@ def super_resolve(dt_lowres, opt):
                                     0]
 
             # only process if any pixel in the output patch is in the brain.
-            # if np.max(ipatch_mask) >= 0:
-            ipatch = ipatch_tmp[np.newaxis, ...]
+            if np.max(ipatch_mask) >= 0:
+                ipatch = ipatch_tmp[np.newaxis, ...]
 
-            # Estimate high-res patch and its associeated uncertainty:
-            fd = {x: ipatch,
-                  keep_prob: 1.0-opt['dropout_rate'],
-                  trade_off: 1.0,
-                  phase_train: False}
+                # Estimate high-res patch and its associeated uncertainty:
+                fd = {x: ipatch,
+                      keep_prob: 1.0-opt['dropout_rate'],
+                      trade_off: 1.0,
+                      phase_train: False}
 
-            opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
+                opatch, opatch_std = mc_inference(y_pred, y_std, fd, opt, sess)
 
-            if opt["is_shuffle"]:  # only apply shuffling if necessary
-                opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
-                opatch_std = forward_periodic_shuffle(opatch_std, opt['upsampling_rate'])
+                if opt["is_shuffle"]:  # only apply shuffling if necessary
+                    opatch = forward_periodic_shuffle(opatch, opt['upsampling_rate'])
+                    opatch_std = forward_periodic_shuffle(opatch_std, opt['upsampling_rate'])
 
-            dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (i + opt['output_radius']),
-                     opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (j + opt['output_radius']),
-                     opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
-                     opt['upsampling_rate'] * (k + opt['output_radius']),
-                     2:] \
-            = opatch
-
-            dt_hires_std[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                dt_hires[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (i + opt['output_radius']),
                          opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (j + opt['output_radius']),
                          opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
                          opt['upsampling_rate'] * (k + opt['output_radius']),
                          2:] \
-            = opatch_std
+                = opatch
+
+                dt_hires_std[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (i + opt['output_radius']),
+                             opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (j + opt['output_radius']),
+                             opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                             opt['upsampling_rate'] * (k + opt['output_radius']),
+                             2:] \
+                = opatch_std
 
         # Trim unnecessary padding:
         dt_hires = dt_trim(dt_hires, padding)
@@ -892,6 +892,8 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     print("\n ... saving stuff")
     if opt["not_save"]:
         print("Selected not to save the outputs")
+    elif os.path.exists(md_mean_file):
+        print("reconstruction already exists: " + md_mean_file)
     else:
         if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
             os.makedirs(os.path.join(recon_dir, subject, nn_dir))

@@ -280,8 +280,12 @@ def mc_inference(fn, fn_std, fd, opt, sess):
                 sum_out += current
                 sum_out2 += current ** 2
             mean = sum_out / (1. * no_samples)
-            std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
-            std += 1. * fn_std.eval(feed_dict=fd)
+            var = np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples
+            var += fn_std.eval(feed_dict=fd)**2
+            std = np.sqrt(var)
+
+            # std = np.sqrt(np.abs(sum_out2 - 2 * mean * sum_out + no_samples * mean ** 2) / no_samples)
+            # std += 1. * fn_std.eval(feed_dict=fd)
     else:
         if opt['vardrop']:
             sum_out = 0.0
@@ -328,8 +332,8 @@ def mc_inference_decompose(fn, fn_std, fd, opt, sess):
 
             mean = sum_out / (1. * no_samples)
             var_model = np.abs(sum_out2/(1.*no_samples) - mean**2)
-            # TODO: should fix below to var_random = fn_std.eval(feed_dict=fd)**2
-            var_random = fn_std.eval(feed_dict=fd)
+            var_random = fn_std.eval(feed_dict=fd) ** 2
+            # var_random = fn_std.eval(feed_dict=fd)
 
     else:
         if opt['vardrop']:
