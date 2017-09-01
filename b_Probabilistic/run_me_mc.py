@@ -35,6 +35,8 @@ parser.add_argument('-m', '--method', dest='method', type=str, default='espcn', 
 parser.add_argument('--no_filters', type=int, default=50, help='number of initial filters')
 parser.add_argument('--no_layers', type=int, default=2, help='number of hidden layers')
 parser.add_argument('--mc_no_samples', type=int, default=50, help='number of MC samples at reconstruction')
+parser.add_argument('--mc_no_samples_cond', type=int, default=10, help='number of internal MC samples for variance decomposition')
+
 
 parser.add_argument('--hetero', action='store_true', help='want to perform heteroscedastic training?')
 parser.add_argument('--vardrop', action='store_true', help='want to perform variational dropout?')

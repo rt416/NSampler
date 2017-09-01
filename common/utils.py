@@ -370,7 +370,8 @@ def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
         if opt['cov_on']:
             for i in range(no_samples):
                 dti_mean, dti_std = sess.run([fn, fn_std], feed_dict=fd)
-                dti_noise = (dti_std**2)*np.random.normal(size=dti_std.shape)
+                dti_noise = dti_std * np.random.normal(size=dti_std.shape)
+                # dti_noise = (dti_std**2)*np.random.normal(size=dti_std.shape)
                 current = dti_mean + dti_noise
                 if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
 
@@ -402,7 +403,9 @@ def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
 
             for i in range(no_samples):
                 # dti_sample = np.random.normal(0, like_std)
-                dti_sample = (like_std**2) * np.random.normal(size=like_std.shape)
+                dti_sample = like_std * np.random.normal(size=like_std.shape)
+                # dti_sample = (like_std ** 2) * np.random.normal(size=like_std.shape)
+
                 current = 1. * fn.eval(feed_dict=fd) + dti_sample
                 if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
 
@@ -470,6 +473,184 @@ def mc_inference_MD_FA_CFA(fn, fn_std, fd, opt, sess):
 
     return md_mean, md_std, fa_mean, fa_std, cfa_mean, cfa_std
 
+
+def mc_inference_MD_FA_CFA_decompose(fn, fn_std, fd, opt, sess):
+    """ Compute the mean and std of samples drawn from stochastic function"""
+    no_samples = opt['mc_no_samples']
+    no_samples_2 = opt['mc_no_samples_cond']
+
+    md_sum = 0.0
+    md_sum2 = 0.0
+    md_sum_mean2 = 0.0
+
+    fa_sum = 0.0
+    fa_sum2 = 0.0
+    fa_sum_mean2 = 0.0
+
+    cfa_sum = 0.0
+    cfa_sum2 = 0.0
+    cfa_sum_mean2 = 0.0
+
+    if opt['hetero']:
+        if opt['cov_on']:
+            # ------------------- outer sampling --------------------------
+            for i in range(no_samples):
+                # draw a set of weights from the posterior:
+                # Note: here we just draw a sample of weights and
+                # obtain the corresponding mean and covariance of likelihood:
+
+                dti_mean, dti_std = sess.run([fn, fn_std], feed_dict=fd)
+                md_mean_tmp = 0.0
+                fa_mean_tmp = 0.0
+                cfa_mean_tmp = 0.0
+
+                # --------------- inter sampling -------------------------
+                for j in range(no_samples_2):
+                    # Draw a sample from the predictive distribution P(g(y)|x,D)
+                    # (old):
+                    # dti_noise=(dti_std**2)*np.random.normal(size=dti_std.shape)
+
+                    dti_noise = dti_std * np.random.normal(size=dti_std.shape)
+                    current = dti_mean + dti_noise
+                    if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+                    md_sample, fa_sample = compute_MD_and_FA(current)
+                    cfa_sample = compute_CFA(current)
+
+                    # Sequential computation of mean, variance, etc:
+                    md_sum += md_sample
+                    md_sum2 += md_sample ** 2
+                    md_mean_tmp += md_sample
+
+                    fa_sum += fa_sample
+                    fa_sum2 += fa_sample ** 2
+                    fa_mean_tmp += fa_sample
+
+                    cfa_sum += cfa_sample
+                    cfa_sum2 += cfa_sample ** 2
+                    cfa_mean_tmp += cfa_sample
+
+                # compute intermediate mean and square mean:
+                md_sum_mean2 += (md_mean_tmp / no_samples_2) ** 2
+                fa_sum_mean2 += (fa_mean_tmp / no_samples_2) ** 2
+                cfa_sum_mean2 += (cfa_mean_tmp / no_samples_2) ** 2
+                # ---------------------------------------------------------
+
+            # computer the final mean and square mean:
+            md_mean = md_sum / (no_samples*no_samples_2)
+            md_var_random = md_sum2/(no_samples*no_samples_2) - md_sum_mean2/no_samples
+            md_var_model = md_sum_mean2/no_samples - (md_sum/(no_samples*no_samples_2))**2
+
+            fa_mean = fa_sum / (no_samples * no_samples_2)
+            fa_var_random = fa_sum2 / (no_samples * no_samples_2) - fa_sum_mean2 / no_samples
+            fa_var_model = fa_sum_mean2/no_samples - (fa_sum / (no_samples * no_samples_2)) ** 2
+
+            cfa_mean = cfa_sum / (no_samples * no_samples_2)
+            cfa_var_random = cfa_sum2/(no_samples * no_samples_2) - cfa_sum_mean2 / no_samples
+            cfa_var_model = cfa_sum_mean2/no_samples - (cfa_sum/(no_samples * no_samples_2)) ** 2
+
+        else:
+
+            # Get the covariance function first
+            like_std = fn_std.eval(feed_dict=fd)
+
+            # ------------------- outer sampling --------------------------
+            for i in range(no_samples):
+                # draw a set of weights from the posterior:
+                # Not: here we just draw a sample of weights and
+                # obtain the corresponding mean of likelihood
+                # (no variational dropout on covariance network),
+
+                dti_mean = fn.eval(feed_dict=fd)
+                md_mean_tmp = 0.0
+                fa_mean_tmp = 0.0
+                cfa_mean_tmp = 0.0
+
+                # --------------- inter sampling --------------------------
+                for j in range(no_samples_2):
+                    # Draw a sample from the predictive distribution P(g(y)|x,D)
+                    # (old):
+                    # dti_noise = (like_std ** 2) *
+                    # np.random.normal(size=like_std.shape)
+
+                    dti_noise = like_std * np.random.normal(size=like_std.shape)
+                    current = dti_mean + dti_noise
+                    if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+
+                    md_sample, fa_sample = compute_MD_and_FA(current)
+                    cfa_sample = compute_CFA(current)
+
+                    # Sequential computation of mean, variance, etc:
+                    md_sum += md_sample
+                    md_sum2 += md_sample ** 2
+                    md_mean_tmp += md_sample
+
+                    fa_sum += fa_sample
+                    fa_sum2 += fa_sample ** 2
+                    fa_mean_tmp += fa_sample
+
+                    cfa_sum += cfa_sample
+                    cfa_sum2 += cfa_sample ** 2
+                    cfa_mean_tmp += cfa_sample
+
+                # compute intermediate mean and square mean:
+                md_sum_mean2 += (md_mean_tmp / no_samples_2) ** 2
+                fa_sum_mean2 += (fa_mean_tmp / no_samples_2) ** 2
+                cfa_sum_mean2 += (cfa_mean_tmp / no_samples_2) ** 2
+                # ---------------------------------------------------------
+
+            # computer the final mean and square mean:
+            md_mean = md_sum / (no_samples * no_samples_2)
+            md_var_random = md_sum2 / (no_samples * no_samples_2) - md_sum_mean2 / no_samples
+            md_var_model = md_sum_mean2 / no_samples - (md_sum / (no_samples * no_samples_2)) ** 2
+
+            fa_mean = fa_sum / (no_samples * no_samples_2)
+            fa_var_random = fa_sum2 / (no_samples * no_samples_2) - fa_sum_mean2 / no_samples
+            fa_var_model = fa_sum_mean2 / no_samples - (fa_sum / (no_samples * no_samples_2)) ** 2
+
+            cfa_mean = cfa_sum / (no_samples * no_samples_2)
+            cfa_var_random = cfa_sum2 / (no_samples * no_samples_2) - cfa_sum_mean2 / no_samples
+            cfa_var_model = cfa_sum_mean2 / no_samples - (cfa_sum / (no_samples * no_samples_2)) ** 2
+    else:
+        if opt['vardrop']:
+            no_samples_new = no_samples*no_samples_2
+
+            for i in range(no_samples_new):
+                current = 1. * fn.eval(feed_dict=fd)
+                if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+                md_sample, fa_sample = compute_MD_and_FA(current)
+                cfa_sample = compute_CFA(current)
+
+                md_sum += md_sample
+                md_sum2 += md_sample ** 2
+                fa_sum += fa_sample
+                fa_sum2 += fa_sample ** 2
+                cfa_sum += cfa_sample
+                cfa_sum2 += cfa_sample ** 2
+
+            md_mean = md_sum / no_samples_new
+            md_var_model = np.sqrt(np.abs(md_sum2 - 2 * md_mean * md_sum + no_samples_new * md_mean ** 2) / no_samples_new)
+            md_var_random = 0.0*md_mean
+            fa_mean = fa_sum / no_samples_new
+            fa_var_model = np.sqrt(np.abs(fa_sum2 - 2 * fa_mean * fa_sum + no_samples_new * fa_mean ** 2) / no_samples_new)
+            fa_var_random = 0.0*fa_mean
+            cfa_mean = cfa_sum / no_samples_new
+            cfa_var_model = np.sqrt(np.abs(cfa_sum2 - 2 * cfa_mean * cfa_sum + no_samples_new * cfa_mean ** 2) / no_samples_new)
+            cfa_var_random = 0.0*cfa_mean
+        else:
+            raise Exception('The specified method does not support MC inference.')
+            current = fn.eval(feed_dict=fd)
+            if opt["is_shuffle"]: current = forward_periodic_shuffle(current, opt['upsampling_rate'])
+            md_mean, fa_mean = compute_MD_and_FA(current)
+            cfa_mean = compute_CFA(current)
+
+            md_var_model = 0.0 * md_mean
+            md_var_random = md_var_model
+            fa_var_model = 0.0 * fa_mean
+            fa_var_random = fa_var_model
+            cfa_var_model = 0.0 * cfa_mean
+            cfa_var_random = cfa_var_model
+
+    return md_mean, md_var_model, md_var_random, fa_mean, fa_var_model, fa_var_random, cfa_mean, cfa_var_model, cfa_var_random
 
 # Pad the volumes:
 def dt_pad(dt_volume, upsampling_rate, input_radius):

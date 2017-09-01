@@ -10,7 +10,7 @@ import nibabel as nib
 from train import get_output_radius
 import common.sr_utility as sr_utility
 from common.sr_utility import forward_periodic_shuffle
-from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference, mc_inference_decompose, mc_inference_MD_FA_CFA, dt_trim, dt_pad, clip_image, save_stats
+from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference, mc_inference_decompose, mc_inference_MD_FA_CFA, mc_inference_MD_FA_CFA_decompose, dt_trim, dt_pad, clip_image, save_stats
 from common.sr_analysis import compare_images_and_get_stats, compute_differencemaps
 
 
@@ -493,7 +493,7 @@ def super_resolve_decompose(dt_lowres, opt):
     return dt_hires, dt_var_model, dt_var_random
 
 
-# --------------- reconstruct MD, FA and CFA with decomposed uncertainty -------------------
+# --------------- reconstruct MD, FA and CFA with decomposed uncertainty ------
 def super_resolve_mdfacfa(dt_lowres, opt):
     """Perform a patch-based super-resolution on a given low-res image.
     Args:
@@ -671,6 +671,232 @@ def super_resolve_mdfacfa(dt_lowres, opt):
 
     return dt_md_mean, dt_md_std, dt_fa_mean, dt_fa_std, dt_cfa_mean, dt_cfa_std
 
+
+# --------------- reconstruct MD, FA and CFA with decomposed uncertainty ------
+def super_resolve_mdfacfa_decompose(dt_lowres, opt):
+    """Perform a patch-based super-resolution on a given low-res image.
+    Args:
+        dt_lowres (numpy array): a low-res diffusion tensor image volume
+        opt (dict):
+    Returns:
+        the estimated high-res volume
+    """
+
+    # --------------------------- Define the model--------------------------:
+    # placeholders
+    print()
+    print("--------------------------")
+    print("...Setting up placeholders")
+    print('... defining the network model %s .' % opt['method'])
+    side = 2*opt["input_radius"] + 1
+    x = tf.placeholder(tf.float32,
+                       shape=[1,side,side,side,opt['no_channels']],
+                       name='input_x')
+    phase_train = tf.placeholder(tf.bool, name='phase_train')
+    keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+    trade_off = tf.placeholder(tf.float32, name='trade_off')
+    num_data = tf.placeholder(tf.float32, name='num_train_data')
+
+    # define network and inference:
+    print("...Constructing network: %s \n" % opt['method'])
+    net = set_network_config(opt)
+    transfile = os.path.join(opt['data_dir'], name_patchlib(opt), 'transforms.pkl')
+    transform = pkl.load(open(transfile, 'rb'))
+    y_pred, y_std = net.scaled_prediction_mc(x, phase_train, keep_prob,
+                                             transform=transform,
+                                             trade_off=trade_off,
+                                             num_data=num_data,
+                                             params=opt["params"],
+                                             cov_on=opt["cov_on"],
+                                             hetero=opt["hetero"],
+                                             vardrop=opt["vardrop"])
+    # Compute the output radius:
+    opt['output_radius'] = get_output_radius(y_pred, opt['upsampling_rate'], opt['is_shuffle'])
+
+    # Specify the network parameters to be restored:
+    network_dir = define_checkpoint(opt)
+    model_details = pkl.load(open(os.path.join(network_dir,'settings.pkl'), 'rb'))
+    nn_file = os.path.join(network_dir, "model-" + str(model_details['step_save']))
+
+    # -------------------------- Reconstruct --------------------------------:
+    # Restore all the variables and perform reconstruction:
+    saver = tf.train.Saver()
+
+    with tf.Session() as sess:
+        # Restore variables from disk.
+        saver.restore(sess, nn_file)
+        print("Model restored.")
+
+        # Get the mask:
+        mask = dt_lowres[:, :, :, 0] != -1
+
+        # Apply padding:
+        print("Size of dt_lowres before padding: %s", (dt_lowres.shape,))
+        dt_lowres, padding = dt_pad(dt_lowres, opt['upsampling_rate'], opt['input_radius'])
+        print("Size of dt_lowres after padding %s: %s", (padding, dt_lowres.shape))
+
+        # Prepare high-res MD, FA and CFA skeleton:
+        dt_md_mean = np.zeros(dt_lowres.shape[:-1])  # data uncertainty
+        dt_md_var_model = np.zeros(dt_lowres.shape[:-1])
+        dt_md_var_random = np.zeros(dt_lowres.shape[:-1])
+        dt_fa_mean = np.zeros(dt_lowres.shape[:-1])
+        dt_fa_var_model = np.zeros(dt_lowres.shape[:-1])
+        dt_fa_var_random = np.zeros(dt_lowres.shape[:-1])
+        dt_cfa_mean = np.zeros(dt_lowres.shape[:-1]+(3,))
+        dt_cfa_var_model = np.zeros(dt_lowres.shape[:-1]+(3,))
+        dt_cfa_var_random = np.zeros(dt_lowres.shape[:-1]+(3,))
+
+        print("Size of dt_lmv_mean after padding: %s", (dt_md_mean.shape,))
+
+        # Downsample:
+        dt_lowres = dt_lowres[::opt['upsampling_rate'],
+                              ::opt['upsampling_rate'],
+                              ::opt['upsampling_rate'], :]
+
+        # Reconstruct:
+        (xsize, ysize, zsize, comp) = dt_lowres.shape
+        recon_indx = [(i, j, k) for k in np.arange(opt['input_radius']+1,
+                                                   zsize-opt['input_radius']+1,
+                                                   2*opt['output_radius']+1)
+                                for j in np.arange(opt['input_radius']+1,
+                                                   ysize-opt['input_radius']+1,
+                                                   2*opt['output_radius']+1)
+                                for i in np.arange(opt['input_radius']+1,
+                                                   xsize-opt['input_radius']+1,
+                                                   2*opt['output_radius']+1)]
+        for i, j, k in recon_indx:
+            sys.stdout.flush()
+            sys.stdout.write('\tSlice %i of %i.\r' % (k, zsize))
+
+            ipatch_tmp = dt_lowres[(i - opt['input_radius'] - 1):(i + opt['input_radius']),
+                                   (j - opt['input_radius'] - 1):(j + opt['input_radius']),
+                                   (k - opt['input_radius'] - 1):(k + opt['input_radius']),
+                                    2:comp]
+
+            ipatch_mask = dt_lowres[(i - opt['output_radius'] - 1):(i + opt['output_radius']),
+                                    (j - opt['output_radius'] - 1):(j + opt['output_radius']),
+                                    (k - opt['output_radius'] - 1):(k + opt['output_radius']),
+                                    0]
+
+            # only process if any pixel in the output patch is in the brain.
+            if np.max(ipatch_mask) >= 0:
+                ipatch = ipatch_tmp[np.newaxis, ...]
+
+                # Estimate high-res patch and its associeated uncertainty:
+                fd = {x: ipatch,
+                      keep_prob: 1.0-opt['dropout_rate'],
+                      trade_off: 1.0,
+                      phase_train: False}
+
+                md_mean, md_var_model, md_var_random, \
+                fa_mean, fa_var_model, fa_var_random, \
+                cfa_mean, cfa_var_model, cfa_var_random\
+                    = mc_inference_MD_FA_CFA_decompose(y_pred, y_std, fd, opt, sess)
+
+                # Fill in:
+                dt_md_mean[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (i + opt['output_radius']),
+                           opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (j + opt['output_radius']),
+                           opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = md_mean
+
+                dt_md_var_model[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                          opt['upsampling_rate'] * (i + opt['output_radius']),
+                          opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                          opt['upsampling_rate'] * (j + opt['output_radius']),
+                          opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                          opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = md_var_model
+
+                dt_md_var_random[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (i + opt['output_radius']),
+                                 opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (j + opt['output_radius']),
+                                 opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = md_var_random
+
+
+                dt_fa_mean[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (i + opt['output_radius']),
+                           opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (j + opt['output_radius']),
+                           opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                           opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = fa_mean
+
+                dt_fa_var_model[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (i + opt['output_radius']),
+                                opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (j + opt['output_radius']),
+                                opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = fa_var_model
+
+                dt_fa_var_model[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (i + opt['output_radius']),
+                                opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (j + opt['output_radius']),
+                                opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = fa_var_model
+
+                dt_fa_var_random[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (i + opt['output_radius']),
+                                 opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (j + opt['output_radius']),
+                                 opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (k + opt['output_radius'])] \
+                = fa_var_random
+
+                dt_cfa_mean[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                            opt['upsampling_rate'] * (i + opt['output_radius']),
+                            opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                            opt['upsampling_rate'] * (j + opt['output_radius']),
+                            opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                            opt['upsampling_rate'] * (k + opt['output_radius']),
+                            :] \
+                = cfa_mean
+
+                dt_cfa_var_model[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (i + opt['output_radius']),
+                                 opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (j + opt['output_radius']),
+                                 opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                 opt['upsampling_rate'] * (k + opt['output_radius']),
+                                 :] \
+                = cfa_var_model
+
+                dt_cfa_var_random[opt['upsampling_rate'] * (i - opt['output_radius'] - 1):
+                                  opt['upsampling_rate'] * (i + opt['output_radius']),
+                                  opt['upsampling_rate'] * (j - opt['output_radius'] - 1):
+                                  opt['upsampling_rate'] * (j + opt['output_radius']),
+                                  opt['upsampling_rate'] * (k - opt['output_radius'] - 1):
+                                  opt['upsampling_rate'] * (k + opt['output_radius']),
+                                  :] \
+                = cfa_var_random
+
+        # Trim unnecessary padding:
+        print("shape of dt_md_mean is %s" % (dt_cfa_mean.shape,))
+        dt_md_mean = dt_trim(dt_md_mean, padding); dt_md_mean *= mask
+        dt_md_var_model = dt_trim(dt_md_var_model, padding); dt_md_var_model *= mask
+        dt_md_var_random = dt_trim(dt_md_var_random, padding); dt_md_var_random *= mask
+
+        dt_fa_mean = dt_trim(dt_fa_mean, padding); dt_fa_mean *= mask
+        dt_fa_var_model = dt_trim(dt_fa_var_model, padding); dt_fa_var_model *= mask
+        dt_fa_var_random = dt_trim(dt_fa_var_random, padding); dt_fa_var_random *= mask
+
+        dt_cfa_mean = dt_trim(dt_cfa_mean, padding); dt_cfa_mean *= mask[..., np.newaxis]
+        dt_cfa_var_model = dt_trim(dt_cfa_var_model, padding); dt_cfa_var_model *= mask[..., np.newaxis]
+        dt_cfa_var_random = dt_trim(dt_cfa_var_random, padding); dt_cfa_var_random *= mask[..., np.newaxis]
+
+    return dt_md_mean, dt_md_var_model, dt_md_var_random, \
+           dt_fa_mean, dt_fa_var_model, dt_fa_var_random, \
+           dt_cfa_mean, dt_cfa_var_model, dt_cfa_var_random
+
+
 # --------------- reconstruct on non-HCP dataset  ----------------------
 def sr_reconstruct_nonhcp(opt, dataset_type):
     # Define directory and file names:
@@ -835,7 +1061,6 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
         print(" Ground truth data not available. Finished.")
 
 
-
 def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     # Define directory and file names:
     print('\nStart reconstruction! \n')
@@ -850,10 +1075,18 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
 
     md_mean_file = os.path.join(recon_dir, subject, nn_dir, 'md_'+ opt['output_file_name'])
     md_std_file = os.path.join(recon_dir, subject, nn_dir, 'md_'+ opt['output_std_file_name'])
+    md_var_model_file = os.path.join(recon_dir, subject, nn_dir, 'md_' + opt['output_var_model_file_name'])
+    md_var_random_file = os.path.join(recon_dir, subject, nn_dir, 'md_'+ opt['output_var_random_file_name'])
+
     fa_mean_file = os.path.join(recon_dir, subject, nn_dir, 'fa_'+ opt['output_file_name'])
     fa_std_file = os.path.join(recon_dir, subject, nn_dir, 'fa_'+ opt['output_std_file_name'])
+    fa_var_model_file = os.path.join(recon_dir, subject, nn_dir, 'fa_' + opt['output_var_model_file_name'])
+    fa_var_random_file = os.path.join(recon_dir, subject, nn_dir, 'fa_' + opt['output_var_random_file_name'])
+
     cfa_mean_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_'+ opt['output_file_name'])
     cfa_std_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_'+ opt['output_std_file_name'])
+    cfa_var_model_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_' + opt['output_var_model_file_name'])
+    cfa_var_random_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_' + opt['output_var_random_file_name'])
 
     save_stats_dir = os.path.join(opt['stats_dir'], nn_dir)
     if not (os.path.exists(save_stats_dir)):
@@ -879,8 +1112,10 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
         # Reconstruct:
         start_time = timeit.default_timer()
         if opt['decompose']:
-            raise NotImplementedError(" Decomposed uncertainty over MD, FA and CFA not implemented")
-            dt_hr, dt_var_model, dt_var_random = super_resolve_decompose(dt_lowres, opt)
+            dt_md_mean, dt_md_var_model, dt_md_var_random, \
+            dt_fa_mean, dt_fa_var_model, dt_fa_var_random, \
+            dt_cfa_mean, dt_cfa_var_model, dt_cfa_var_random \
+                = super_resolve_mdfacfa_decompose(dt_lowres, opt)
         else:
             dt_md_mean, dt_md_std, dt_fa_mean, dt_fa_std, dt_cfa_mean, dt_cfa_std \
                 = super_resolve_mdfacfa(dt_lowres, opt)
@@ -914,26 +1149,21 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
         if opt['hetero'] or opt['vardrop']:
 
             if opt['decompose']:
-                raise NotImplementedError(" Decomposed uncertainty over MD, FA and CFA not implemented")
-                # uncertainty_random_file = os.path.join(recon_dir, subject, nn_dir, opt['output_var_random_file_name'])
-                # uncertainty_model_file = os.path.join(recon_dir, subject, nn_dir, opt['output_var_model_file_name'])
-                # print('... saving random uncertainty as %s' % uncertainty_random_file)
-                # print('... saving model uncertainty as %s' % uncertainty_model_file)
-                # __, var_random_file = os.path.split(uncertainty_random_file)
-                # __, var_model_file = os.path.split(uncertainty_model_file)
-                # sr_utility.save_as_nifti(var_random_file,
-                #                          os.path.join(recon_dir, subject,nn_dir),
-                #                          os.path.join(gt_dir, subject, subpath),
-                #                          save_as_ijk=opt['save_as_ijk'],
-                #                          no_channels=no_channels,
-                #                          gt_header=gt_header)
-                #
-                # sr_utility.save_as_nifti(var_model_file,
-                #                          os.path.join(recon_dir, subject,nn_dir),
-                #                          os.path.join(gt_dir, subject, subpath),
-                #                          save_as_ijk=opt['save_as_ijk'],
-                #                          no_channels=no_channels,
-                #                          gt_header=gt_header)
+                print('\nsave intrinsic and parameter variance separately'
+                      ' over MD, FA and CFA ...')
+                var_model_md, base = os.path.splitext(md_var_model_file)
+                var_random_md, base = os.path.splitext(md_var_random_file)
+                var_model_fa, base = os.path.splitext(fa_var_model_file)
+                var_random_fa, base = os.path.splitext(fa_var_random_file)
+                var_model_cfa, base = os.path.splitext(cfa_var_model_file)
+                var_random_cfa, base = os.path.splitext(cfa_var_random_file)
+
+                sr_utility.ndarray_to_nifti(dt_md_var_model, var_model_md + '.nii', ref_file)
+                sr_utility.ndarray_to_nifti(dt_md_var_random, var_random_md + '.nii', ref_file)
+                sr_utility.ndarray_to_nifti(dt_fa_var_model, var_model_fa + '.nii', ref_file)
+                sr_utility.ndarray_to_nifti(dt_fa_var_random, var_random_fa + '.nii', ref_file)
+                sr_utility.ndarray_to_nifti(dt_cfa_var_model, var_model_cfa + '.nii', ref_file)
+                sr_utility.ndarray_to_nifti(dt_cfa_var_random, var_random_cfa + '.nii', ref_file)
             else:
                 print('\nsave std over MD, FA and CFA ...')
 
