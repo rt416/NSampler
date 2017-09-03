@@ -11,7 +11,7 @@ from train import get_output_radius
 import common.sr_utility as sr_utility
 from common.sr_utility import forward_periodic_shuffle
 from common.utils import name_network, name_patchlib, set_network_config, define_checkpoint, mc_inference, mc_inference_decompose, mc_inference_MD_FA_CFA, mc_inference_MD_FA_CFA_decompose, dt_trim, dt_pad, clip_image, save_stats
-from common.sr_analysis import compare_images_and_get_stats, compute_differencemaps
+from common.sr_analysis import compare_images_and_get_stats, compute_differencemaps, compute_and_save_RMSEmaps
 
 
 # Main reconstruction code:
@@ -1056,9 +1056,57 @@ def sr_reconstruct_nonhcp(opt, dataset_type):
                                    save_as_ijk=opt['save_as_ijk'],
                                    gt_dir=os.path.join(gt_dir, subject, subpath),
                                    gt_header=opt['gt_header'])
-
     else:
         print(" Ground truth data not available. Finished.")
+
+    # -------------------- Compute MD, FA and CFA ------------------------------
+    if opt["not_save"]:
+        print("\n ... MD, FA and CFA are not computed!")
+    else:
+        print('\n ... compute MD, FA and CFA  ...')
+        md_file = os.path.join(recon_dir, subject, nn_dir, 'md_direct_' + opt['output_file_name'])
+        fa_file = os.path.join(recon_dir, subject, nn_dir, 'fa_direct_' + opt['output_file_name'])
+        cfa_file = os.path.join(recon_dir, subject, nn_dir,'cfa_direct_' + opt['output_file_name'])
+        mean_md, base = os.path.splitext(md_file)
+        mean_fa, base = os.path.splitext(fa_file)
+        mean_cfa, base = os.path.splitext(cfa_file)
+
+        md_hr, fa_hr = sr_utility.compute_MD_and_FA(dt_hr[..., 2:])
+        fa_hr[np.isnan(fa_hr)] = 0.0
+        cfa_hr = sr_utility.compute_CFA(dt_hr[..., 2:])
+
+        if opt['gt_header'] is not None:
+            ref_file = os.path.join(gt_dir, subject, subpath, opt['gt_header'] + '1.nii')
+
+        sr_utility.ndarray_to_nifti(md_hr, mean_md + '.nii', ref_file)
+        sr_utility.ndarray_to_nifti(fa_hr, mean_fa + '.nii', ref_file)
+        sr_utility.ndarray_to_nifti(cfa_hr, mean_cfa + '.nii', ref_file)
+
+        if opt['gt_available']:
+            # compute MD, FA and CFA:
+            mask = dt_hr[:, :, :, 0] == 0
+            md_gt, fa_gt = sr_utility.compute_MD_and_FA(dt_gt[..., 2:])
+            fa_gt[np.isnan(fa_gt)] = 0.0
+            cfa_gt = sr_utility.compute_CFA(dt_gt[..., 2:])
+
+            # Compute difference maps and save:
+            compute_and_save_RMSEmaps(md_gt, md_hr,
+                                      mask, md_file,
+                                      save_as_ijk=opt['save_as_ijk'],
+                                      gt_dir=os.path.join(gt_dir, subject, subpath),
+                                      gt_header=opt['gt_header'])
+
+            compute_and_save_RMSEmaps(fa_gt, fa_hr,
+                                      mask, fa_file,
+                                      save_as_ijk=opt['save_as_ijk'],
+                                      gt_dir=os.path.join(gt_dir, subject, subpath),
+                                      gt_header=opt['gt_header'])
+
+            compute_and_save_RMSEmaps(cfa_gt, cfa_hr,
+                                      mask, cfa_file,
+                                      save_as_ijk=opt['save_as_ijk'],
+                                      gt_dir=os.path.join(gt_dir, subject, subpath),
+                                      gt_header=opt['gt_header'])
 
 
 def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
@@ -1176,7 +1224,39 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
                 sr_utility.ndarray_to_nifti(dt_cfa_std, std_cfa + '.nii', ref_file)
 
     # ----------------- Compute stats ---------------------------
-    # TODO: would be nice to have stats computation pipeline.
+    if opt['gt_available']:
+        # load the ground truth image and mask:
+        dt_gt = sr_utility.read_dt_volume(
+            nameroot=os.path.join(gt_dir, subject, subpath, gt_header),
+            no_channels=no_channels)
+
+        mask = dt_md_mean[:, :, :] == 0
+
+        # compute MD, FA and CFA:
+        md_gt, fa_gt = sr_utility.compute_MD_and_FA(dt_gt[..., 2:])
+        fa_gt[np.isnan(fa_gt)] = 0.0
+        cfa_gt = sr_utility.compute_CFA_2d(dt_gt[..., 2:])
+
+        # Compute difference maps and save:
+        compute_and_save_RMSEmaps(md_gt, dt_md_mean,
+                                  mask, md_mean_file,
+                                  save_as_ijk=opt['save_as_ijk'],
+                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  gt_header=opt['gt_header'])
+
+        compute_and_save_RMSEmaps(fa_gt, dt_fa_mean,
+                                  mask, fa_mean_file,
+                                  save_as_ijk=opt['save_as_ijk'],
+                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  gt_header=opt['gt_header'])
+
+        compute_and_save_RMSEmaps(cfa_gt, dt_cfa_mean,
+                                  mask, cfa_mean_file,
+                                  save_as_ijk=opt['save_as_ijk'],
+                                  gt_dir=os.path.join(gt_dir, subject, subpath),
+                                  gt_header=opt['gt_header'])
+    else:
+        print(" Ground truth data not available. Finished.")
 
 
 

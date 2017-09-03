@@ -128,6 +128,31 @@ def compute_differencemaps(img_gt, img_est, mask, outputfile, no_channels,
         nib.save(img_2, os.path.join(save_dir, 'ssim_' + header + '_' + str(k + 3) + '.nii'))
 
 
+def compute_and_save_RMSEmaps(img_gt, img_est, mask, outputfile,
+                              save_as_ijk=True, gt_dir=None, gt_header=None):
+
+    # Compute the L2 deviation and SSIM:
+    rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
+
+    # Save the error maps:
+    save_dir, file_name = os.path.split(outputfile)
+    header, ext = os.path.splitext(file_name)
+
+    if not (save_as_ijk):
+        print("Fetching affine transform and header from GT.")
+        dt_gt = nib.load(os.path.join(gt_dir, gt_header + str(1) + '.nii'))
+
+        affine = dt_gt.get_affine()  # fetch its affine transfomation
+        nii_header = dt_gt.get_header()  # fetch its header
+        img = nib.Nifti1Image(rmse_volume, affine=affine, header=nii_header)
+    else:
+        img = nib.Nifti1Image(rmse_volume, np.eye(4))
+
+    print('... saving the error (RMSE) map: ' + 'rmse_' + header + '.nii')
+    nib.save(img, os.path.join(save_dir, 'rmse_' + header + '.nii'))
+
+
+
 def compare_images(img_gt, img_est, mask):
     """Compute RMSE, PSNR, MSSIM:
      img_gt: (4D numpy array with the last dim being channels)
