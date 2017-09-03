@@ -132,7 +132,12 @@ def compute_and_save_RMSEmaps(img_gt, img_est, mask, outputfile,
                               save_as_ijk=True, gt_dir=None, gt_header=None):
 
     # Compute the L2 deviation and SSIM:
-    rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
+    if img_est.ndim==4:
+        rmse_volume = np.sqrt(((img_gt - img_est) ** 2)* mask[..., np.newaxis])
+    elif img_est.ndim==3:
+        rmse_volume = np.sqrt(((img_gt - img_est) ** 2) * mask)
+    else:
+        raise ValueError("none 3d or 4d data are not supported")
 
     # Save the error maps:
     save_dir, file_name = os.path.split(outputfile)
