@@ -1152,6 +1152,9 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
         print("reconstruction already exists: " + mean_md + '.nii')
         print("move on. ")
     else:
+        #
+        print("not available: " + mean_md + '.nii')
+
         # Load the input low-res DT image:
         input_file = os.path.join(gt_dir, subject, subpath, input_file_name)
         print('\n ... loading the test low-res image ...')
