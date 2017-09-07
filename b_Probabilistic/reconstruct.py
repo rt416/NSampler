@@ -1232,8 +1232,6 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
             nameroot=os.path.join(gt_dir, subject, subpath, gt_header),
             no_channels=no_channels)
 
-        mask = dt_md_mean[:, :, :] != 0
-
         # compute MD, FA and CFA:
         md_gt, fa_gt = sr_utility.compute_MD_and_FA(dt_gt[..., 2:])
         fa_gt[np.isnan(fa_gt)] = 0.0
@@ -1247,6 +1245,9 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
             dt_fa_mean = tmp.get_data()
             tmp = nib.load(mean_cfa + '.nii')
             dt_cfa_mean = tmp.get_data()
+
+        # compute the mask:
+        mask = dt_md_mean[:, :, :] != 0
 
         # Compute difference maps and save:
         compute_and_save_RMSEmaps(md_gt, dt_md_mean,
