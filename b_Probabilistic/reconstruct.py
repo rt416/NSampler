@@ -1136,6 +1136,11 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     cfa_var_model_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_' + opt['output_var_model_file_name'])
     cfa_var_random_file = os.path.join(recon_dir, subject, nn_dir, 'cfa_' + opt['output_var_random_file_name'])
 
+    # nifti file names:
+    mean_md, base = os.path.splitext(md_mean_file)
+    mean_fa, base = os.path.splitext(fa_mean_file)
+    mean_cfa, base = os.path.splitext(cfa_mean_file)
+
     save_stats_dir = os.path.join(opt['stats_dir'], nn_dir)
     if not (os.path.exists(save_stats_dir)):
         os.makedirs(save_stats_dir)
@@ -1143,8 +1148,8 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     tf.reset_default_graph()
     print('\n ... reconstructing high-res dti \n')
 
-    if os.path.exists(md_mean_file):
-        print("reconstruction already exists: " + md_mean_file)
+    if os.path.exists(mean_md + '.nii'):
+        print("reconstruction already exists: " + mean_md + '.nii')
         print("move on. ")
     else:
         # Load the input low-res DT image:
@@ -1175,7 +1180,7 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
     print("\n ... saving stuff")
     if opt["not_save"]:
         print("Selected not to save the outputs")
-    elif os.path.exists(md_mean_file):
+    elif os.path.exists(mean_md + '.nii'):
         print("reconstruction already exists: " + md_mean_file)
     else:
         if not (os.path.exists(os.path.join(recon_dir, subject, nn_dir))):
@@ -1183,10 +1188,6 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
 
         # Save predicted high-res brain volume:
         print('\nsave MD, FA and CFA as nifti file ...')
-        mean_md, base = os.path.splitext(md_mean_file)
-        mean_fa, base = os.path.splitext(fa_mean_file)
-        mean_cfa, base = os.path.splitext(cfa_mean_file)
-
         if opt['gt_header'] is not None:
             ref_file = os.path.join(gt_dir,subject,subpath, opt['gt_header']+'1.nii')
         sr_utility.ndarray_to_nifti(dt_md_mean, mean_md + '.nii', ref_file)
@@ -1224,18 +1225,28 @@ def sr_reconstruct_nonhcp_mdfacfa(opt, dataset_type):
                 sr_utility.ndarray_to_nifti(dt_cfa_std, std_cfa + '.nii', ref_file)
 
     # ----------------- Compute stats ---------------------------
-    if opt['gt_available']:
+    if opt['gt_available'] and not(opt["not_save"]):
+
         # load the ground truth image and mask:
         dt_gt = sr_utility.read_dt_volume(
             nameroot=os.path.join(gt_dir, subject, subpath, gt_header),
             no_channels=no_channels)
 
-        mask = dt_md_mean[:, :, :] == 0
+        mask = dt_md_mean[:, :, :] != 0
 
         # compute MD, FA and CFA:
         md_gt, fa_gt = sr_utility.compute_MD_and_FA(dt_gt[..., 2:])
         fa_gt[np.isnan(fa_gt)] = 0.0
         cfa_gt = sr_utility.compute_CFA(dt_gt[..., 2:])
+
+        if os.path.exists(mean_md + '.nii'):
+            print(mean_md + '.nii' + ' exists. Load them for computing errors.')
+            tmp = nib.load(mean_md + '.nii')
+            dt_md_mean = tmp.get_data()
+            tmp = nib.load(mean_fa + '.nii')
+            dt_fa_mean = tmp.get_data()
+            tmp = nib.load(mean_cfa + '.nii')
+            dt_cfa_mean = tmp.get_data()
 
         # Compute difference maps and save:
         compute_and_save_RMSEmaps(md_gt, dt_md_mean,
