@@ -22,9 +22,9 @@ parser.add_argument('--disp', action='store_true', help='save the displayed outp
 
 # Directories:
 parser.add_argument('--base_dir', type=str, default='/Users/ryutarotanno/tmp/iqt_for_ct', help='base directory')
-parser.add_argument('--gt_dir', type=str, default='/Users/ryutarotanno/Datasets/hcp', help='ground truth directory')
-parser.add_argument('--subpath', type=str, default='T1w/Diffusion', help='subdirectory in gt_dir')
-parser.add_argument('--mask_dir', type=str, default='/SAN/vision/hcp/Ryu/miccai2017/hcp_masks', help='directory of segmentation masks')
+parser.add_argument('--gt_dir', type=str, default='/Users/ryutarotanno/Data/prachi_msc_project/processed', help='ground truth directory')
+parser.add_argument('--subpath', type=str, default='', help='subdirectory in gt_dir')
+parser.add_argument('--mask_dir', type=str, default='', help='directory of segmentation masks')
 parser.add_argument('--mask_subpath', type=str, default='', help='subdirectory in mask_dir')
 
 # Network
@@ -46,10 +46,10 @@ parser.add_argument('--valid', action='store_true', help='pick the best model ba
 parser.add_argument('--is_map', action='store_true', help='Want to use MAP-MRI instead?')
 parser.add_argument('-pl', '--no_patches', dest='no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
 parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='1', help='background value')
-parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
+parser.add_argument('--no_channels', type=int, default=1, help='number of channels')
 parser.add_argument('-bgval', '--background_value', dest="background_value", type=float, default='0', help='background value')
 
-parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=2, help='upsampling rate')
+parser.add_argument('-us', '--upsampling_rate', dest="upsampling_rate", type=int, default=1, help='upsampling rate')
 parser.add_argument('-ir', '--input_radius', dest="input_radius", type=int, default=5, help='input radius')
 parser.add_argument('--pad_size', type=int, default=-1, help='size of padding applied before patch extraction. Set -1 to apply maximal padding.')
 parser.add_argument('--is_clip', action='store_true', help='want to clip the images (0.1% - 99.9% percentile) before patch extraction? ')
@@ -72,9 +72,9 @@ print device_lib.list_local_devices()
 # TODO: need to change this - too data specific.
 def fetch_subjects(no_subjects=1, shuffle=False, test=False):
     if test:
-        subj_list = ['904044']
+        subj_list = ['IPF-2']
     else:
-        subj_list = ['117324']
+        subj_list = ['IPF-2']
 
     assert no_subjects <= len(subj_list)
 
@@ -113,11 +113,10 @@ if not(os.path.exists(base_dir)):
     os.makedirs(opt["stats_dir"])
 
 # data type
-opt['input_file_name'] = 'dt_b1000_lowres_'\
-                         + str(opt['upsampling_rate'])\
-                         + '_{:d}.nii'
-opt['gt_header'] = 'dt_b1000_{:d}.nii'
-opt['output_file_name'] = 'dt_recon.npy'
+opt['input_file_name'] = 'image_stack_ultralow_{:d}.nii'
+opt['gt_header'] = 'image_stack_normal_{:d}.nii'
+opt['output_file_name'] = 'ct_recon_normal.npy'
+
 
 # Others:
 opt['save_as_ijk'] = False
