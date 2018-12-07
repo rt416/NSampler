@@ -133,7 +133,7 @@ train.train_cnn(opt)
 
 
 # RECONSTRUCT
-subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
+subjects_list = fetch_subjects(no_subjects=1, shuffle=False, test=True)
 for subject in subjects_list:
     opt['subject'] = subject
     reconstruct.sr_reconstruct(opt)
