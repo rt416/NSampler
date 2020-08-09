@@ -185,7 +185,7 @@ def set_network_config(opt):
                                layers=opt['no_layers'],
                                bn=opt['is_BN'])
 
-    elif opt["method"] == "dcespcn" :
+    elif opt["method"] == "dcespcn":
         assert opt["is_shuffle"]
         net = models.dcespcn(upsampling_rate=opt['upsampling_rate'],
                              out_channels=opt['no_channels'],
@@ -193,7 +193,7 @@ def set_network_config(opt):
                              layers=opt['no_layers'],
                              bn=opt['is_BN'])
 
-    elif opt["method"] == "dcespcnlrt" :
+    elif opt["method"] == "dcespcnlrt":
         assert opt["is_shuffle"]
         net = models.dcespcn_LRT(upsampling_rate=opt['upsampling_rate'],
                                  out_channels=opt['no_channels'],
@@ -201,7 +201,7 @@ def set_network_config(opt):
                                  layers=opt['no_layers'],
                                  bn=opt['is_BN'])
 
-    elif opt["method"] == "espcn_deconv" :
+    elif opt["method"] == "espcn_deconv":
         assert not(opt["is_shuffle"])
         net = models.espcn_deconv(upsampling_rate=opt['upsampling_rate'],
                                   out_channels=opt['no_channels'],

@@ -9,6 +9,7 @@ import train
 import reconstruct
 import common.stats as stats
 
+
 # -------------------------- Set up configurations ----------------------------
 # Basic settings
 parser = argparse.ArgumentParser(description='dliqt-tensorflow-implementation')

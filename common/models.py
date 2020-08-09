@@ -765,7 +765,7 @@ class espcn_LRT(object):
         return get_tensor_shape(self.y_pred)
 
 
-class dcespcn(object):
+class dscespcn(object):
     def __init__(self,
                  upsampling_rate,
                  out_channels,

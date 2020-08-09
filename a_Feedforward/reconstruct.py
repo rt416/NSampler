@@ -134,6 +134,11 @@ def sr_reconstruct(opt):
     else:
         print("Mask for the interior region NOT FOUND")
         mask = dt_hr[:, :, :, 0] == 0
+
+        print("The size of the ground truth image", dt_gt[..., 2:].shape,
+              "The size of the prediction", dt_hr[..., 2:].shape,
+              )
+
         m, m2, p, s = compare_images_and_get_stats(dt_gt[..., 2:],
                                                    dt_hr[..., 2:], mask,
                                                    "whole")

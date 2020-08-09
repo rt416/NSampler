@@ -754,7 +754,6 @@ class Data(object):
 
         return ds_images
 
-
     def _clip_images(self, inp_images, out_images, tail_perc=0.1, head_perc=99.9):
         """ Clip inp_images, out_images according to the specified percentile.
 
