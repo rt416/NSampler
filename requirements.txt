@@ -39,7 +39,7 @@ dynd==0.7.3.dev1
 enum34==1.1.2
 et-xmlfile==1.0.1
 fastcache==1.0.2
-Flask==0.10.1
+Flask==1.0
 Flask-Cors==2.1.2
 funcsigs==1.0.2
 futures==3.0.3
