@@ -44,7 +44,8 @@ parser.add_argument('--valid', action='store_true', help='pick the best model ba
 # Data/task
 parser.add_argument('--is_map', action='store_true', help='Want to use MAP-MRI instead?')
 parser.add_argument('-pl', '--no_patches', dest='no_patches', type=int, default=2250, help='number of patches sampled from each train subject')
-parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='8', help='background value')
+parser.add_argument('-ts', '--no_subjects', dest="no_subjects", type=int, default='8', help='number of training subjects')
+parser.add_argument('-tts', '--no_test_subjects', dest="no_test_subjects", type=int, default='8', help='number of test subjects')
 parser.add_argument('--no_channels', type=int, default=6, help='number of channels')
 parser.add_argument('-bgval', '--background_value', dest="background_value", type=float, default='0', help='background value')
 
@@ -70,6 +71,7 @@ print device_lib.list_local_devices()
 opt['train_size'] = int(opt['no_patches']*opt['no_subjects'])
 opt['train_subjects'] = fetch_subjects(no_subjects=opt['no_subjects'], shuffle=False, test=False)
 opt['patchlib_idx'] = 1
+
 
 # turn off probabilistic model options:
 opt['hetero'] = False
@@ -123,7 +125,10 @@ train.train_cnn(opt)
 
 
 # RECONSTRUCT
-subjects_list = fetch_subjects(no_subjects=8, shuffle=False, test=True)
+num_test_subjects = opt['no_test_subjects']
+subjects_list = fetch_subjects(
+    no_subjects=num_test_subjects, shuffle=False, test=True,
+)
 for subject in subjects_list:
     opt['subject'] = subject
     reconstruct.sr_reconstruct(opt)

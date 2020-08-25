@@ -218,9 +218,9 @@ class espcn(object):
         # define the loss:
         with tf.name_scope('loss'):
             # (previous ver, 12 Aug):
-            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # cost = tf.reduce_mean(tf.square(tf.multiply(y_prec, (y - y_pred)))) \
             #        - tf.reduce_mean(tf.log(y_prec))
-            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
+            cost = tf.reduce_mean(tf.multiply(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
@@ -326,10 +326,10 @@ class espcn(object):
 
             # expected NLL for heteroscedastic network
             # (previous ver, 12 Aug):
-            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
             #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.multiply(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -373,7 +373,7 @@ class espcn(object):
                 y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-            y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+            y_pred_std = tf.multiply(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
                 y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
@@ -589,9 +589,9 @@ class espcn_LRT(object):
         # define the loss:
         with tf.name_scope('loss'):
             # (previous ver, 12 Aug):
-            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # cost = tf.reduce_mean(tf.square(tf.multiply(y_prec, (y - y_pred)))) \
             #        - tf.reduce_mean(tf.log(y_prec))
-            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
+            cost = tf.reduce_mean(tf.multiply(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
@@ -702,10 +702,10 @@ class espcn_LRT(object):
 
             # expected NLL for heteroscedastic network
             # (previous ver, 12 Aug):
-            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
             #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.multiply(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -749,7 +749,7 @@ class espcn_LRT(object):
                 y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-            y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+            y_pred_std = tf.multiply(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
                 y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
@@ -841,7 +841,7 @@ class dcespcn(object):
 
         y = tf.placeholder(tf.float32, name='input_y')
         y_norm, _ = self.forwardpass(x_scaled, y, phase)
-        y_pred = tf.add(tf.mul(y_std, y_norm), y_mean, name='y_pred')
+        y_pred = tf.add(tf.multiply(y_std, y_norm), y_mean, name='y_pred')
         return y_pred
 
     # ------------ BAYESIAN NETWORK -------------------
@@ -968,9 +968,9 @@ class dcespcn(object):
 
         # define the loss:
         with tf.name_scope('loss'):
-            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # cost = tf.reduce_mean(tf.square(tf.multiply(y_prec, (y - y_pred)))) \
             #        - tf.reduce_mean(tf.log(y_prec))
-            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
+            cost = tf.reduce_mean(tf.multiply(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
@@ -1074,10 +1074,10 @@ class dcespcn(object):
 
             # expected NLL for heteroscedastic network
             # (previous ver, 12 Aug):
-            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
             #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.multiply(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
                          - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -1123,7 +1123,7 @@ class dcespcn(object):
                 y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-            y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+            y_pred_std = tf.multiply(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
                 y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
@@ -1207,7 +1207,7 @@ class dcespcn_LRT(object):
 
         y = tf.placeholder(tf.float32, name='input_y')
         y_norm, _ = self.forwardpass(x_scaled, y, phase)
-        y_pred = tf.add(tf.mul(y_std, y_norm), y_mean, name='y_pred')
+        y_pred = tf.add(tf.multiply(y_std, y_norm), y_mean, name='y_pred')
         return y_pred
 
     # ------------ BAYESIAN NETWORK -------------------
@@ -1329,9 +1329,9 @@ class dcespcn_LRT(object):
 
         # define the loss:
         with tf.name_scope('loss'):
-            # cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            # cost = tf.reduce_mean(tf.square(tf.multiply(y_prec, (y - y_pred)))) \
             #        - tf.reduce_mean(tf.log(y_prec))
-            cost = tf.reduce_mean(tf.mul(y_prec, tf.square(y - y_pred))) \
+            cost = tf.reduce_mean(tf.multiply(y_prec, tf.square(y - y_pred))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         return y_pred, y_std, cost
@@ -1457,10 +1457,10 @@ class dcespcn_LRT(object):
 
             # expected NLL for heteroscedastic network
             # (previous ver, 12 Aug):
-            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            # e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
             #              - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.mul(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.multiply(y_prec, tf.square(y - y_pred)), [1, 2, 3, 4]), 0) \
                          - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike *= num_data
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -1506,7 +1506,7 @@ class dcespcn_LRT(object):
                 y_norm, y_norm_std, _ = self.forwardpass_hetero(x_scaled, y, phase)
 
             y_pred = tf.add(y_std * y_norm, y_mean, name='y_pred')
-            y_pred_std = tf.mul(y_std, y_norm_std, name='y_pred_std')
+            y_pred_std = tf.multiply(y_std, y_norm_std, name='y_pred_std')
         else:
             if vardrop:
                 y_norm, _ = self.forwardpass_vardrop(x_scaled, y, phase, keep_prob, params, num_data)
@@ -1599,7 +1599,7 @@ class espcn_deconv(object):
 
         y = tf.placeholder(tf.float32, name='input_y')
         y_norm, _ = self.forwardpass(x_scaled, y, phase)
-        y_pred = tf.add(tf.mul(y_std, y_norm), y_mean, name='y_pred')
+        y_pred = tf.add(tf.multiply(y_std, y_norm), y_mean, name='y_pred')
         return y_pred
 
     def get_output_shape(self):
@@ -1716,7 +1716,7 @@ class unet(object):
         x_scaled = tf.div(tf.sub(input, x_mean), x_std)
 
         y = self.forwardpass(x_scaled, phase)
-        y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+        y_pred = tf.add(tf.multiply(y_std, y), y_mean, name='y_pred')
         return y_pred
 
     def get_output_shape(self):
@@ -1878,7 +1878,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
         with tf.name_scope('loss'):
-            cost = tf.reduce_mean(tf.square(tf.mul(y_prec, (y - y_pred)))) \
+            cost = tf.reduce_mean(tf.square(tf.multiply(y_prec, (y - y_pred)))) \
                    - tf.reduce_mean(tf.log(y_prec))
 
         # with tf.name_scope('covariance_network'):  # diagonality assumed
@@ -1909,7 +1909,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
         #     y_std = tf.sqrt(y_cov, name='y_std')
         #
         # with tf.name_scope('loss'):
-        #     cost = tf.reduce_mean(tf.square(tf.mul(1./y_cov, (y - y_pred)))) \
+        #     cost = tf.reduce_mean(tf.square(tf.multiply(1./y_cov, (y - y_pred)))) \
         #            + tf.reduce_mean(tf.log(y_cov))
 
     elif method == 'cnn_dropout':
@@ -2109,7 +2109,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
         with tf.name_scope('expected_negloglikelihood'):
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1,2,3,4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1,2,3,4]), 0) \
                          - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1,2,3,4]), 0)
             if not (method == 'cnn_heteroscedastic_variational_average'):
                 e_negloglike = opt['train_noexamples'] * e_negloglike
@@ -2200,7 +2200,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             y_std = tf.sqrt(1. / y_prec, name='y_std')
 
         with tf.name_scope('expected_negloglikelihood'):
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             if not (method == 'cnn_heteroscedastic_variational_average'):
                 e_negloglike = opt['train_noexamples'] * e_negloglike
@@ -2293,7 +2293,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
                 mse_sum = opt['train_noexamples'] * mse_sum
                 tf.summary.scalar('mse_sum', mse_sum)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike = opt['train_noexamples'] * e_negloglike
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -2392,7 +2392,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             tf.summary.scalar('kl_div_prec', kl_div_prec)
 
         with tf.name_scope('expected_negloglikelihood'):
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             if not (method == 'cnn_heteroscedastic_variational_average'):
                 e_negloglike = opt['train_noexamples'] * e_negloglike
@@ -2490,7 +2490,7 @@ def inference(method, x, y, keep_prob, opt, trade_off=None):
             mse_sum = opt['train_noexamples'] * mse_sum
             tf.summary.scalar('mse_sum', mse_sum)
 
-            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.mul(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
+            e_negloglike = tf.reduce_mean(tf.reduce_sum(tf.square(tf.multiply(y_prec, (y - y_pred))), [1, 2, 3, 4]), 0) \
                            - tf.reduce_mean(tf.reduce_sum(tf.log(y_prec), [1, 2, 3, 4]), 0)
             e_negloglike = opt['train_noexamples'] * e_negloglike
             tf.summary.scalar('e_negloglike', e_negloglike)
@@ -2525,7 +2525,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
     # x_scaled = tf.div(tf.sub(x - transform['input_mean'), transform['input_std'])
     x_scaled = tf.div(tf.sub(x, x_mean), x_std)
     y, y_uncertainty, cost = inference(method, x_scaled, y, keep_prob, opt, trade_off)
-    y_pred = tf.add(tf.mul(y_std, y), y_mean, name='y_pred')
+    y_pred = tf.add(tf.multiply(y_std, y), y_mean, name='y_pred')
 
     if opt['method']=='cnn_simple' or \
        opt['method']=='cnn_simple_L1' or \
@@ -2535,7 +2535,7 @@ def scaled_prediction(method, x, y, keep_prob, transform, opt, trade_off):
        opt['method']=='cnn_variational_dropout_channelwise':
         y_pred_std = 1
     else:
-        y_pred_std = tf.mul(y_std, y_uncertainty, name='y_pred_std')
+        y_pred_std = tf.multiply(y_std, y_uncertainty, name='y_pred_std')
     return y_pred, y_pred_std
 
 
