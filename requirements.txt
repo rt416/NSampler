@@ -149,7 +149,7 @@ statsmodels==0.6.1
 sympy==1.0
 tables==3.2.2
 tabulate==0.7.5
-tensorflow==0.12.0rc0
+tensorflow==2.5.1
 terminado==0.5
 Theano==0.8.1
 toolz==0.8.2
