@@ -54,7 +54,7 @@ HeapDict==1.0.0
 idna==2.0
 ipaddress==1.0.14
 ipykernel==4.3.1
-ipython==4.2.0
+ipython==7.16.3
 ipython-genutils==0.1.0
 ipywidgets==4.1.1
 itsdangerous==0.24
